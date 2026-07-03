@@ -36,9 +36,12 @@ how everything combines into damage.
 | ----- | -- | -- | --- | --- | --- | --- | ------- | -------- |
 | [Slime](slime.md) | 22 | 0 | 8 | 4 | 0 | 8 | 4 XP · 3 gold | Greenwood, Stone Pass |
 | [Gargoyle](gargoyle.md) | 64 | 0 | 20 | 14 | 0 | 3 | 18 XP · 14 gold | Stone Pass |
-| [Demon](demon.md) | 68 | 30 | 18 | 9 | 16 | 10 | 16 XP · 12 gold | Greenwood (guardian), Demon Keep |
+| [Demon](demon.md) | 68 | 30 | 18 | 9 | 16 | 10 | 16 XP · 12 gold | Greenwood (guardian), Demon Fortress |
+| [Dragon](dragon.md) | 340 | 80 | 26 | 17 | 24 | 11 | 150 XP · 120 gold | Demon Fortress (boss) |
 
 Each level fields its own foes: **slimes** swarm the Greenwood (with a lone demon
 guarding its end), **gargoyles** hold the Stone Pass, and **demon** packs fill the
-Demon Keep. Enemies are placed as roaming overworld sprites that chase you and start
-a battle on contact — see [The Overworld](../world.md#roaming-enemies).
+Demon Fortress — where a lone **[dragon](dragon.md)** boss waits in the depths.
+Enemies are placed as roaming overworld sprites that chase you and start a battle
+on contact — see [The Overworld](../world.md#roaming-enemies). The dragon's fight
+plays a dedicated **boss theme** in place of the usual battle music.

@@ -185,7 +185,7 @@ impl Overworld {
         let level = &reg.data.levels[level_idx];
 
         // Ground/wall are per-level so each region reads as its own place
-        // (grassy GREENWOOD, stony STONE PASS, dark DEMON KEEP).
+        // (grassy GREENWOOD, stony STONE PASS, dark DEMON FORTRESS).
         let tex = TileTex {
             ground: cache.get(r, level.ground.as_deref().unwrap_or("grass")),
             wall: cache.get(r, level.wall.as_deref().unwrap_or("barricade")),

@@ -73,5 +73,6 @@ nav:
       - Slime: entities/slime.md
       - Gargoyle: entities/gargoyle.md
       - Demon: entities/demon.md
+      - Dragon: entities/dragon.md
   - Extending the Game: modding.md
   - Credits: credits.md

@@ -272,6 +272,10 @@ pub struct EncounterDef {
     pub id: String,
     /// Enemy ids; repeats allowed (e.g. two demons).
     pub enemies: Vec<String>,
+    /// Boss fight: plays the dedicated boss theme instead of the normal battle
+    /// track. Defaults to false for ordinary encounters.
+    #[serde(default)]
+    pub boss: bool,
 }
 
 /// One roaming enemy placed on the overworld map. When it touches the player it
@@ -498,6 +502,7 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "demon" => include_bytes!("../assets/textures/entities/monsters/demon.png"),
         "slime" => include_bytes!("../assets/textures/entities/monsters/slime.png"),
         "gargoyle" => include_bytes!("../assets/textures/entities/monsters/gargoyle.png"),
+        "dragon" => include_bytes!("../assets/textures/entities/monsters/dragon.png"),
         "starter_sword" => include_bytes!("../assets/textures/items/starter_sword.png"),
         "starter_gear" => include_bytes!("../assets/textures/items/starter_gear.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
@@ -506,7 +511,7 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "rock" => include_bytes!("../assets/textures/tiles/rock.png"),
         "barricade" => include_bytes!("../assets/textures/tiles/barricade.png"),
         // Environment tilesets for the later levels: stony ground for STONE PASS,
-        // dark flagstones + brick walls for DEMON KEEP.
+        // dark flagstones + brick walls for the DEMON FORTRESS.
         "stone" => include_bytes!("../assets/textures/tiles/stone.png"),
         "dark_floor" => include_bytes!("../assets/textures/tiles/dark_tile_0.png"),
         "dark_wall" => include_bytes!("../assets/textures/tiles/dark_wall.png"),
@@ -520,3 +525,8 @@ pub const FONT_TTF: &[u8] = include_bytes!("../assets/textures/ui/font.ttf");
 /// Looping battle theme (Vorbis). Embedded so the exact same track ships in the
 /// native binary and the wasm bundle. Played by [`crate::audio`].
 pub const BATTLE_MUSIC_OGG: &[u8] = include_bytes!("../assets/music/battle.ogg");
+
+/// Looping boss theme (Vorbis). Swapped in for [`BATTLE_MUSIC_OGG`] when a
+/// battle is seeded from an encounter flagged `boss` (e.g. the DEMON FORTRESS
+/// dragon).
+pub const BOSS_MUSIC_OGG: &[u8] = include_bytes!("../assets/music/boss.ogg");

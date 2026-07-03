@@ -160,6 +160,14 @@ An **encounter** is just a named group of enemy ids (repeats allowed):
 EncounterDef(id: "demon_trio", enemies: ["demon", "demon", "demon"]),
 ```
 
+Add `boss: true` to make it a **boss fight** — the battle then plays the boss
+theme (`music/boss.ogg`) instead of the normal battle track. Everything else about
+the encounter works the same:
+
+```ron
+EncounterDef(id: "dragon_boss", enemies: ["dragon"], boss: true),
+```
+
 ## Add a level
 
 A `LevelDef` is a marker on the world map plus a set of connected **screens**.

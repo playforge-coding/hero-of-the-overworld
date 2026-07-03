@@ -6,7 +6,7 @@ comments: true
 
 The **elite threat** — and the whole reason for the war. Demons are the invaders
 that poured out of the underworld when the king was [betrayed](../story.md). They
-are held back in the **Demon Keep**, with a single one guarding the end of the
+are held back in the **Demon Fortress**, with a single one guarding the end of the
 Greenwood; they roam their levels and chase you when you come near, starting a
 [battle](../battles.md) on contact.
 
@@ -20,7 +20,7 @@ Greenwood; they roam their levels and chase you when you come near, starting a
 | **Speed** | 10 |
 | **AI** | Random (mixes its skills with plain attacks) |
 | **Rewards** | 16 XP · 12 gold on defeat |
-| **Found in** | Greenwood (a lone guardian) and Demon Keep (in packs) |
+| **Found in** | Greenwood (a lone guardian) and Demon Fortress (in packs) |
 
 A demon is the game's real test: high HP, strong attack, and the only enemy with
 **magic** to spend. Its **Random** AI means it sometimes opens with **CLAW** or a
@@ -46,10 +46,10 @@ Demons are placed on the map in three encounter sizes:
 | Encounter | Demons | Where |
 | --------- | ------ | ----- |
 | `demon_solo` | 1 | Guarding the far end of the Greenwood |
-| `demon_duo` | 2 | Demon Keep |
-| `demon_trio` | 3 | Demon Keep |
+| `demon_duo` | 2 | Demon Fortress |
+| `demon_trio` | 3 | Demon Fortress |
 
-The **Demon Keep** leans on the larger packs and opens with a **trio**. Against a
+The **Demon Fortress** leans on the larger packs and opens with a **trio**. Against a
 group, area skills like Roland's **WHIRLWIND** or Elara's **FROST** earn their MP. On
 the overworld you can also just **outrun** them: you move faster than a demon, so you
 can slip past one you'd rather not fight.

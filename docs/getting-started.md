@@ -33,7 +33,7 @@ cd hero-of-the-overworld
 ```
 
 !!! note "Git LFS"
-    The texture PNGs and the music track are stored with
+    The texture PNGs and the music tracks are stored with
     [Git LFS](https://git-lfs.com). If you don't have it installed, they come
     down as small pointer files and the game won't render or play sound
     correctly. Install `git-lfs`, then run `git lfs pull`.

@@ -27,13 +27,14 @@ open; each later one stays locked (and can't be entered) until the level before
 it is fully cleared. Selecting a locked level shows *"CLEAR THE PREVIOUS LEVEL
 FIRST"* instead of the usual prompt, so the world opens up as you win.
 
-The bundled world has three levels:
+The bundled world has three levels — and the Demon Fortress is not the last
+stop, only the deepest reached so far:
 
 | Level | Screens | Enemies | Notes |
 | ----- | ------- | ------- | ----- |
 | **GREENWOOD** | 3 | [Slime](entities/slime.md) swarms + a lone [demon](entities/demon.md) guardian | The opening level. Clearing it triggers the cutscene where ELARA joins. |
 | **STONE PASS** | 2 | [Gargoyle](entities/gargoyle.md) patrols + a slime pack | A rockier route, screens stacked north–south. Unlocks after Greenwood. |
-| **DEMON KEEP** | 2 | [Demon](entities/demon.md) packs (duos and trios) | The toughest. Unlocks after Stone Pass. |
+| **DEMON FORTRESS** | 2 | [Demon](entities/demon.md) packs (duos and trios) + a [dragon](entities/dragon.md) boss | The toughest so far. Unlocks after Stone Pass; a dragon guards its depths. |
 
 ## Screens
 
@@ -66,10 +67,11 @@ are shaped by their walls of trees, scattered rocks, ponds, and barricades.
 Each screen can hold **roaming enemies**, placed at spawn points and tied to an
 [encounter](battles.md). Each level fields its own kind — [slime](entities/slime.md)
 swarms in the Greenwood, [gargoyle](entities/gargoyle.md) sentinels on the Stone
-Pass, [demon](entities/demon.md) packs in the Demon Keep (see the
-[Bestiary](entities/index.md)). They wander near home until you come within their
-**aggro radius**, then **chase** you. Touch one and its encounter starts a
-**[battle](battles.md)**.
+Pass, [demon](entities/demon.md) packs — and a lurking [dragon](entities/dragon.md)
+boss — in the Demon Fortress (see the [Bestiary](entities/index.md)). They wander
+near home until you come within their **aggro radius**, then **chase** you. Touch
+one and its encounter starts a **[battle](battles.md)** — the dragon's fight even
+swaps in its own boss theme.
 
 - You're **faster than they are** (gargoyles especially are a crawl), so you can
   outrun or juke them — clearing a level doesn't *require* fighting every one along

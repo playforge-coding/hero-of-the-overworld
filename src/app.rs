@@ -4,8 +4,8 @@
 
 use macroquad::prelude::{get_frame_time, next_frame, Conf};
 
-use crate::audio::Audio;
-use crate::data::{BATTLE_MUSIC_OGG, FONT_TTF};
+use crate::audio::{Audio, Track};
+use crate::data::{BATTLE_MUSIC_OGG, BOSS_MUSIC_OGG, FONT_TTF};
 use crate::game::Game;
 use crate::input::Controllers;
 use crate::renderer::Renderer;
@@ -31,9 +31,10 @@ pub async fn run() {
     let _ = env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn"))
         .try_init();
 
-    // Preload the looping music (async) before entering the loop.
+    // Preload the looping music tracks (async) before entering the loop.
     let mut audio = Audio::new();
-    audio.load_music(BATTLE_MUSIC_OGG).await;
+    audio.load_music(Track::Battle, BATTLE_MUSIC_OGG).await;
+    audio.load_music(Track::Boss, BOSS_MUSIC_OGG).await;
 
     let mut renderer = Renderer::new(FONT_TTF);
     let mut game = Game::new(&mut renderer, audio);

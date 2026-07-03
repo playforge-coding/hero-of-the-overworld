@@ -1,14 +1,26 @@
 //! Background music playback via `macroquad::audio` (one code path on native and
-//! web). The single looping track is decoded once up front with
-//! [`Audio::load_music`]; playback then degrades to silence rather than crashing
-//! if decoding failed.
+//! web). Each looping track (the normal battle theme, the boss theme, …) is
+//! decoded once up front with [`Audio::load_music`] and later selected for
+//! playback by its [`Track`] id. Playback degrades to silence rather than
+//! crashing if a track failed to decode.
 
 use macroquad::audio::{load_sound_from_bytes, play_sound, stop_sound, PlaySoundParams, Sound};
 
-/// Owns the decoded music track and its play state.
+/// A named background-music track. Callers select what to play by id rather than
+/// by the byte slice it was decoded from: a `&'static [u8]` const has no stable
+/// address across codegen units, so pointer identity can't key the lookup.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Track {
+    /// The ordinary battle theme.
+    Battle,
+    /// The boss theme, swapped in for boss encounters.
+    Boss,
+}
+
+/// Owns the decoded music tracks, keyed by their [`Track`] id.
 #[derive(Default)]
 pub struct Audio {
-    music: Option<Sound>,
+    tracks: Vec<(Track, Sound)>,
     playing: bool,
 }
 
@@ -17,21 +29,22 @@ impl Audio {
         Audio::default()
     }
 
-    /// Decode the looping music track. Async (macroquad decodes off the byte
-    /// slice); call once during startup. Failure is logged, never fatal.
-    pub async fn load_music(&mut self, bytes: &[u8]) {
+    /// Decode and register a looping track under its [`Track`] id, so a later
+    /// [`Audio::play_music_looping`] with the same id selects it. Async
+    /// (macroquad decodes off the byte slice); call once per track during
+    /// startup. Failure is logged, never fatal.
+    pub async fn load_music(&mut self, track: Track, bytes: &[u8]) {
         match load_sound_from_bytes(bytes).await {
-            Ok(s) => self.music = Some(s),
-            Err(e) => log::warn!("could not load music: {e:?}"),
+            Ok(s) => self.tracks.push((track, s)),
+            Err(e) => log::warn!("could not load {track:?} music: {e:?}"),
         }
     }
 
-    /// Start the music looping, restarting it if already playing. No-op if the
-    /// track failed to load. The `_bytes` argument is kept for call-site
-    /// compatibility; the single preloaded track is used.
-    pub fn play_music_looping(&mut self, _bytes: &'static [u8]) {
-        if let Some(s) = &self.music {
-            stop_sound(s);
+    /// Start `track` looping, stopping whatever was playing first. No-op if that
+    /// track failed to load (or was never registered).
+    pub fn play_music_looping(&mut self, track: Track) {
+        self.stop_music();
+        if let Some((_, s)) = self.tracks.iter().find(|(t, _)| *t == track) {
             play_sound(
                 s,
                 PlaySoundParams {
@@ -43,9 +56,9 @@ impl Audio {
         }
     }
 
-    /// Stop the music if any is playing.
+    /// Stop any music that is playing.
     pub fn stop_music(&mut self) {
-        if let Some(s) = &self.music {
+        for (_, s) in &self.tracks {
             stop_sound(s);
         }
         self.playing = false;

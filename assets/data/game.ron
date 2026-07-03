@@ -101,7 +101,7 @@ GameData(
             xp: 4,
             gold: 3,
         ),
-        // The demons are now the elite threat, held back in DEMON KEEP (plus a
+        // The demons are now the elite threat, held back in the DEMON FORTRESS (plus a
         // lone one guarding the end of GREENWOOD). FIREBALL leaves the target
         // BURNING for three rounds, so they punish a drawn-out fight.
         EnemyDef(
@@ -162,6 +162,38 @@ GameData(
             // Lumbering: far slower than the player, so easy to dodge on the map.
             overworld_speed: Some(18.0),
         ),
+        // The DRAGON: the boss guarding the depths of the DEMON FORTRESS. A huge
+        // damage sponge with a party-wide FLAME BREATH (leaves everyone BURNING)
+        // and a heavy single-target TAIL SWIPE. Its Random AI rotates skills by
+        // HP. dragon.png is a 4x6 grid of 32x32 frames: rows 0-1 are front-facing
+        // poses, rows 2-3 a side-on serpent; the overworld walk reads rows 0-3 as
+        // down/up/right/left.
+        EnemyDef(
+            id: "dragon",
+            name: "DRAGON",
+            stats: Stats(max_hp: 340, max_mp: 80, attack: 26, defense: 17, magic: 24, speed: 11),
+            sprite: BattlerSprite(
+                texture: "dragon",
+                frame_w: 32, frame_h: 32,
+                draw_w: 96.0, draw_h: 96.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 4.0),
+                attack: AnimClip(row: 1, first_col: 0, frames: 4, fps: 10.0),
+            ),
+            overworld: Some(OverworldWalk(
+                texture: "dragon",
+                frame_w: 32, frame_h: 32,
+                draw_w: 32.0, draw_h: 32.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 4, fps: 6.0,
+            )),
+            skills: ["flame_breath", "tail_swipe"],
+            ai: Random,
+            xp: 150,
+            gold: 120,
+            // Prowls its lair at a steady, menacing pace.
+            overworld_speed: Some(26.0),
+        ),
     ],
 
     skills: [
@@ -200,6 +232,17 @@ GameData(
             id: "frost", name: "FROST",
             description: "A biting frost that chills all foes.",
             mp_cost: 12, power: 115, kind: Magical, target: AllEnemies,
+        ),
+        SkillDef(
+            id: "flame_breath", name: "FLAME BREATH",
+            description: "A dragon's roaring gout of fire; sears and burns every foe.",
+            mp_cost: 10, power: 135, kind: Magical, target: AllEnemies,
+            inflicts: ["burn"],
+        ),
+        SkillDef(
+            id: "tail_swipe", name: "TAIL SWIPE",
+            description: "A crushing sweep of the dragon's tail.",
+            mp_cost: 0, power: 160, kind: Physical, target: OneEnemy,
         ),
     ],
 
@@ -265,10 +308,13 @@ GameData(
         // Gargoyle patrols hold STONE PASS.
         EncounterDef(id: "gargoyle_solo", enemies: ["gargoyle"]),
         EncounterDef(id: "gargoyle_duo",  enemies: ["gargoyle", "gargoyle"]),
-        // Demons: the lone GREENWOOD guardian, and the packs in DEMON KEEP.
+        // Demons: the lone GREENWOOD guardian, and the packs in the DEMON FORTRESS.
         EncounterDef(id: "demon_solo", enemies: ["demon"]),
         EncounterDef(id: "demon_duo",  enemies: ["demon", "demon"]),
         EncounterDef(id: "demon_trio", enemies: ["demon", "demon", "demon"]),
+        // The DRAGON boss at the heart of the DEMON FORTRESS. Flagged `boss` so
+        // the fight plays the boss theme instead of the usual battle track.
+        EncounterDef(id: "dragon_boss", enemies: ["dragon"], boss: true),
     ],
 
     // ------------------------------------------------------------------------
@@ -399,7 +445,7 @@ GameData(
             ],
         ),
         LevelDef(
-            id: "demonkeep", name: "DEMON KEEP",
+            id: "demonfortress", name: "DEMON FORTRESS",
             node: (5, 2),
             start_screen: 0, start: (2, 5),
             ground: Some("dark_floor"),
@@ -440,8 +486,10 @@ GameData(
                     ],
                     west: Some(0),
                     spawns: [
-                        SpawnDef(col: 10, row: 5, encounter: "demon_trio"),
-                        SpawnDef(col: 15, row: 7, encounter: "demon_duo"),
+                        SpawnDef(col: 8, row: 5, encounter: "demon_trio"),
+                        SpawnDef(col: 12, row: 8, encounter: "demon_duo"),
+                        // The DRAGON, lurking at the deepest point of the fortress.
+                        SpawnDef(col: 16, row: 5, encounter: "dragon_boss"),
                     ],
                 ),
             ],

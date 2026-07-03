@@ -202,6 +202,7 @@ assets/
   textures/tiles/...                # overworld tile art
   textures/ui/font.ttf              # embedded UI font (TrueType)
   music/battle.ogg                  # looping battle theme (embedded)
+  music/boss.ogg                    # looping boss theme (embedded)
 src/                                # engine + game (see table above)
 tests/
   data.rs                           # fast, display-free

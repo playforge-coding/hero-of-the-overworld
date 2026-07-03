@@ -8,10 +8,10 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::audio::Audio;
+use crate::audio::{Audio, Track};
 use crate::battle::{Battle, BattleOutcome};
 use crate::cutscene::{Cutscene, CutsceneOutcome};
-use crate::data::{Registry, BATTLE_MUSIC_OGG};
+use crate::data::Registry;
 use crate::input::{Button, Controllers, Input};
 use crate::overworld::{Event, Overworld, Trigger};
 use crate::party::{Party, PartyMember};
@@ -320,7 +320,14 @@ impl Game {
                     &self.party,
                     &trigger.encounter,
                 );
-                self.audio.play_music_looping(BATTLE_MUSIC_OGG);
+                // Boss encounters (e.g. the DEMON FORTRESS dragon) swap in the
+                // dedicated boss theme; everything else uses the battle track.
+                let is_boss = self
+                    .reg
+                    .encounter(&trigger.encounter)
+                    .is_some_and(|e| e.boss);
+                let track = if is_boss { Track::Boss } else { Track::Battle };
+                self.audio.play_music_looping(track);
                 self.pending = Some(trigger);
                 Scene::Battle(battle)
             }
