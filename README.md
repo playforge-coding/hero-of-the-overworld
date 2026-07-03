@@ -85,8 +85,9 @@ There is no font-rendering dependency. A monospace bitmap-font atlas is baked to
 ## Extending the game (data-only)
 
 All content lives in [`assets/data/game.ron`](assets/data/game.ron). To add a **new party
-member** or **enemy** you usually only edit that file. A character reuses any registered
-sprite sheet — the bundled mage, for example, is the swordsman sheet recoloured with a `tint`:
+member** or **enemy** you usually only edit that file. A character can use its own sprite
+sheet (the bundled mage, ELARA, has her own purple `mage.png`) or reuse and recolour an
+existing one with a `tint`:
 
 ```ron
 CharacterDef(
@@ -94,12 +95,12 @@ CharacterDef(
     name: "ELARA",
     stats: Stats(max_hp: 78, max_mp: 60, attack: 10, defense: 9, magic: 26, speed: 13),
     sprite: BattlerSprite(
-        texture: "swordsman",            // any key registered in src/data.rs::embedded_texture
+        texture: "mage",                 // any key registered in src/data.rs::embedded_texture
         frame_w: 16, frame_h: 16,
         draw_w: 48.0, draw_h: 48.0,
-        tint: Some((120, 150, 255)),     // recolour a shared sheet for a new character
+        // tint: Some((150, 100, 220)),  // optionally recolour a shared sheet instead
         idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
-        attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 14.0),
+        attack: AnimClip(row: 7, first_col: 0, frames: 5, fps: 14.0),
     ),
     skills: ["firebolt", "frost", "mend"],
 ),
@@ -120,12 +121,14 @@ The data file also defines **skills** (physical / magical / heal, single or all 
 
 ### The sprite sheets
 
-Both provided battler sheets are 16×16 grids:
+The battler sheets are grids of 16×16 frames:
 
 - `swordsman.png` — 5×12. Rows 0–3 walk (down/up/right/left), rows 4–7 attack.
   The overworld walk uses rows 0–3; the battler uses the *walk-right* row as its idle and
   the *attack-right* row when striking.
-- `demon.png` — 6×8. Same row convention; the roaming overworld demon uses the walk rows.
+- `mage.png` — 6×8 (ELARA). Rows 0–3 walk (4 frames), rows 4–7 cast (5 frames). The cast
+  rows are ordered down/up/*left/right* — swapping left and right versus the walk rows.
+- `demon.png` — 6×8. Same convention as the swordsman; the roaming overworld demon uses the walk rows.
 
 Tiles (`grass`, `water`, `tree`, `rock`, `barricade`) are their own 16×16 PNGs under
 `assets/textures/tiles/`.

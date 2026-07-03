@@ -9,6 +9,9 @@
 // `frames` starting at `first_col`, played at `fps`.
 //   swordsman.png : 5 cols x 12 rows. rows 0-3 = walk down/up/right/left,
 //                   rows 4-7 = attack down/up/right/left.
+//   mage.png      : 6 cols x 8 rows. rows 0-3 = walk down/up/right/left
+//                   (4 frames), rows 4-7 = cast down/up/LEFT/RIGHT (5 frames;
+//                   note the cast rows swap left/right vs. the walk rows).
 //   demon.png     : 6 cols x 8 rows.
 // ============================================================================
 GameData(
@@ -40,20 +43,28 @@ GameData(
             skills: ["power_strike", "whirlwind", "mend"],
         ),
         // Joins the party via a cutscene after GREENWOOD is cleared (she is not
-        // in `starting_party`). Reuses the swordsman sheet, recoloured blue.
+        // in `starting_party`). Has her own purple mage sheet (mage.png).
         CharacterDef(
             id: "mage",
             name: "ELARA",
             stats: Stats(max_hp: 78, max_mp: 60, attack: 10, defense: 9, magic: 26, speed: 13),
             sprite: BattlerSprite(
-                texture: "swordsman",
+                texture: "mage",
                 frame_w: 16, frame_h: 16,
                 draw_w: 48.0, draw_h: 48.0,
                 faces_left: false,
-                tint: Some((120, 150, 255)),
+                // Walk-right row read as idle; cast-right row (7) when acting.
                 idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
-                attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 14.0),
+                attack: AnimClip(row: 7, first_col: 0, frames: 5, fps: 14.0),
             ),
+            // Overworld walk: rows 0-3 are walk down/up/right/left (4 frames).
+            overworld: Some(OverworldWalk(
+                texture: "mage",
+                frame_w: 16, frame_h: 16,
+                draw_w: 20.0, draw_h: 20.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 4, fps: 8.0,
+            )),
             skills: ["firebolt", "frost", "mend"],
         ),
     ],

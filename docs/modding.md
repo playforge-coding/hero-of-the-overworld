@@ -26,15 +26,15 @@ in `embedded_texture`:
 
 ```rust
 "swordsman" => include_bytes!("../assets/textures/entities/playables/swordsman.png"),
+"mage"      => include_bytes!("../assets/textures/entities/playables/mage.png"),
 "demon"     => include_bytes!("../assets/textures/entities/monsters/demon.png"),
 "grass"     => include_bytes!("../assets/textures/tiles/grass.png"),
 // ...
 ```
 
-To use a brand-new PNG, drop it under `assets/` and add one line here. To reskin
-an **existing** sheet for a new character, you don't even need that — apply a
-`tint` in the RON instead (that's how the bundled mage reuses the swordsman
-sheet).
+To use a brand-new PNG — like Elara's own `mage.png` — drop it under `assets/` and
+add one line here. You can also **reskin an existing** sheet for a new character with
+no new art at all: apply a `tint` in the RON to recolour one you already ship.
 
 ## Sprite sheets
 
@@ -42,7 +42,9 @@ Battler sheets are grids of 16×16 frames. An animation clip picks a **row** and
 run of **frames** columns starting at **first_col**, played at **fps**:
 
 - `swordsman.png` — 5×12. Rows 0–3 walk down/up/right/left; rows 4–7 attack.
-- `demon.png` — 6×8, same convention.
+- `mage.png` — 6×8. Rows 0–3 walk (4 frames); rows 4–7 cast (5 frames), ordered
+  down/up/**left/right** — the cast rows swap left and right versus the walk rows.
+- `demon.png` — 6×8, same convention as the swordsman.
 
 A `BattlerSprite` needs an `idle` and `attack` clip (used in battle). An optional
 `OverworldWalk` gives four directional walk rows for moving on the map; without
@@ -56,12 +58,12 @@ CharacterDef(
     name: "ELARA",
     stats: Stats(max_hp: 78, max_mp: 60, attack: 10, defense: 9, magic: 26, speed: 13),
     sprite: BattlerSprite(
-        texture: "swordsman",            // any key from embedded_texture
+        texture: "mage",                 // any key from embedded_texture
         frame_w: 16, frame_h: 16,
         draw_w: 48.0, draw_h: 48.0,
-        tint: Some((120, 150, 255)),     // recolour a shared sheet
+        // tint: Some((150, 100, 220)),  // optional: recolour a shared sheet
         idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
-        attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 14.0),
+        attack: AnimClip(row: 7, first_col: 0, frames: 5, fps: 14.0),
     ),
     skills: ["firebolt", "frost", "mend"],
 ),

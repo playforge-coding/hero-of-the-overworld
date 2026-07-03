@@ -329,6 +329,7 @@ impl EnemyDef {
 pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
     Some(match key {
         "swordsman" => include_bytes!("../assets/textures/entities/playables/swordsman.png"),
+        "mage" => include_bytes!("../assets/textures/entities/playables/mage.png"),
         "demon" => include_bytes!("../assets/textures/entities/monsters/demon.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
         "water" => include_bytes!("../assets/textures/tiles/water.png"),
