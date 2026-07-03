@@ -70,6 +70,8 @@ nav:
       - Overview: entities/index.md
       - Roland: entities/roland.md
       - Elara: entities/elara.md
+      - Slime: entities/slime.md
+      - Gargoyle: entities/gargoyle.md
       - Demon: entities/demon.md
   - Extending the Game: modding.md
   - Credits: credits.md

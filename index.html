@@ -32,6 +32,12 @@
          downloads it); for local web dev, fetch it once:
            curl -L https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js -o mq_js_bundle.js -->
     <script src="./mq_js_bundle.js"></script>
+    <!-- Save-file support: sapp_jsutils marshals byte buffers between wasm and
+         JS, and hoto_storage.js persists them to IndexedDB. Both register
+         miniquad plugins, so they must load after the bundle and before the
+         wasm module is instantiated. -->
+    <script src="./sapp_jsutils.js"></script>
+    <script src="./hoto_storage.js"></script>
     <script>
       // The bin is named `hero`, so `cargo build --target wasm32-unknown-unknown`
       // produces hero.wasm.

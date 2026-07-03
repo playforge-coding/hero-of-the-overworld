@@ -12,6 +12,7 @@
 //!   - [`battle`]    — turn-based battle scene.
 //!   - [`cutscene`]  — data-driven scripted dialogue / party recruitment.
 //!   - [`audio`]     — background music playback (macroquad audio).
+//!   - [`save`]      — persistent save files (native file / web IndexedDB).
 //!   - [`game`]      — scene state machine (title → map → level → battle).
 //!   - [`app`]       — the macroquad game loop / window config.
 
@@ -25,6 +26,7 @@ pub mod input;
 pub mod overworld;
 pub mod party;
 pub mod renderer;
+pub mod save;
 pub mod util;
 
 pub use app::{run, window_conf};

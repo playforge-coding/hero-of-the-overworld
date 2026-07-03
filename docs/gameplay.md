@@ -5,13 +5,15 @@ comments: true
 # Gameplay
 
 Hero of the Overworld is a compact turn-based JRPG. You guide a party from a
-**world map** into **levels**, explore their tile screens, fight the demons that
+**world map** into **levels**, explore their tile screens, fight the monsters that
 roam them, and grow stronger — until every level is cleared.
 
 ## The title screen
 
 The game opens on the title. It shows your current party and their levels; press
-**Confirm** to head to the [world map](world.md#the-world-map).
+**Confirm** to head to the [world map](world.md#the-world-map). If you have a
+saved game the prompt reads **CONTINUE** and picks up where you left off;
+otherwise it reads **BEGIN**.
 
 ## The core loop
 
@@ -19,7 +21,7 @@ The game opens on the title. It shows your current party and their levels; press
    **Confirm** to enter it. See **[The Overworld](world.md)**.
 2. **Explore.** Walk the party leader through the level's connected
    [screens](world.md#screens), stepping between them through mid-edge openings.
-3. **Fight or dodge.** Demons roam each screen and chase you when you get close.
+3. **Fight or dodge.** Enemies roam each screen and chase you when you get close.
    Touch one and a **[battle](battles.md)** begins — but you move faster than they
    do, so you can weave around them if you'd rather not fight.
 4. **Win rewards.** Victory grants **XP** and **gold** to the party, and can push
@@ -28,7 +30,9 @@ The game opens on the title. It shows your current party and their levels; press
    mark it **cleared** on the map. Some levels reward a clear with a
    **[cutscene](battles.md#story-and-cutscenes)** — that's how new party members
    join.
-6. **Move on.** Return to the map and take the next level. Clear them all.
+6. **Move on.** Clearing a level **unlocks the next one** on the map (progression
+   is linear — see [Progression](world.md#progression-is-linear)). Return to the
+   map and take it. Clear them all.
 
 ## Your party
 
@@ -62,6 +66,19 @@ Your goal is simply to **clear every level**. The world map shows a running
 **CLEARED x/y** tally, and each level marker turns from red to green with a star
 once you've wiped out its demons.
 
-Progress is tracked for the **current session** — which levels you've cleared and
-your party's growth live in memory while the game runs. There is no save file, so
-closing the game starts a fresh run next time.
+## Saving
+
+Your progress is **saved automatically** — there's nothing to manage. The game
+writes a save after each battle, whenever you leave a level, and after a story
+cutscene, capturing:
+
+- your **party** — members, levels, XP, live HP/MP, equipped gear, and gold;
+- which **levels are cleared** (and therefore which are unlocked);
+- your **in-level progress** — the specific demons you've already beaten, so
+  quitting halfway through a level doesn't undo the fights you've won.
+
+Next launch, the title offers **CONTINUE** and drops you back into that state.
+The save lives in a small custom binary file: on desktop under your OS data
+directory (e.g. `~/.local/share/hero-of-the-overworld/save.bin` on Linux,
+`%APPDATA%` on Windows), and in the browser's **IndexedDB** for the
+[web build](getting-started.md).

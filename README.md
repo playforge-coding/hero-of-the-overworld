@@ -1,7 +1,7 @@
 # Hero of the Overworld
 
 A small but **extensible** turn-based JRPG written in Rust. Travel a world map,
-explore tile-mapped levels, dodge (or fight) roaming demons, and win data-driven
+explore tile-mapped levels, dodge (or fight) roaming monsters, and win data-driven
 turn-based battles — then watch a scripted cutscene recruit a new party member.
 
 - **Engine:** [`macroquad`](https://macroquad.rs) — one small crate for the window, GL
@@ -12,6 +12,8 @@ turn-based battles — then watch a scripted cutscene recruit a new party member
   (native + web)
 - **Content:** a plain-text [RON](https://github.com/ron-rs/ron) data file — add heroes,
   enemies, skills, levels, and cutscenes without touching engine code
+- **Saves:** progress persists automatically in a small custom binary format — a
+  file (via [`dirs`](https://crates.io/crates/dirs)) natively, IndexedDB on the web
 - **Tests:** fast data/logic tests plus a real end-to-end suite that drives the actual game
   window with [`rustautogui`](https://crates.io/crates/rustautogui) (keyboard + screenshots +
   template matching)
@@ -41,7 +43,8 @@ cargo run --release  # smooth
 ```bash
 rustup target add wasm32-unknown-unknown
 cargo build --release --target wasm32-unknown-unknown --bin hero
-# then serve index.html + hero.wasm + mq_js_bundle.js (see docs/getting-started)
+# then serve index.html + hero.wasm + mq_js_bundle.js, plus the save-file glue
+# sapp_jsutils.js + hoto_storage.js (see docs/getting-started)
 ```
 
 Controls: **arrows / WASD** move, **Enter / Z / Space** confirm, **Esc / X / Backspace**
@@ -50,12 +53,13 @@ works too (native builds) — D-pad/stick to move, A confirm, B cancel; plug in
 several and each controls a party member in battle. See [`docs/controls.md`](docs/controls.md).
 
 Press Enter on the title to reach the **world map**, pick a level, and enter it. You walk
-the tiled overworld freely; roaming demons chase you inside an aggro radius and start a
+the tiled overworld freely; roaming enemies chase you inside an aggro radius and start a
 **battle** on contact — but you move faster than they do, so encounters can be dodged. In
 battle each living party member chooses **ATTACK**, a **SKILL**, or **DEFEND**, then
 everyone acts in speed order. Hits can **miss** or land a **critical** for extra damage,
 and each hero's **weapon and armor** tilt those odds. Clear every demon in a level to
-mark it done on the map.
+mark it done on the map and **unlock the next** — progression is linear. Your party,
+clears, and per-level progress are **saved automatically** and resume on the next launch.
 
 ---
 
@@ -73,6 +77,7 @@ that is letterboxed into the real window, so game code never deals with real pix
 | [`src/battle.rs`](src/battle.rs) | the turn-based battle scene (commands → AI → resolve) |
 | [`src/cutscene.rs`](src/cutscene.rs) | data-driven scripted dialogue + party recruitment |
 | [`src/audio.rs`](src/audio.rs) | background music via `macroquad::audio` (native + web) |
+| [`src/save.rs`](src/save.rs) | custom binary save format + storage (native file via `dirs`, web IndexedDB) |
 | [`src/game.rs`](src/game.rs) | scene state machine (title → map → level → cutscene → battle → report) |
 | [`src/input.rs`](src/input.rs) | logical buttons polled from the keyboard and gamepads (`gilrs`) each frame |
 | [`src/app.rs`](src/app.rs) | the macroquad main loop + window config |
@@ -178,7 +183,7 @@ They need a display (X11 here) and the `libX11`/`libXtst` runtime libs. What the
 | `boots_and_survives` | window + macroquad + data + textures come up without panicking |
 | `title_screen_renders_content` | the title actually renders (not a blank frame) |
 | `enter_map_then_level_via_cutscene` | title → map → intro cutscene → tiled level, each transition visibly changing the screen |
-| `walking_into_demon_starts_battle` | walking into a roaming demon starts a battle; hero and demon sprites are found on screen via template match |
+| `walking_into_slime_starts_battle` | walking into a roaming enemy starts a battle; hero and slime sprites are found on screen via template match |
 
 > A subtle bug the e2e suite caught: automation tools deliver a key press and release within
 > a single frame, so classic `down && !previous` edge detection (sampled once per update)
@@ -205,6 +210,7 @@ tests/
   fixtures/                         # sprite templates for matching
 docs/ + mkdocs.yml                  # player-facing docs site (Zensical / Material)
 index.html                          # macroquad web page (loads hero.wasm)
+sapp_jsutils.js + hoto_storage.js   # web save glue (byte marshalling + IndexedDB)
 ```
 
 ## License

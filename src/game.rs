@@ -6,7 +6,7 @@
 //! demons chase you and start a turn-based [`Battle`] on contact. Clearing every
 //! demon in a level marks it done on the map.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::audio::Audio;
 use crate::battle::{Battle, BattleOutcome};
@@ -14,8 +14,9 @@ use crate::cutscene::{Cutscene, CutsceneOutcome};
 use crate::data::{Registry, BATTLE_MUSIC_OGG};
 use crate::input::{Button, Controllers, Input};
 use crate::overworld::{Event, Overworld, Trigger};
-use crate::party::Party;
+use crate::party::{Party, PartyMember};
 use crate::renderer::{color, Renderer, VIRTUAL_H, VIRTUAL_W};
+use crate::save::{self, SaveData, SavedLevel, SavedMember};
 use crate::util::{Rng, TextureCache};
 
 enum Scene {
@@ -43,6 +44,11 @@ pub struct Game {
     current_level: usize,
     /// Which levels the player has fully cleared (parallel to `reg.data.levels`).
     cleared: Vec<bool>,
+    /// Per-level in-progress state (which demons are beaten), keyed by level id.
+    /// Persisted so quitting mid-level keeps the enemies you've already cleared.
+    level_progress: HashMap<String, Vec<Vec<bool>>>,
+    /// Whether a save was loaded at startup (drives the title's CONTINUE prompt).
+    has_save: bool,
     /// Selected level on the map screen.
     map_cursor: usize,
     /// The enemy that started the current battle, so the level can update on end.
@@ -61,7 +67,7 @@ impl Game {
         let reg = Registry::load();
         let party = Party::from_registry(&reg);
         let cleared = vec![false; reg.data.levels.len()];
-        Game {
+        let mut game = Game {
             reg,
             party,
             cache: TextureCache::new(),
@@ -70,12 +76,111 @@ impl Game {
             level: None,
             current_level: 0,
             cleared,
+            level_progress: HashMap::new(),
+            has_save: false,
             map_cursor: 0,
             pending: None,
             played_cutscenes: HashSet::new(),
             pending_cutscene: None,
             scene: Scene::Title,
             time: 0.0,
+        };
+        // Resume a prior session if one is on disk / in the browser.
+        if let Some(data) = save::load() {
+            game.apply_save(data);
+            game.has_save = true;
+        }
+        game
+    }
+
+    /// Overwrite live state from a decoded save. Immutable member data (name,
+    /// sprite, skills) is rebuilt from the registry via `def_id`; unknown members
+    /// or level ids are skipped so an old save still loads against edited content.
+    fn apply_save(&mut self, data: SaveData) {
+        self.party.gold = data.gold;
+        self.party.members.clear();
+        for sm in &data.members {
+            let Some(mut m) = PartyMember::from_def(&self.reg, &sm.def_id) else {
+                log::warn!(
+                    "save references unknown character '{}'; skipping",
+                    sm.def_id
+                );
+                continue;
+            };
+            m.level = sm.level;
+            m.xp = sm.xp;
+            m.hp = sm.hp;
+            m.mp = sm.mp;
+            m.stats.max_hp = sm.max_hp;
+            m.stats.max_mp = sm.max_mp;
+            m.stats.attack = sm.attack;
+            m.stats.defense = sm.defense;
+            m.stats.magic = sm.magic;
+            m.stats.speed = sm.speed;
+            m.weapon = sm.weapon.clone();
+            m.armor = sm.armor.clone();
+            self.party.members.push(m);
+        }
+        // `cleared` always matches the current level count; copy what overlaps.
+        self.cleared = vec![false; self.reg.data.levels.len()];
+        for (i, &c) in data.cleared.iter().enumerate() {
+            if let Some(slot) = self.cleared.get_mut(i) {
+                *slot = c;
+            }
+        }
+        self.played_cutscenes = data.played_cutscenes.into_iter().collect();
+        self.level_progress = data.levels.into_iter().map(|l| (l.id, l.screens)).collect();
+    }
+
+    /// Snapshot the whole game into a [`SaveData`] and persist it. Called after
+    /// anything that changes lasting state (a battle, a clear, leaving a level).
+    fn save(&mut self) {
+        // Fold the live level's progress in first so it's never a frame stale.
+        self.capture_level_progress();
+        let members = self
+            .party
+            .members
+            .iter()
+            .map(|m| SavedMember {
+                def_id: m.def_id.clone(),
+                level: m.level,
+                xp: m.xp,
+                hp: m.hp,
+                mp: m.mp,
+                max_hp: m.stats.max_hp,
+                max_mp: m.stats.max_mp,
+                attack: m.stats.attack,
+                defense: m.stats.defense,
+                magic: m.stats.magic,
+                speed: m.stats.speed,
+                weapon: m.weapon.clone(),
+                armor: m.armor.clone(),
+            })
+            .collect();
+        let levels = self
+            .level_progress
+            .iter()
+            .map(|(id, screens)| SavedLevel {
+                id: id.clone(),
+                screens: screens.clone(),
+            })
+            .collect();
+        let data = SaveData {
+            gold: self.party.gold,
+            members,
+            cleared: self.cleared.clone(),
+            played_cutscenes: self.played_cutscenes.iter().cloned().collect(),
+            levels,
+        };
+        save::store(&data);
+        self.has_save = true;
+    }
+
+    /// Record the active level's defeated-enemy state into `level_progress`.
+    fn capture_level_progress(&mut self) {
+        if let Some(level) = &self.level {
+            let id = self.reg.data.levels[self.current_level].id.clone();
+            self.level_progress.insert(id, level.defeated_state());
         }
     }
 
@@ -110,6 +215,8 @@ impl Game {
             Scene::Level => self.update_level(input, renderer, dt),
             Scene::Cutscene(mut cs) => match cs.update(input, &mut self.party, &self.reg, dt) {
                 Some(CutsceneOutcome::Finished) => {
+                    // A cutscene can recruit a new member, so persist afterwards.
+                    self.save();
                     if self.level.is_some() {
                         Scene::Level
                     } else {
@@ -160,14 +267,22 @@ impl Game {
                 self.move_map_cursor(dir);
             }
         }
-        if input.pressed(Button::Confirm) && !self.reg.data.levels.is_empty() {
+        if input.pressed(Button::Confirm) && self.unlocked(self.map_cursor) {
             self.current_level = self.map_cursor;
+            // Restore this level's saved progress (beaten demons) if any.
+            let level_id = self.reg.data.levels[self.current_level].id.clone();
+            let defeated = self
+                .level_progress
+                .get(&level_id)
+                .cloned()
+                .unwrap_or_default();
             self.level = Some(Overworld::new(
                 renderer,
                 &mut self.cache,
                 &self.reg,
                 &self.party,
                 self.current_level,
+                &defeated,
             ));
             // Play the level's intro cutscene the first time it's entered.
             if let Some(id) = self.reg.data.levels[self.current_level]
@@ -191,6 +306,9 @@ impl Game {
             None => Scene::Level,
             Some(Event::ExitToMap) => {
                 self.cleared[self.current_level] |= level.all_cleared();
+                // Persist progress (beaten demons, clear state) before we drop
+                // the live level, then forget it.
+                self.save();
                 self.level = None;
                 Scene::Map
             }
@@ -207,6 +325,16 @@ impl Game {
                 Scene::Battle(battle)
             }
         }
+    }
+
+    /// Whether level `i` can be entered yet. Progression is linear: the first
+    /// level is always open, and each later one unlocks only once the level
+    /// before it is fully cleared.
+    fn unlocked(&self, i: usize) -> bool {
+        if i >= self.reg.data.levels.len() {
+            return false;
+        }
+        i == 0 || self.cleared.get(i - 1).copied().unwrap_or(false)
     }
 
     /// Move the map selection to the nearest level marker in `dir`.
@@ -267,7 +395,7 @@ impl Game {
         if let Some(id) = clear_cutscene {
             self.pending_cutscene = self.build_cutscene(&id, renderer);
         }
-        match outcome {
+        let scene = match outcome {
             BattleOutcome::Victory { xp, gold } => {
                 self.party.gold += gold;
                 let leveled = self.party.grant_xp(xp);
@@ -292,12 +420,16 @@ impl Game {
                     timer: 0.8,
                 }
             }
-        }
+        };
+        // Persist the outcome: XP/levels/gold, live HP/MP, and which demons in
+        // the level are now beaten (folded in from the live level).
+        self.save();
+        scene
     }
 
     pub fn draw(&mut self, renderer: &mut Renderer) {
         match &mut self.scene {
-            Scene::Title => Self::draw_title(&self.party, self.time, renderer),
+            Scene::Title => Self::draw_title(&self.party, self.time, self.has_save, renderer),
             Scene::Map => self.draw_map(renderer),
             Scene::Level => {
                 if let Some(level) = &self.level {
@@ -310,7 +442,7 @@ impl Game {
         }
     }
 
-    fn draw_title(party: &Party, time: f32, r: &mut Renderer) {
+    fn draw_title(party: &Party, time: f32, has_save: bool, r: &mut Renderer) {
         r.set_clear_color(color::rgb(10, 10, 20));
         r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgb(14, 12, 26));
         r.draw_rect(0.0, 40.0, VIRTUAL_W, 40.0, color::rgba(40, 30, 70, 255));
@@ -353,8 +485,14 @@ impl Game {
         }
 
         if (time * 2.0) as i32 % 2 == 0 {
+            // A resumed session says CONTINUE; a fresh one says BEGIN.
+            let prompt = if has_save {
+                "PRESS ENTER TO CONTINUE"
+            } else {
+                "PRESS ENTER TO BEGIN"
+            };
             r.draw_text_centered(
-                "PRESS ENTER TO BEGIN",
+                prompt,
                 VIRTUAL_W / 2.0,
                 160.0,
                 1.0,
@@ -393,6 +531,7 @@ impl Game {
             let p = node_px(lv.node);
             let selected = i == self.map_cursor;
             let done = self.cleared[i];
+            let unlocked = self.unlocked(i);
             if selected {
                 r.draw_rect_outline(
                     p.0 - 9.0,
@@ -403,10 +542,13 @@ impl Game {
                     color::rgb(255, 240, 150),
                 );
             }
+            // Green = cleared, red = available, grey = still locked.
             let fill = if done {
                 color::rgb(90, 200, 110)
-            } else {
+            } else if unlocked {
                 color::rgb(180, 90, 90)
+            } else {
+                color::rgb(70, 74, 84)
             };
             r.draw_rect(p.0 - 6.0, p.1 - 6.0, 12.0, 12.0, fill);
             r.draw_rect_outline(
@@ -419,12 +561,17 @@ impl Game {
             );
             if done {
                 r.draw_text_centered("*", p.0, p.1 - 4.0, 1.0, color::rgb(20, 40, 20));
+            } else if !unlocked {
+                // A padlock hint for levels not yet reachable.
+                r.draw_text_centered("X", p.0, p.1 - 4.0, 1.0, color::rgb(150, 155, 165));
             }
             // Label under the marker.
             let name_col = if selected {
                 color::rgb(255, 240, 150)
-            } else {
+            } else if unlocked {
                 color::rgb(200, 200, 210)
+            } else {
+                color::rgb(130, 135, 145)
             };
             r.draw_text_centered(&lv.name, p.0, p.1 + 10.0, 1.0, name_col);
         }
@@ -442,7 +589,16 @@ impl Game {
             r.draw_text(&label, px, VIRTUAL_H - 22.0, 1.0, color::rgb(200, 220, 210));
             px += r.text_width(&label, 1.0) + 10.0;
         }
-        if (self.time * 2.0) as i32 % 2 == 0 {
+        // A locked selection can't be entered; say why. Otherwise the controls.
+        if !self.unlocked(self.map_cursor) {
+            r.draw_text_centered(
+                "LOCKED - CLEAR THE PREVIOUS LEVEL FIRST",
+                VIRTUAL_W / 2.0,
+                VIRTUAL_H - 10.0,
+                1.0,
+                color::rgb(210, 170, 120),
+            );
+        } else if (self.time * 2.0) as i32 % 2 == 0 {
             r.draw_text_centered(
                 "ARROWS: SELECT   ENTER: PLAY   ESC: TITLE",
                 VIRTUAL_W / 2.0,

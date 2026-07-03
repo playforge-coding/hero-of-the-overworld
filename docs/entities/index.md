@@ -32,9 +32,13 @@ how everything combines into damage.
 
 ## Enemies
 
-| Enemy | HP | MP | ATK | DEF | MAG | SPD | Rewards |
-| ----- | -- | -- | --- | --- | --- | --- | ------- |
-| [Demon](demon.md) | 58 | 12 | 16 | 8 | 9 | 9 | 12 XP · 8 gold |
+| Enemy | HP | MP | ATK | DEF | MAG | SPD | Rewards | Found in |
+| ----- | -- | -- | --- | --- | --- | --- | ------- | -------- |
+| [Slime](slime.md) | 22 | 0 | 8 | 4 | 0 | 8 | 4 XP · 3 gold | Greenwood, Stone Pass |
+| [Gargoyle](gargoyle.md) | 64 | 0 | 20 | 14 | 0 | 3 | 18 XP · 14 gold | Stone Pass |
+| [Demon](demon.md) | 68 | 30 | 18 | 9 | 16 | 10 | 16 XP · 12 gold | Greenwood (guardian), Demon Keep |
 
-Demons appear in three encounter sizes — **solo**, **duo**, and **trio** — placed as
-roaming enemies across the levels. See [The Overworld](../world.md#roaming-demons).
+Each level fields its own foes: **slimes** swarm the Greenwood (with a lone demon
+guarding its end), **gargoyles** hold the Stone Pass, and **demon** packs fill the
+Demon Keep. Enemies are placed as roaming overworld sprites that chase you and start
+a battle on contact — see [The Overworld](../world.md#roaming-enemies).

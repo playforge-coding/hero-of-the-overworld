@@ -15,17 +15,25 @@ by a faint dotted travel route. Each marker sits at a grid **node** and shows th
 level's name beneath it.
 
 - **Move** hops the cursor to the nearest marker in that direction.
-- **Confirm** enters the highlighted level.
+- **Confirm** enters the highlighted level — if it's unlocked.
 - A marker is **red** while the level still holds demons and turns **green with a
   star** once you've cleared it. A **CLEARED x/y** tally sits in the corner.
+- A **grey marker with an X** is still **locked**.
+
+### Progression is linear
+
+You must **clear a level to unlock the next one**. The first level is always
+open; each later one stays locked (and can't be entered) until the level before
+it is fully cleared. Selecting a locked level shows *"CLEAR THE PREVIOUS LEVEL
+FIRST"* instead of the usual prompt, so the world opens up as you win.
 
 The bundled world has three levels:
 
-| Level | Screens | Notes |
-| ----- | ------- | ----- |
-| **GREENWOOD** | 3 | The opening level. Clearing it triggers the cutscene where ELARA joins. |
-| **STONE PASS** | 2 | A rockier route, screens stacked north–south. |
-| **DEMON KEEP** | 2 | The toughest, thick with demons (including trios). |
+| Level | Screens | Enemies | Notes |
+| ----- | ------- | ------- | ----- |
+| **GREENWOOD** | 3 | [Slime](entities/slime.md) swarms + a lone [demon](entities/demon.md) guardian | The opening level. Clearing it triggers the cutscene where ELARA joins. |
+| **STONE PASS** | 2 | [Gargoyle](entities/gargoyle.md) patrols + a slime pack | A rockier route, screens stacked north–south. Unlocks after Greenwood. |
+| **DEMON KEEP** | 2 | [Demon](entities/demon.md) packs (duos and trios) | The toughest. Unlocks after Stone Pass. |
 
 ## Screens
 
@@ -53,19 +61,24 @@ Grass is the base layer drawn under everything; trees and rocks are drawn as
 props sitting on top of it. Anything that isn't grass blocks movement, so screens
 are shaped by their walls of trees, scattered rocks, ponds, and barricades.
 
-## Roaming demons
+## Roaming enemies
 
-Each screen can hold **roaming demons**, placed at spawn points and tied to an
-[encounter](battles.md). They wander near home until you come within their
+Each screen can hold **roaming enemies**, placed at spawn points and tied to an
+[encounter](battles.md). Each level fields its own kind — [slime](entities/slime.md)
+swarms in the Greenwood, [gargoyle](entities/gargoyle.md) sentinels on the Stone
+Pass, [demon](entities/demon.md) packs in the Demon Keep (see the
+[Bestiary](entities/index.md)). They wander near home until you come within their
 **aggro radius**, then **chase** you. Touch one and its encounter starts a
 **[battle](battles.md)**.
 
-- You're **faster than the demons**, so you can outrun or juke them — clearing a
-  level doesn't *require* fighting every one along the way, but a level is only
-  marked cleared once they're all defeated.
-- **Win** a battle and that demon is gone from the map for good.
-- **Lose** and the demons in that screen retreat to their starting spots, giving
+- You're **faster than they are** (gargoyles especially are a crawl), so you can
+  outrun or juke them — clearing a level doesn't *require* fighting every one along
+  the way, but a level is only marked cleared once they're all defeated.
+- **Win** a battle and that enemy is gone from the map for good — and that progress
+  is [saved](gameplay.md#saving), so it stays beaten even if you leave and return.
+- **Lose** and the enemies in that screen retreat to their starting spots, giving
   you room to regroup instead of being fought again on the spot.
 
-Clear every demon in every screen and the level shows **LEVEL CLEARED!** — press
-**Cancel**/**Menu** to return to the map (now green) and pick your next level.
+Clear every enemy in every screen and the level shows **LEVEL CLEARED!** — press
+**Cancel**/**Menu** to return to the map (now green), which **unlocks the next
+level** to pick.

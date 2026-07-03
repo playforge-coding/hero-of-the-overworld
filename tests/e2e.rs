@@ -120,12 +120,12 @@ fn walking_into_slime_starts_battle() {
 
     let hero = best_match(&mut gui, "hero_template.png", 0.7, 6);
     assert!(
-        hero.map_or(false, |c| c >= 0.7),
+        hero.is_some_and(|c| c >= 0.7),
         "hero sprite not found on screen (best correlation {hero:?})"
     );
     let slime = best_match(&mut gui, "slime_template.png", 0.55, 6);
     assert!(
-        slime.map_or(false, |c| c >= 0.55),
+        slime.is_some_and(|c| c >= 0.55),
         "slime sprite not found on screen (best correlation {slime:?})"
     );
 }

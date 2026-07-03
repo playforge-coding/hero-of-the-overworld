@@ -166,7 +166,7 @@ fn levels_are_valid_and_linked() {
             .map
             .get(lv.start.1 as usize)
             .and_then(|r| r.chars().nth(lv.start.0 as usize))
-            .map_or(true, |ch| !matches!(ch, '.' | ' '));
+            .is_none_or(|ch| !matches!(ch, '.' | ' '));
         assert!(!start_solid, "level {} starts inside a wall", lv.id);
     }
 }

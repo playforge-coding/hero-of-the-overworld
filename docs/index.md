@@ -6,7 +6,7 @@ comments: true
 
 **Hero of the Overworld** is a small, **extensible** turn-based JRPG written in
 Rust. You lead a party of heroes across a **world map**, explore tile-mapped
-**levels** full of roaming demons, and fight **turn-based battles** with a
+**levels** full of roaming monsters, and fight **turn-based battles** with a
 classic ATTACK / SKILL / DEFEND menu. Clear a level and a scripted **cutscene**
 may usher a new ally into your party.
 
@@ -45,7 +45,7 @@ browser (WebAssembly / WebGL).
 | **Canvas**      | Fixed 320×180 virtual resolution, letterboxed into the window        |
 | **You control** | The party leader on the map; each hero's action in battle           |
 | **Overworld**   | A world map of levels, each a set of connected tile screens          |
-| **Enemies**     | Demons that roam levels and chase you into turn-based battles        |
+| **Enemies**     | Slimes, gargoyles, and demons that roam levels and chase you into battle |
 | **Content**     | Heroes, enemies, skills, levels, and cutscenes live in one RON file  |
 | **Platforms**   | Native (Windows/macOS/Linux) and web (WebAssembly)                   |
 

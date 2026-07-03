@@ -58,9 +58,10 @@ game plays exactly as it does on a single controller.
 - **Move** — walk the party leader around the [tile screen](world.md#screens).
   Walking into a mid-edge opening flips to the neighbouring screen.
 - **Cancel** / **Menu** — leave the level and go back to the world map. Progress
-  in the level (which demons you've beaten) is kept for the rest of the session.
+  in the level (which demons you've beaten) is [saved](gameplay.md#saving), so
+  it's kept even across sessions.
 
-Touching a roaming demon starts a [battle](battles.md).
+Touching a roaming enemy starts a [battle](battles.md).
 
 ### Battle
 

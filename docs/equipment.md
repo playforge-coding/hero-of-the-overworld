@@ -31,10 +31,13 @@ and crit are rolled.
 | **IRON SWORD** | Weapon | +6 ATK, +6% crit, +4% accuracy | [Roland](entities/roland.md) | Standard-issue soldier's blade. |
 | **LEATHER ARMOR** | Armor | +5 DEF, +4% evasion | [Roland](entities/roland.md) | Boiled leather; turns a glance. |
 | **TRAVELER'S ROBE** | Armor | +3 DEF, +2 MAG, +8% evasion | [Elara](entities/elara.md) | Light, enchanted travel cloth. |
+| **STONE FISTS** | Weapon | +18 ATK, +12% crit, **−34% accuracy** | [Gargoyle](entities/gargoyle.md) | Crushing stone knuckles; heavy and clumsy. |
 
 Fitting the story, ROLAND marches out in the plain starter kit of a first-month
 conscript, while ELARA's robe leans on evasion and a touch of magic rather than
-heavy protection.
+heavy protection. Equipment isn't hero-only: the **[gargoyle](entities/gargoyle.md)**
+swings the brutal but wildly inaccurate **STONE FISTS**, which is exactly why it
+hits like a truck yet misses so often — the accuracy penalty is a real stat.
 
 ## Adding your own
 

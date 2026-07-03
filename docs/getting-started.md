@@ -64,11 +64,15 @@ cargo build --release --target wasm32-unknown-unknown --bin hero
 ```
 
 Assemble a folder to serve — the repo's [`index.html`](https://github.com/playforge-coding/hero-of-the-overworld/blob/master/index.html)
-already loads `./hero.wasm` and `./mq_js_bundle.js`:
+loads `./hero.wasm`, `./mq_js_bundle.js`, and the save-file glue
+`./sapp_jsutils.js` + `./hoto_storage.js` (which persist your progress to the
+browser's IndexedDB):
 
 ```sh
 mkdir -p web && cp index.html web/
 cp target/wasm32-unknown-unknown/release/hero.wasm web/
+# Save-file glue (checked into the repo root):
+cp sapp_jsutils.js hoto_storage.js web/
 # macroquad's JS loader (fetch once):
 curl -L https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js -o web/mq_js_bundle.js
 ```

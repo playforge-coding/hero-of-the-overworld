@@ -169,12 +169,18 @@ pub struct Overworld {
 
 impl Overworld {
     /// Build the runtime for `reg.data.levels[level_idx]`.
+    ///
+    /// `defeated` restores saved progress: `defeated[screen][enemy]` marks an
+    /// enemy already beaten this run (from a previous session or a re-entry), so
+    /// clearing a level survives quitting mid-way. Pass an empty slice for a
+    /// fresh, untouched level.
     pub fn new(
         r: &mut Renderer,
         cache: &mut TextureCache,
         reg: &Registry,
         party: &Party,
         level_idx: usize,
+        defeated: &[Vec<bool>],
     ) -> Self {
         let level = &reg.data.levels[level_idx];
 
@@ -198,7 +204,7 @@ impl Overworld {
         let player_tex = cache.get(r, &walk.texture);
 
         let mut screens = Vec::new();
-        for sd in &level.screens {
+        for (screen_idx, sd) in level.screens.iter().enumerate() {
             let w = sd
                 .map
                 .iter()
@@ -213,6 +219,9 @@ impl Overworld {
                     tiles[ri * w + ci] = Tile::from_char(ch);
                 }
             }
+
+            // Which enemies on this screen are already beaten (restored save).
+            let screen_defeated = defeated.get(screen_idx);
 
             let mut enemies = Vec::new();
             for sp in &sd.spawns {
@@ -234,6 +243,10 @@ impl Overworld {
                     .tint
                     .map(|(cr, cg, cb)| color::rgb(cr, cg, cb))
                     .unwrap_or(color::WHITE);
+                let was_defeated = screen_defeated
+                    .and_then(|s| s.get(enemies.len()))
+                    .copied()
+                    .unwrap_or(false);
                 enemies.push(Enemy {
                     pos,
                     home: pos,
@@ -244,7 +257,7 @@ impl Overworld {
                     speed: def.overworld_speed.unwrap_or(ENEMY_SPEED),
                     tint,
                     walk_t: 0.0,
-                    defeated: false,
+                    defeated: was_defeated,
                 });
             }
 
@@ -292,6 +305,16 @@ impl Overworld {
         self.screens
             .iter()
             .all(|s| s.enemies.iter().all(|e| e.defeated))
+    }
+
+    /// Snapshot of which enemies are beaten, as `screens[s][e]`, for saving. The
+    /// shape mirrors the `defeated` argument to [`Overworld::new`], so a
+    /// save→load round-trip restores the exact same field state.
+    pub fn defeated_state(&self) -> Vec<Vec<bool>> {
+        self.screens
+            .iter()
+            .map(|s| s.enemies.iter().map(|e| e.defeated).collect())
+            .collect()
     }
 
     fn tile(&self, col: i32, row: i32) -> Tile {

@@ -47,6 +47,9 @@ run of **frames** columns starting at **first_col**, played at **fps**:
 - `mage.png` — 6×8. Rows 0–3 walk (4 frames); rows 4–7 cast (5 frames), ordered
   down/up/**left/right** — the cast rows swap left and right versus the walk rows.
 - `demon.png` — 6×8, same convention as the swordsman.
+- `gargoyle.png` — 6×8, reuses the demon's layout with different art.
+- `slime.png` — 6×4. Rows 0–3 walk; it has no attack rows, so its "attack" clip
+  just replays a walk row a little faster.
 
 A `BattlerSprite` needs an `idle` and `attack` clip (used in battle). An optional
 `OverworldWalk` gives four directional walk rows for moving on the map; without

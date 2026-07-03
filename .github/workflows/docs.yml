@@ -75,6 +75,9 @@ jobs:
           mkdir -p site/play
           cp index.html site/play/index.html
           cp target/wasm32-unknown-unknown/release/hero.wasm site/play/hero.wasm
+          # Save-file JS glue (IndexedDB backend + byte marshalling).
+          cp sapp_jsutils.js site/play/sapp_jsutils.js
+          cp hoto_storage.js site/play/hoto_storage.js
           curl -sSfL https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js \
             -o site/play/mq_js_bundle.js
 

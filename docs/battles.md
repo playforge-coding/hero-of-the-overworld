@@ -4,20 +4,21 @@ comments: true
 
 # Battles
 
-Touching a roaming demon on the [overworld](world.md#roaming-demons) drops you
-into a turn-based battle against that encounter's demons. Your whole party fights
-whoever is present.
+Touching a roaming enemy on the [overworld](world.md#roaming-enemies) drops you
+into a turn-based battle against that encounter's foes — [slimes](entities/slime.md),
+[gargoyles](entities/gargoyle.md), or [demons](entities/demon.md). Your whole party
+fights whoever is present.
 
 ## A round, step by step
 
 1. **Command phase.** For each living hero, in speed order, you pick an action:
    **ATTACK**, a **SKILL**, or **DEFEND**. You can **Cancel** back to the previous
    hero to re-plan their choice.
-2. **Enemies plan.** Each demon chooses an action via its simple AI.
+2. **Enemies plan.** Each enemy chooses an action via its simple AI.
 3. **Resolve.** Everyone's actions are sorted by **speed** (fastest first) and
    played out one at a time, with a little lunge animation and floating damage /
    heal numbers.
-4. **Check the outcome.** If all demons are down you **win**; if all heroes are
+4. **Check the outcome.** If all enemies are down you **win**; if all heroes are
    down you **lose**. Otherwise a new round begins.
 
 ## The command menu
@@ -51,7 +52,25 @@ The bundled skills:
 | MEND | Heal | 6 | One ally | Patch up a wounded hero |
 | FIREBOLT | Magical | 6 | One enemy | ELARA's hard-hitting bolt |
 | FROST | Magical | 12 | All enemies | Chills every enemy at once |
-| CLAW | Physical | 0 | One enemy | The demon's attack |
+| CLAW | Physical | 0 | One enemy | The demon's free claw swipe |
+| FIREBALL | Magical | 6 | One enemy | The demon's spell — inflicts **BURN** (see below) |
+
+(POWER STRIKE / WHIRLWIND / MEND are Roland's; FIREBOLT / FROST / MEND are Elara's;
+CLAW and FIREBALL belong to the [demon](entities/demon.md). Slimes and gargoyles have
+no skills — they only ever use a basic attack.)
+
+## Status effects
+
+Some skills leave a lingering **status** on their target that ticks at the end of
+each round until it wears off:
+
+| Status | Applied by | Effect |
+| ------ | ---------- | ------ |
+| **BURN** | Demon's **FIREBALL** | Deals 8 damage at the end of each round for 3 rounds |
+
+Statuses are pure data too — a new condition (poison, regen, slow, …) is just an
+entry in the data file referenced from a skill, with no engine change. See
+**[Extending the Game](modding.md)**.
 
 ## Hit, miss, and crit
 
@@ -109,14 +128,15 @@ ROLAND starts with an **IRON SWORD** and **LEATHER ARMOR**; ELARA joins in a
 
 Each enemy has an AI setting:
 
-- **Basic** — always uses its plain attack on a random hero.
-- **Random** — mixes in its skills (the bundled demon uses this, so it sometimes
-  leads with CLAW).
+- **Basic** — always uses its plain attack on a random hero. Slimes and gargoyles
+  use this.
+- **Random** — mixes in its skills (the demon uses this, so it sometimes leads with
+  CLAW or a burning FIREBALL).
 
 ## Winning and losing
 
 - **Victory** awards **XP** and **gold** to every living hero, shown on a short
-  report. Enough XP levels a hero up on the spot. Clearing the *last* demon of a
+  report. Enough XP levels a hero up on the spot. Clearing the *last* enemy of a
   level can also queue a story [cutscene](#story-and-cutscenes).
 - **Defeat** revives the party at full health and returns you to the level to try
   again — see [If the party falls](gameplay.md#if-the-party-falls).
@@ -129,7 +149,7 @@ member. They fire at set moments:
 
 - An **intro** cutscene the first time you enter a level (Greenwood opens with
   ROLAND vowing to drive the demons out).
-- A **clear** cutscene the first time you defeat every demon in a level (clearing
+- A **clear** cutscene the first time you defeat every enemy in a level (clearing
   Greenwood is where ELARA introduces herself and joins).
 
 Press **Confirm** to reveal a line instantly, then again to advance. Because
