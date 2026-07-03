@@ -14,13 +14,10 @@ impl Rng {
         Rng(seed | 1) // avoid the all-zero state
     }
 
-    /// Seed from wall-clock time (works on native and web via `web-time`).
+    /// Seed from wall-clock time (works on native and web via macroquad/miniquad).
     pub fn seeded_now() -> Self {
-        let nanos = web_time::SystemTime::now()
-            .duration_since(web_time::UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(0x9E37_79B9_7F4A_7C15);
-        Rng::new(nanos ^ 0xD1B5_4A32_D192_ED03)
+        let t = macroquad::miniquad::date::now();
+        Rng::new(t.to_bits() ^ 0xD1B5_4A32_D192_ED03)
     }
 
     pub fn next_u64(&mut self) -> u64 {

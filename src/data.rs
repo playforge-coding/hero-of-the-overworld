@@ -446,8 +446,8 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
     })
 }
 
-/// The embedded font atlas PNG.
-pub const FONT_PNG: &[u8] = include_bytes!("../assets/textures/ui/font.png");
+/// The embedded UI font (TrueType). Rendered with macroquad's text rasteriser.
+pub const FONT_TTF: &[u8] = include_bytes!("../assets/textures/ui/font.ttf");
 
 /// Looping battle theme (Vorbis). Embedded so the exact same track ships in the
 /// native binary and the wasm bundle. Played by [`crate::audio`].

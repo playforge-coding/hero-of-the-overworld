@@ -10,8 +10,9 @@ Rust. You lead a party of heroes across a **world map**, explore tile-mapped
 classic ATTACK / SKILL / DEFEND menu. Clear a level and a scripted **cutscene**
 may usher a new ally into your party.
 
-It renders everything as textured quads with **wgpu**, and runs both natively
-and in the browser (via WebGL) using **[Trunk](https://trunkrs.dev)**.
+It's built on **[macroquad](https://macroquad.rs)** — one small crate for the
+window, rendering, input, text, and audio — and runs both natively and in the
+browser (WebAssembly / WebGL).
 
 <div class="grid cards" markdown>
 
@@ -40,7 +41,7 @@ and in the browser (via WebGL) using **[Trunk](https://trunkrs.dev)**.
 |                 |                                                                     |
 | --------------- | ------------------------------------------------------------------- |
 | **Genre**       | Single-player, turn-based JRPG                                       |
-| **Renderer**    | wgpu (native WebGPU / Vulkan / Metal / DX; WebGL in the browser)     |
+| **Engine**      | macroquad (OpenGL on native, WebGL in the browser)                  |
 | **Canvas**      | Fixed 320×180 virtual resolution, letterboxed into the window        |
 | **You control** | The party leader on the map; each hero's action in battle           |
 | **Overworld**   | A world map of levels, each a set of connected tile screens          |

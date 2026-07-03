@@ -1,6 +1,9 @@
-//! Native binary entry point. The web build uses the `wasm_start` export in
-//! `lib.rs` instead (see `index.html` / trunk).
+//! Entry point. macroquad's `main` macro sets up the window and GL context
+//! (native and web) and drives the async game loop in [`hero_of_the_overworld::run`].
 
-fn main() {
-    hero_of_the_overworld::start();
+use hero_of_the_overworld::{run, window_conf};
+
+#[macroquad::main(window_conf)]
+async fn main() {
+    run().await;
 }

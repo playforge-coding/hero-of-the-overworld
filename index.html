@@ -1,23 +1,41 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hero of the Overworld</title>
-    <!-- Build the wasm library; the native `hero` binary is not a wasm target. -->
-    <link data-trunk rel="rust" data-target-name="hero_of_the_overworld" />
-    <link data-trunk rel="copy-dir" href="assets" />
     <style>
-        html, body { margin: 0; height: 100%; background: #05060a; overflow: hidden; }
-        body { display: flex; align-items: center; justify-content: center; }
-        canvas {
-            image-rendering: pixelated;
-            width: 100vw; height: 100vh;
-            display: block;
-            outline: none;
-        }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #05060a;
+        overflow: hidden;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        outline: none;
+      }
     </style>
-</head>
-<body>
-</body>
+  </head>
+  <body>
+    <!-- macroquad renders into a canvas with this exact id. -->
+    <canvas id="glcanvas" tabindex="1"></canvas>
+    <!-- miniquad/macroquad JS glue. Self-hosted next to this page (the docs CI
+         downloads it); for local web dev, fetch it once:
+           curl -L https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js -o mq_js_bundle.js -->
+    <script src="./mq_js_bundle.js"></script>
+    <script>
+      // The bin is named `hero`, so `cargo build --target wasm32-unknown-unknown`
+      // produces hero.wasm.
+      load("./target/wasm32-unknown-unknown/debug/hero.wasm");
+    </script>
+  </body>
 </html>

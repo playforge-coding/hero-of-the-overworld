@@ -9,9 +9,15 @@
 //! cargo test --test e2e -- --ignored --test-threads=1
 //! ```
 //!
-//! The game is launched with `HOTO_TEST_WINDOW=1`, which makes it run
-//! borderless-fullscreen so the 320x180 canvas maps at a clean integer scale
-//! and always owns focus.
+//! The game is launched with `HOTO_TEST_WINDOW=1`, which makes macroquad open
+//! the window fullscreen so the game owns the whole screen and reliably holds
+//! keyboard focus.
+//!
+//! NOTE: after the macroquad rendering switch, the letterboxed canvas no longer
+//! maps at a fixed integer scale, so the sprite template fixtures
+//! (`hero_template.png`, `demon_template.png`) may need regenerating before
+//! `walking_into_demon_starts_battle` passes. The luminance / changed-fraction
+//! tests are scale-independent and unaffected.
 
 #![allow(dead_code)]
 

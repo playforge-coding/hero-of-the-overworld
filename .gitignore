@@ -1,5 +1,4 @@
 /target
-/dist
 # Cargo.lock is committed: this repo produces a binary/app, so CI should build
 # against a pinned, reproducible dependency set.
 **/*.rs.bk
@@ -12,3 +11,6 @@ debug/
 # scripts/fetch-fonts.py (run before `zensical build`).
 /docs/fonts/
 /docs/stylesheets/fonts.css
+
+# mq 
+mq_js_bundle.js

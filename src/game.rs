@@ -57,7 +57,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(_renderer: &mut Renderer) -> Self {
+    pub fn new(_renderer: &mut Renderer, audio: Audio) -> Self {
         let reg = Registry::load();
         let party = Party::from_registry(&reg);
         let cleared = vec![false; reg.data.levels.len()];
@@ -66,7 +66,7 @@ impl Game {
             party,
             cache: TextureCache::new(),
             rng: Rng::seeded_now(),
-            audio: Audio::new(),
+            audio,
             level: None,
             current_level: 0,
             cleared,

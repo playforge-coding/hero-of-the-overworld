@@ -20,8 +20,10 @@ There are three ways to play Hero of the Overworld:
 *(Only needed to build from source.)*
 
 - A recent **Rust toolchain** (install via [rustup](https://rustup.rs)).
-- A GPU and drivers that support one of wgpu's backends (Vulkan, Metal, DX12, or
-  WebGL in the browser). Most machines from the last decade qualify.
+- A GPU with OpenGL (native) or WebGL (browser). Most machines from the last
+  decade qualify. On Linux you also need the usual X11 / OpenGL / ALSA dev
+  packages macroquad links against, e.g. `libx11-dev libxi-dev libgl1-mesa-dev
+  libasound2-dev`.
 
 Clone the repository first:
 
@@ -48,25 +50,36 @@ subsequent runs are fast. A window opens on the [title screen](gameplay.md#the-t
 
 ## Web
 
-The web build targets WebAssembly and uses [Trunk](https://trunkrs.dev) as the
-bundler. Install the wasm target and Trunk once:
+macroquad compiles the game to a single `.wasm` that its JavaScript glue loads
+into a canvas — no wasm-bindgen or bundler. Add the wasm target once:
 
 ```sh
 rustup target add wasm32-unknown-unknown
-cargo install --locked trunk
 ```
 
-Then run a dev server or produce a static bundle:
+Build the wasm binary (the `hero` bin becomes `hero.wasm`):
 
 ```sh
-trunk serve            # dev server at http://127.0.0.1:8080
-# or
-trunk build --release  # static bundle written to dist/
+cargo build --release --target wasm32-unknown-unknown --bin hero
 ```
 
-wgpu is compiled with the `webgl` feature so the game runs in browsers without
-native WebGPU support. The static `dist/` bundle is plain files — host it on any
-static web server.
+Assemble a folder to serve — the repo's [`index.html`](https://github.com/playforge-coding/hero-of-the-overworld/blob/master/index.html)
+already loads `./hero.wasm` and `./mq_js_bundle.js`:
+
+```sh
+mkdir -p web && cp index.html web/
+cp target/wasm32-unknown-unknown/release/hero.wasm web/
+# macroquad's JS loader (fetch once):
+curl -L https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js -o web/mq_js_bundle.js
+```
+
+Then serve `web/` with any static server (browsers won't run wasm off `file://`):
+
+```sh
+python3 -m http.server -d web 8080   # then open http://127.0.0.1:8080
+```
+
+The published site does exactly this in CI — see the [Docs workflow](https://github.com/playforge-coding/hero-of-the-overworld/blob/master/.github/workflows/docs.yml).
 
 ## Next steps
 

@@ -1,17 +1,19 @@
 //! Hero of the Overworld — a small, extensible turn-based JRPG.
 //!
-//! Rendering: wgpu. Windowing/input: winit (native + web). Web build: trunk.
+//! Rendering, windowing, input, and audio all run on **macroquad** (native and
+//! web/WebGL), so the game keeps no custom GPU or windowing stack of its own.
 //!
 //! Module map:
-//!   - [`renderer`] — wgpu 2D sprite renderer (virtual-resolution, letterboxed).
+//!   - [`renderer`] — macroquad-backed 2D sprite renderer (virtual-resolution,
+//!     letterboxed).
 //!   - [`data`]      — RON file format + registries (the content database).
 //!   - [`party`]     — the persistent, extensible party.
 //!   - [`overworld`] — tile-mapped world you explore between battles.
 //!   - [`battle`]    — turn-based battle scene.
 //!   - [`cutscene`]  — data-driven scripted dialogue / party recruitment.
-//!   - [`audio`]     — background music playback (native; no-op on web).
+//!   - [`audio`]     — background music playback (macroquad audio).
 //!   - [`game`]      — scene state machine (title → map → level → battle).
-//!   - [`app`]       — winit application handler / entry point.
+//!   - [`app`]       — the macroquad game loop / window config.
 
 pub mod app;
 pub mod audio;
@@ -25,26 +27,4 @@ pub mod party;
 pub mod renderer;
 pub mod util;
 
-/// Native/shared entry point.
-pub fn start() {
-    init_logging();
-    app::run();
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn init_logging() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
-}
-
-#[cfg(target_arch = "wasm32")]
-fn init_logging() {
-    console_error_panic_hook::set_once();
-    let _ = console_log::init_with_level(log::Level::Warn);
-}
-
-/// Web entry point, called automatically by the trunk-generated JS glue.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen::prelude::wasm_bindgen(start)]
-pub fn wasm_start() {
-    start();
-}
+pub use app::{run, window_conf};

@@ -1,6 +1,11 @@
 //! Logical input abstraction so game code never touches raw key codes.
+//!
+//! State is refreshed once per frame from macroquad via [`Input::poll`].
+//! macroquad already reports both the held state and the press *edge* for a key
+//! (and latches a press even if the key is released within the same frame, as
+//! automation tools do), so the game gets frame-accurate `pressed`/`held`.
 
-use winit::keyboard::KeyCode;
+use macroquad::prelude::{is_key_down, is_key_pressed, KeyCode};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Button {
@@ -23,14 +28,21 @@ const ALL: [Button; 7] = [
     Button::Menu,
 ];
 
+/// Physical keys mapped to each logical button, in [`ALL`] order.
+const KEYS: [&[KeyCode]; 7] = [
+    &[KeyCode::Up, KeyCode::W],
+    &[KeyCode::Down, KeyCode::S],
+    &[KeyCode::Left, KeyCode::A],
+    &[KeyCode::Right, KeyCode::D],
+    &[KeyCode::Enter, KeyCode::Space, KeyCode::Z],
+    &[KeyCode::Escape, KeyCode::X, KeyCode::Backspace],
+    &[KeyCode::LeftShift, KeyCode::C],
+];
+
 #[derive(Default)]
 pub struct Input {
     down: [bool; 7],
-    /// Latched on the up→down transition, held until the next `end_frame`.
-    /// This makes edge detection independent of frame timing, so a press and
-    /// release delivered within a single frame (as automation tools do) still
-    /// registers as one `pressed()` that frame.
-    pressed_latch: [bool; 7],
+    pressed: [bool; 7],
 }
 
 fn index(b: Button) -> usize {
@@ -50,43 +62,25 @@ impl Input {
         Self::default()
     }
 
-    /// Map a physical key to zero or more logical buttons.
-    fn buttons_for(key: KeyCode) -> Option<Button> {
-        Some(match key {
-            KeyCode::ArrowUp | KeyCode::KeyW => Button::Up,
-            KeyCode::ArrowDown | KeyCode::KeyS => Button::Down,
-            KeyCode::ArrowLeft | KeyCode::KeyA => Button::Left,
-            KeyCode::ArrowRight | KeyCode::KeyD => Button::Right,
-            KeyCode::Enter | KeyCode::Space | KeyCode::KeyZ => Button::Confirm,
-            KeyCode::Escape | KeyCode::KeyX | KeyCode::Backspace => Button::Cancel,
-            KeyCode::ShiftLeft | KeyCode::KeyC => Button::Menu,
-            _ => return None,
-        })
-    }
-
-    pub fn set_key(&mut self, key: KeyCode, pressed: bool) {
-        if let Some(b) = Self::buttons_for(key) {
-            let i = index(b);
-            if pressed && !self.down[i] {
-                self.pressed_latch[i] = true;
-            }
-            self.down[i] = pressed;
+    /// Refresh held/pressed state from macroquad. Call once per frame before the
+    /// game reads input.
+    pub fn poll(&mut self) {
+        for (i, keys) in KEYS.iter().enumerate() {
+            self.down[i] = keys.iter().any(|&k| is_key_down(k));
+            self.pressed[i] = keys.iter().any(|&k| is_key_pressed(k));
         }
     }
 
-    /// Call once per update after reading, to clear the per-frame press latches.
-    pub fn end_frame(&mut self) {
-        self.pressed_latch = [false; 7];
-    }
+    /// Retained for call-site compatibility; macroquad clears edges itself.
+    pub fn end_frame(&mut self) {}
 
     pub fn held(&self, b: Button) -> bool {
         self.down[index(b)]
     }
 
-    /// True on the frame a button went from up to down (survives a same-frame
-    /// release, so single injected key taps are never missed).
+    /// True on the frame a button went from up to down.
     pub fn pressed(&self, b: Button) -> bool {
-        self.pressed_latch[index(b)]
+        self.pressed[index(b)]
     }
 
     pub fn any_pressed(&self) -> bool {

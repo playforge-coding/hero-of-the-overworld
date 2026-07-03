@@ -4,11 +4,12 @@ A small but **extensible** turn-based JRPG written in Rust. Travel a world map,
 explore tile-mapped levels, dodge (or fight) roaming demons, and win data-driven
 turn-based battles — then watch a scripted cutscene recruit a new party member.
 
-- **Rendering:** [`wgpu`](https://wgpu.rs) (WebGPU / Vulkan / Metal / DX12 / GL)
-- **Windowing & input:** [`winit`](https://github.com/rust-windowing/winit) — native *and* web
-- **Web build:** [`trunk`](https://trunkrs.dev) → WebAssembly
-- **Audio:** looping background music via [`rodio`](https://crates.io/crates/rodio)
-  (native) and an `<audio>` element (web)
+- **Engine:** [`macroquad`](https://macroquad.rs) — one small crate for the window, GL
+  rendering, input, text, and audio, on both native (OpenGL) and web (WebGL)
+- **Web build:** `cargo build --target wasm32-unknown-unknown` → a single `hero.wasm`
+  loaded by macroquad's JS bundle (no wasm-bindgen/Trunk)
+- **Audio:** looping background music via [`macroquad::audio`](https://docs.rs/macroquad/latest/macroquad/audio/)
+  (native + web)
 - **Content:** a plain-text [RON](https://github.com/ron-rs/ron) data file — add heroes,
   enemies, skills, levels, and cutscenes without touching engine code
 - **Tests:** fast data/logic tests plus a real end-to-end suite that drives the actual game
@@ -38,8 +39,9 @@ cargo run --release  # smooth
 ### Web
 
 ```bash
-trunk serve          # dev server at http://127.0.0.1:8080
-trunk build --release
+rustup target add wasm32-unknown-unknown
+cargo build --release --target wasm32-unknown-unknown --bin hero
+# then serve index.html + hero.wasm + mq_js_bundle.js (see docs/getting-started)
 ```
 
 Controls: **arrows / WASD** move, **Enter / Z / Space** confirm, **Esc / X / Backspace**
@@ -57,30 +59,35 @@ mark it done on the map.
 
 ## Architecture
 
-Everything is drawn as tinted textured quads in a fixed **320×180 virtual canvas** that is
-letterboxed into the real window, so game code never deals with real pixels or DPI.
+Everything is drawn into a fixed **320×180 virtual canvas** (a macroquad render target)
+that is letterboxed into the real window, so game code never deals with real pixels or DPI.
 
 | Module | Responsibility |
 | --- | --- |
-| [`src/renderer.rs`](src/renderer.rs) | wgpu setup + an immediate-mode sprite/rect/text batcher |
-| [`shaders/sprite.wgsl`](shaders/sprite.wgsl) | one instanced textured-quad pipeline for *everything* |
+| [`src/renderer.rs`](src/renderer.rs) | thin macroquad wrapper: a virtual-resolution sprite/rect/text draw queue, letterboxed |
 | [`src/data.rs`](src/data.rs) | the RON file format + indexed registries (the content DB) |
 | [`src/party.rs`](src/party.rs) | the persistent, extensible party (HP/MP/XP carried between battles) |
 | [`src/overworld.rs`](src/overworld.rs) | tile-mapped levels: screens, walking, camera, roaming enemies |
 | [`src/battle.rs`](src/battle.rs) | the turn-based battle scene (commands → AI → resolve) |
 | [`src/cutscene.rs`](src/cutscene.rs) | data-driven scripted dialogue + party recruitment |
-| [`src/audio.rs`](src/audio.rs) | background music (rodio on native, `<audio>` on web; no-op if unavailable) |
+| [`src/audio.rs`](src/audio.rs) | background music via `macroquad::audio` (native + web) |
 | [`src/game.rs`](src/game.rs) | scene state machine (title → map → level → cutscene → battle → report) |
-| [`src/input.rs`](src/input.rs) | logical buttons + frame-independent edge detection |
-| [`src/app.rs`](src/app.rs) | winit `ApplicationHandler`; native + web entry |
+| [`src/input.rs`](src/input.rs) | logical buttons polled from macroquad each frame |
+| [`src/app.rs`](src/app.rs) | the macroquad main loop + window config |
 
-Assets (sprite sheets, tile art, font atlas, music) are **embedded at compile time**, so the
+The `Renderer` keeps the same small API the game modules were written against (a queue of
+`draw_rect` / `draw_sprite` / `draw_text` calls replayed each frame), so the rendering
+backend swapped from a custom wgpu engine to macroquad without touching any game logic.
+
+Assets (sprite sheets, tile art, font, music) are **embedded at compile time**, so the
 native and web builds load content through the exact same path with no async asset fetching.
 
 ### Text
 
-There is no font-rendering dependency. A monospace bitmap-font atlas is baked to
-`assets/textures/ui/font.png` and drawn as glyph quads through the same sprite pipeline.
+Text uses macroquad's built-in TrueType rasteriser with the embedded pixel font
+`assets/textures/ui/font.ttf`. Glyphs are drawn *after* the low-res scene is scaled up, at
+the final on-screen size, so the UI text stays crisp rather than being magnified from a
+tiny atlas.
 
 ---
 
@@ -153,10 +160,10 @@ cargo test --test data
 ```
 
 **2. End-to-end GUI tests (`rustautogui`)** — drive the *real* game window. They launch the
-binary in a borderless-fullscreen "test mode" (`HOTO_TEST_WINDOW=1`, which maps the canvas at
-a clean integer scale and always owns focus), send keyboard input, take screenshots, and
-assert on the result — including **template-matching the hero and demon sprites on screen**.
-Because they take over the screen and mouse, they are marked `#[ignore]` and run explicitly:
+binary in a fullscreen "test mode" (`HOTO_TEST_WINDOW=1`, so it owns the whole screen and
+holds focus), send keyboard input, take screenshots, and assert on the result — including
+**template-matching the hero and demon sprites on screen**. Because they take over the screen
+and mouse, they are marked `#[ignore]` and run explicitly:
 
 ```bash
 cargo test --test e2e -- --ignored --test-threads=1
@@ -166,7 +173,7 @@ They need a display (X11 here) and the `libX11`/`libXtst` runtime libs. What the
 
 | Test | Asserts |
 | --- | --- |
-| `boots_and_survives` | window + wgpu + data + textures come up without panicking |
+| `boots_and_survives` | window + macroquad + data + textures come up without panicking |
 | `title_screen_renders_content` | the title actually renders (not a blank frame) |
 | `enter_map_then_level_via_cutscene` | title → map → intro cutscene → tiled level, each transition visibly changing the screen |
 | `walking_into_demon_starts_battle` | walking into a roaming demon starts a battle; hero and demon sprites are found on screen via template match |
@@ -186,9 +193,8 @@ assets/
   textures/entities/playables/...   # party sprite sheets
   textures/entities/monsters/...    # enemy sprite sheets
   textures/tiles/...                # overworld tile art
-  textures/ui/font.png              # baked bitmap font
+  textures/ui/font.ttf              # embedded UI font (TrueType)
   music/battle.ogg                  # looping battle theme (embedded)
-shaders/sprite.wgsl
 src/                                # engine + game (see table above)
 tests/
   data.rs                           # fast, display-free
@@ -196,7 +202,7 @@ tests/
   common/                           # shared e2e helpers
   fixtures/                         # sprite templates for matching
 docs/ + mkdocs.yml                  # player-facing docs site (Zensical / Material)
-index.html / Trunk.toml             # web build
+index.html                          # macroquad web page (loads hero.wasm)
 ```
 
 ## License
