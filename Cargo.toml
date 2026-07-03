@@ -34,13 +34,34 @@ winit = "0.30.13"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.11.11"
 pollster = "0.4.0"
+# Background music (native only). Vorbis for the .ogg tracks; drop the other
+# default decoders we don't ship to keep the build lean.
+rodio = { version = "0.20", default-features = false, features = ["vorbis"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
+js-sys = "0.3.103"
+# Enable the WebGL2 backend (in addition to the default WebGPU) so the game
+# still runs on browsers/systems without WebGPU. wgpu prefers WebGPU when
+# available and falls back to WebGL2. The `webgl` feature is merged additively
+# with the shared `wgpu` dependency's defaults, so native builds are unaffected.
+wgpu = { version = "30.0.0", features = ["webgl"] }
 wasm-bindgen = "0.2.126"
 wasm-bindgen-futures = "0.4.76"
-web-sys = { version = "0.3.103", features = ["Document", "Window", "Element", "HtmlCanvasElement"] }
+web-sys = { version = "0.3.103", features = [
+    "Document",
+    "Window",
+    "Element",
+    "HtmlCanvasElement",
+    # Background music: build an object URL from the embedded OGG and play it
+    # through an <audio> element.
+    "Blob",
+    "BlobPropertyBag",
+    "Url",
+    "HtmlAudioElement",
+    "HtmlMediaElement",
+] }
 
 [dev-dependencies]
 rustautogui = "2.5"

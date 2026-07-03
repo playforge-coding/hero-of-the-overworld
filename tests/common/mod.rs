@@ -94,6 +94,15 @@ pub fn press(gui: &RustAutoGui, key: &str) {
     sleep_ms(120);
 }
 
+/// Hold a key down for `ms` milliseconds, then release — used to walk the
+/// overworld player a meaningful distance (a single tap barely moves them).
+pub fn hold(gui: &RustAutoGui, key: &str, ms: u64) {
+    gui.key_down(key).expect("key down");
+    sleep_ms(ms);
+    gui.key_up(key).expect("key up");
+    sleep_ms(120);
+}
+
 /// Grab the whole screen to a PNG and load it back for analysis.
 pub fn screenshot(gui: &mut RustAutoGui, name: &str) -> RgbaImage {
     let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR"));

@@ -2,7 +2,7 @@
 //! on every `cargo test` and guard the extensibility contract: content is valid
 //! and cross-referenced correctly.
 
-use hero_of_the_overworld::data::{embedded_texture, Registry};
+use hero_of_the_overworld::data::{embedded_texture, CutsceneStep, Registry};
 use hero_of_the_overworld::party::Party;
 
 fn registry() -> Registry {
@@ -59,6 +59,221 @@ fn all_references_resolve() {
 }
 
 #[test]
+fn levels_are_valid_and_linked() {
+    let reg = registry();
+    assert!(!reg.data.levels.is_empty(), "no levels defined");
+
+    for lv in &reg.data.levels {
+        assert!(!lv.screens.is_empty(), "level {} has no screens", lv.id);
+        assert!(
+            (lv.start_screen) < lv.screens.len(),
+            "level {} start_screen {} out of range",
+            lv.id,
+            lv.start_screen
+        );
+
+        for (si, sc) in lv.screens.iter().enumerate() {
+            assert!(
+                !sc.map.is_empty(),
+                "level {} screen {si} has no rows",
+                lv.id
+            );
+            let width = sc.map.iter().map(|r| r.chars().count()).max().unwrap();
+            let height = sc.map.len();
+            let solid = |col: u32, row: u32| -> bool {
+                let ch = sc
+                    .map
+                    .get(row as usize)
+                    .and_then(|r| r.chars().nth(col as usize))
+                    .unwrap_or('.');
+                !matches!(ch, '.' | ' ')
+            };
+
+            // Neighbour links must point at real screens in this level.
+            for (dir, link) in [
+                ("north", sc.north),
+                ("south", sc.south),
+                ("east", sc.east),
+                ("west", sc.west),
+            ] {
+                if let Some(n) = link {
+                    assert!(
+                        n < lv.screens.len(),
+                        "level {} screen {si} {dir} link {n} out of range",
+                        lv.id
+                    );
+                }
+            }
+
+            // Every spawn is in-bounds, standable, and names a real encounter.
+            for sp in &sc.spawns {
+                assert!(
+                    (sp.col as usize) < width && (sp.row as usize) < height,
+                    "level {} screen {si} spawn ({},{}) out of bounds",
+                    lv.id,
+                    sp.col,
+                    sp.row
+                );
+                assert!(
+                    !solid(sp.col, sp.row),
+                    "level {} screen {si} spawn ({},{}) sits in a solid tile",
+                    lv.id,
+                    sp.col,
+                    sp.row
+                );
+                assert!(
+                    reg.encounter(&sp.encounter).is_some(),
+                    "level {} spawn references unknown encounter '{}'",
+                    lv.id,
+                    sp.encounter
+                );
+            }
+        }
+
+        // The player starts on a walkable tile of its start screen.
+        let sc = &lv.screens[lv.start_screen];
+        let start_solid = sc
+            .map
+            .get(lv.start.1 as usize)
+            .and_then(|r| r.chars().nth(lv.start.0 as usize))
+            .map_or(true, |ch| !matches!(ch, '.' | ' '));
+        assert!(!start_solid, "level {} starts inside a wall", lv.id);
+    }
+}
+
+/// Within each screen, every edge opening and every enemy spawn is reachable
+/// from a single walkable component — so the player can always cross to the next
+/// screen and touch every demon (a walled-off demon makes a level uncompletable).
+#[test]
+fn screens_are_traversable() {
+    let reg = registry();
+    for lv in &reg.data.levels {
+        for (si, sc) in lv.screens.iter().enumerate() {
+            let h = sc.map.len();
+            let w = sc.map.iter().map(|r| r.chars().count()).max().unwrap();
+            let grid: Vec<Vec<char>> = sc
+                .map
+                .iter()
+                .map(|r| {
+                    let mut row: Vec<char> = r.chars().collect();
+                    row.resize(w, '.');
+                    row
+                })
+                .collect();
+            let walkable = |c: usize, r: usize| matches!(grid[r][c], '.' | ' ');
+
+            // Seed points: edge openings on linked sides, plus the level start.
+            let mut seeds: Vec<(usize, usize)> = Vec::new();
+            if sc.west.is_some() {
+                for r in 0..h {
+                    if walkable(0, r) {
+                        seeds.push((0, r));
+                    }
+                }
+            }
+            if sc.east.is_some() {
+                for r in 0..h {
+                    if walkable(w - 1, r) {
+                        seeds.push((w - 1, r));
+                    }
+                }
+            }
+            if sc.north.is_some() {
+                for c in 0..w {
+                    if walkable(c, 0) {
+                        seeds.push((c, 0));
+                    }
+                }
+            }
+            if sc.south.is_some() {
+                for c in 0..w {
+                    if walkable(c, h - 1) {
+                        seeds.push((c, h - 1));
+                    }
+                }
+            }
+            if si == lv.start_screen {
+                seeds.push((lv.start.0 as usize, lv.start.1 as usize));
+            }
+            assert!(
+                !seeds.is_empty(),
+                "level {} screen {si} has no entrance",
+                lv.id
+            );
+
+            // Flood fill from the first seed.
+            let mut seen = vec![vec![false; w]; h];
+            let mut stack = vec![seeds[0]];
+            seen[seeds[0].1][seeds[0].0] = true;
+            while let Some((c, r)) = stack.pop() {
+                let nbrs = [
+                    (c.wrapping_sub(1), r),
+                    (c + 1, r),
+                    (c, r.wrapping_sub(1)),
+                    (c, r + 1),
+                ];
+                for (nc, nr) in nbrs {
+                    if nc < w && nr < h && !seen[nr][nc] && walkable(nc, nr) {
+                        seen[nr][nc] = true;
+                        stack.push((nc, nr));
+                    }
+                }
+            }
+
+            // Every seed (opening/start) shares the component.
+            for (c, r) in &seeds {
+                assert!(
+                    seen[*r][*c],
+                    "level {} screen {si} opening/start ({c},{r}) is cut off",
+                    lv.id
+                );
+            }
+            // Every spawn is reachable.
+            for sp in &sc.spawns {
+                assert!(
+                    seen[sp.row as usize][sp.col as usize],
+                    "level {} screen {si} demon at ({},{}) is walled off",
+                    lv.id, sp.col, sp.row
+                );
+            }
+        }
+    }
+}
+
+/// Every texture key referenced by the overworld (tiles + the leader's walk
+/// sprite) is embedded, so the map renders identically on native and web.
+#[test]
+fn overworld_textures_are_embedded() {
+    let reg = registry();
+    for key in ["grass", "water", "tree", "rock", "barricade"] {
+        assert!(
+            embedded_texture(key).is_some(),
+            "tile texture '{key}' not embedded"
+        );
+    }
+    for c in &reg.data.characters {
+        if let Some(ow) = &c.overworld {
+            assert!(
+                embedded_texture(&ow.texture).is_some(),
+                "character {} overworld texture '{}' not embedded",
+                c.id,
+                ow.texture
+            );
+        }
+    }
+    for e in &reg.data.enemies {
+        if let Some(ow) = &e.overworld {
+            assert!(
+                embedded_texture(&ow.texture).is_some(),
+                "enemy {} overworld texture '{}' not embedded",
+                e.id,
+                ow.texture
+            );
+        }
+    }
+}
+
+#[test]
 fn every_battler_texture_is_embedded() {
     let reg = registry();
     for c in &reg.data.characters {
@@ -78,6 +293,70 @@ fn every_battler_texture_is_embedded() {
         );
     }
     assert!(embedded_texture("no_such_key").is_none());
+}
+
+#[test]
+fn cutscene_references_resolve() {
+    let reg = registry();
+
+    // Levels only reference cutscenes that exist.
+    for lv in &reg.data.levels {
+        for id in [&lv.intro_cutscene, &lv.clear_cutscene]
+            .into_iter()
+            .flatten()
+        {
+            assert!(
+                reg.cutscene(id).is_some(),
+                "level {} references unknown cutscene '{id}'",
+                lv.id
+            );
+        }
+    }
+
+    // Every recruit targets a real character; every portrait a real char/enemy.
+    for cs in &reg.data.cutscenes {
+        for step in &cs.steps {
+            match step {
+                CutsceneStep::Recruit { character } => assert!(
+                    reg.character(character).is_some(),
+                    "cutscene {} recruits unknown character '{character}'",
+                    cs.id
+                ),
+                CutsceneStep::Say {
+                    portrait: Some(id), ..
+                } => assert!(
+                    reg.character(id).is_some() || reg.enemy(id).is_some(),
+                    "cutscene {} portrait '{id}' is not a character or enemy",
+                    cs.id
+                ),
+                CutsceneStep::Say { .. } => {}
+            }
+        }
+    }
+}
+
+/// A cutscene `Recruit` step actually grows the party, and only once even if the
+/// step is applied again (the guard against duplicate joins).
+#[test]
+fn recruit_step_adds_the_mage_once() {
+    let reg = registry();
+    let mut party = Party::from_registry(&reg);
+    let before = party.members.len();
+    assert!(
+        !party.members.iter().any(|m| m.def_id == "mage"),
+        "mage should not start in the party"
+    );
+
+    // Simulate the recruit step's guarded logic.
+    let recruit = |party: &mut Party| {
+        if !party.members.iter().any(|m| m.def_id == "mage") {
+            party.recruit(&reg, "mage");
+        }
+    };
+    recruit(&mut party);
+    recruit(&mut party); // replay must be a no-op
+    assert_eq!(party.members.len(), before + 1, "mage joined exactly once");
+    assert!(party.members.iter().any(|m| m.def_id == "mage"));
 }
 
 #[test]

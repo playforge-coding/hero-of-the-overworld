@@ -29,7 +29,32 @@ GameData(
                 // "attack right" row.
                 attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 14.0),
             ),
+            // Overworld walk: rows 0-3 are walk down/up/right/left (4 frames).
+            overworld: Some(OverworldWalk(
+                texture: "swordsman",
+                frame_w: 16, frame_h: 16,
+                draw_w: 20.0, draw_h: 20.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 4, fps: 8.0,
+            )),
             skills: ["power_strike", "whirlwind", "mend"],
+        ),
+        // Joins the party via a cutscene after GREENWOOD is cleared (she is not
+        // in `starting_party`). Reuses the swordsman sheet, recoloured blue.
+        CharacterDef(
+            id: "mage",
+            name: "ELARA",
+            stats: Stats(max_hp: 78, max_mp: 60, attack: 10, defense: 9, magic: 26, speed: 13),
+            sprite: BattlerSprite(
+                texture: "swordsman",
+                frame_w: 16, frame_h: 16,
+                draw_w: 48.0, draw_h: 48.0,
+                faces_left: false,
+                tint: Some((120, 150, 255)),
+                idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+                attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 14.0),
+            ),
+            skills: ["firebolt", "frost", "mend"],
         ),
     ],
 
@@ -46,6 +71,15 @@ GameData(
                 idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 4.0),
                 attack: AnimClip(row: 4, first_col: 0, frames: 4, fps: 10.0),
             ),
+            // Overworld walk: rows 0-3 are walk down/up/right/left, 5 frames each
+            // (the 6th column is empty). Attack poses live in rows 4-7.
+            overworld: Some(OverworldWalk(
+                texture: "demon",
+                frame_w: 16, frame_h: 16,
+                draw_w: 22.0, draw_h: 22.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 5, fps: 8.0,
+            )),
             skills: ["claw"],
             ai: Random,
             xp: 12,
@@ -70,11 +104,218 @@ GameData(
             id: "claw", name: "CLAW",
             mp_cost: 0, power: 125, kind: Physical, target: OneEnemy,
         ),
+        SkillDef(
+            id: "firebolt", name: "FIREBOLT",
+            mp_cost: 6, power: 180, kind: Magical, target: OneEnemy,
+        ),
+        SkillDef(
+            id: "frost", name: "FROST",
+            mp_cost: 12, power: 115, kind: Magical, target: AllEnemies,
+        ),
     ],
 
     encounters: [
         EncounterDef(id: "demon_solo", enemies: ["demon"]),
         EncounterDef(id: "demon_duo",  enemies: ["demon", "demon"]),
         EncounterDef(id: "demon_trio", enemies: ["demon", "demon", "demon"]),
+    ],
+
+    // ------------------------------------------------------------------------
+    // Levels. Each has a marker on the map screen and a set of connected
+    // screens (rooms). Tile legend (see src/overworld.rs):
+    //   '.' grass (walkable)   'T' tree    'R' rock
+    //   '~' water              '#' barricade   (all non-grass tiles are solid)
+    // Screen neighbour fields (north/south/east/west) index this level's
+    // screens; walk into a mid-edge opening to flip to that screen.
+    // ------------------------------------------------------------------------
+    levels: [
+        LevelDef(
+            id: "greenwood", name: "GREENWOOD",
+            node: (1, 2),
+            start_screen: 0, start: (2, 5),
+            intro_cutscene: Some("greenwood_intro"),
+            clear_cutscene: Some("mage_joins"),
+            screens: [
+                ScreenDef(
+                    map: [
+                        "TTTTTTTTTTTTTTTTTTTT",
+                        "T..................T",
+                        "T....TT............T",
+                        "T.............T....T",
+                        "T...................",
+                        "T...................",
+                        "T...................",
+                        "T..............~~..T",
+                        "T........RR....~~..T",
+                        "T..................T",
+                        "TTTTTTTTTTTTTTTTTTTT",
+                    ],
+                    east: Some(1),
+                    spawns: [
+                        SpawnDef(col: 11, row: 5, encounter: "demon_solo"),
+                    ],
+                ),
+                ScreenDef(
+                    map: [
+                        "TTTTTTTTTTTTTTTTTTTT",
+                        "T..................T",
+                        "T............TT....T",
+                        "T....T...RR........T",
+                        "....................",
+                        "....................",
+                        "....................",
+                        "T...~~.............T",
+                        "T...~~.............T",
+                        "T..................T",
+                        "TTTTTTTTTTTTTTTTTTTT",
+                    ],
+                    east: Some(2), west: Some(0),
+                    spawns: [
+                        SpawnDef(col: 10, row: 5, encounter: "demon_duo"),
+                        SpawnDef(col: 15, row: 8, encounter: "demon_solo"),
+                    ],
+                ),
+                ScreenDef(
+                    map: [
+                        "TTTTTTTTTTTTTTTTTTTT",
+                        "T..................T",
+                        "T..................T",
+                        "T.....TT.......R...T",
+                        "...................T",
+                        "...................T",
+                        "...................T",
+                        "T............TT....T",
+                        "T...R..............T",
+                        "T..................T",
+                        "TTTTTTTTTTTTTTTTTTTT",
+                    ],
+                    west: Some(1),
+                    spawns: [
+                        SpawnDef(col: 7, row: 5, encounter: "demon_solo"),
+                        SpawnDef(col: 13, row: 4, encounter: "demon_duo"),
+                    ],
+                ),
+            ],
+        ),
+        LevelDef(
+            id: "stonepass", name: "STONE PASS",
+            node: (3, 1),
+            start_screen: 0, start: (10, 2),
+            screens: [
+                ScreenDef(
+                    map: [
+                        "TTTTTTTTTTTTTTTTTTTT",
+                        "T..................T",
+                        "T..................T",
+                        "T..................T",
+                        "T....RR......RR....T",
+                        "T....R........R....T",
+                        "T..................T",
+                        "T........###.......T",
+                        "T..................T",
+                        "T..................T",
+                        "TTTTTTTT....TTTTTTTT",
+                    ],
+                    south: Some(1),
+                    spawns: [
+                        SpawnDef(col: 6, row: 6, encounter: "demon_duo"),
+                        SpawnDef(col: 14, row: 6, encounter: "demon_solo"),
+                    ],
+                ),
+                ScreenDef(
+                    map: [
+                        "TTTTTTTT....TTTTTTTT",
+                        "T..................T",
+                        "T..................T",
+                        "T...R..........R...T",
+                        "T.......####.......T",
+                        "T..................T",
+                        "T..................T",
+                        "T...R..........R...T",
+                        "T..................T",
+                        "T..................T",
+                        "TTTTTTTTTTTTTTTTTTTT",
+                    ],
+                    north: Some(0),
+                    spawns: [
+                        SpawnDef(col: 10, row: 7, encounter: "demon_duo"),
+                        SpawnDef(col: 6, row: 4, encounter: "demon_solo"),
+                    ],
+                ),
+            ],
+        ),
+        LevelDef(
+            id: "demonkeep", name: "DEMON KEEP",
+            node: (5, 2),
+            start_screen: 0, start: (2, 5),
+            screens: [
+                ScreenDef(
+                    map: [
+                        "TTTTTTTTTTTTTTTTTTTT",
+                        "T..................T",
+                        "T........##........T",
+                        "T........##........T",
+                        "T...................",
+                        "T...................",
+                        "T...................",
+                        "T....RR.......R....T",
+                        "T..................T",
+                        "T..................T",
+                        "TTTTTTTTTTTTTTTTTTTT",
+                    ],
+                    east: Some(1),
+                    spawns: [
+                        SpawnDef(col: 11, row: 5, encounter: "demon_trio"),
+                    ],
+                ),
+                ScreenDef(
+                    map: [
+                        "TTTTTTTTTTTTTTTTTTTT",
+                        "T..................T",
+                        "T..................T",
+                        "T.......####.......T",
+                        "...................T",
+                        "...................T",
+                        "...................T",
+                        "T.......####.......T",
+                        "T..................T",
+                        "T..................T",
+                        "TTTTTTTTTTTTTTTTTTTT",
+                    ],
+                    west: Some(0),
+                    spawns: [
+                        SpawnDef(col: 10, row: 5, encounter: "demon_trio"),
+                        SpawnDef(col: 15, row: 7, encounter: "demon_duo"),
+                    ],
+                ),
+            ],
+        ),
+    ],
+
+    // ------------------------------------------------------------------------
+    // Cutscenes. A `Say` step shows a dialogue line (with an optional portrait
+    // = a character/enemy id); a `Recruit` step adds a character to the party.
+    // Referenced by levels via intro_cutscene / clear_cutscene.
+    // ------------------------------------------------------------------------
+    cutscenes: [
+        CutsceneDef(
+            id: "greenwood_intro",
+            steps: [
+                Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+                    text: "THE GREENWOOD CRAWLS WITH DEMONS. LET'S DRIVE THEM OUT."),
+            ],
+        ),
+        CutsceneDef(
+            id: "mage_joins",
+            steps: [
+                Say(speaker: Some("???"), portrait: Some("mage"),
+                    text: "HOLD! YOU CLEARED THE GREENWOOD ALONE?"),
+                Say(speaker: Some("ELARA"), portrait: Some("mage"),
+                    text: "I AM ELARA, A WANDERING MAGE. YOUR CAUSE IS MINE NOW."),
+                Recruit(character: "mage"),
+                Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+                    text: "GLAD TO HAVE YOUR FIRE AT MY BACK, ELARA."),
+            ],
+        ),
     ],
 )

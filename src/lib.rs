@@ -4,17 +4,23 @@
 //!
 //! Module map:
 //!   - [`renderer`] — wgpu 2D sprite renderer (virtual-resolution, letterboxed).
-//!   - [`data`]     — RON file format + registries (the content database).
-//!   - [`party`]    — the persistent, extensible party.
-//!   - [`battle`]   — turn-based battle scene.
-//!   - [`game`]     — scene state machine (title ↔ battle).
-//!   - [`app`]      — winit application handler / entry point.
+//!   - [`data`]      — RON file format + registries (the content database).
+//!   - [`party`]     — the persistent, extensible party.
+//!   - [`overworld`] — tile-mapped world you explore between battles.
+//!   - [`battle`]    — turn-based battle scene.
+//!   - [`cutscene`]  — data-driven scripted dialogue / party recruitment.
+//!   - [`audio`]     — background music playback (native; no-op on web).
+//!   - [`game`]      — scene state machine (title → map → level → battle).
+//!   - [`app`]       — winit application handler / entry point.
 
 pub mod app;
+pub mod audio;
 pub mod battle;
+pub mod cutscene;
 pub mod data;
 pub mod game;
 pub mod input;
+pub mod overworld;
 pub mod party;
 pub mod renderer;
 pub mod util;

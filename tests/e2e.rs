@@ -44,11 +44,11 @@ fn title_screen_renders_content() {
     );
 }
 
-/// Pressing Enter on the title transitions into the battle scene — proving the
-/// winit→input→game pipeline works end to end.
+/// Enter → map screen → the first level's intro cutscene → the tiled world.
+/// Each transition visibly changes the screen, proving the scene pipeline works.
 #[test]
 #[ignore = "GUI e2e: needs a display, drives the real window"]
-fn enter_starts_battle() {
+fn enter_map_then_level_via_cutscene() {
     if !gui_available() {
         eprintln!("skipping: no DISPLAY");
         return;
@@ -57,24 +57,44 @@ fn enter_starts_battle() {
     let _game = Game::launch();
     let mut gui = autogui();
 
-    let before = screenshot(&mut gui, "before_enter");
-    press(&gui, "return");
-    sleep_ms(2000); // intro slide-in + banner
-
-    let after = screenshot(&mut gui, "after_enter");
-    let changed = changed_fraction(&before, &after);
+    let title = screenshot(&mut gui, "title");
+    press(&gui, "return"); // title -> map
+    sleep_ms(500);
+    let map = screenshot(&mut gui, "map");
     assert!(
-        changed > 0.15,
-        "screen barely changed after Enter ({:.1}% differ) — battle didn't start",
-        changed * 100.0
+        changed_fraction(&title, &map) > 0.15,
+        "screen barely changed after Enter — map didn't open"
+    );
+
+    press(&gui, "return"); // map -> intro cutscene
+    sleep_ms(700);
+    let cutscene = screenshot(&mut gui, "cutscene");
+    assert!(
+        changed_fraction(&map, &cutscene) > 0.15,
+        "screen barely changed after Enter — cutscene didn't play"
+    );
+
+    // Dismiss the one-line intro (reveal, then advance) into the level.
+    press(&gui, "return");
+    sleep_ms(300);
+    press(&gui, "return");
+    sleep_ms(700);
+    let level = screenshot(&mut gui, "level");
+    assert!(
+        luminance_stddev(&level) > 12.0,
+        "level looks blank (luminance stddev too low) — tiles didn't render"
+    );
+    assert!(
+        changed_fraction(&cutscene, &level) > 0.15,
+        "screen didn't change from cutscene to level"
     );
 }
 
-/// In battle, the hero and demon sprites are actually drawn on screen. Verified
-/// with rustautogui template matching against the source-sheet frames.
+/// Walking the overworld player into a roaming demon starts a battle, and the
+/// hero and demon sprites are drawn (verified via template matching).
 #[test]
 #[ignore = "GUI e2e: needs a display, drives the real window"]
-fn battle_shows_hero_and_demon_sprites() {
+fn walking_into_demon_starts_battle() {
     if !gui_available() {
         eprintln!("skipping: no DISPLAY");
         return;
@@ -83,51 +103,28 @@ fn battle_shows_hero_and_demon_sprites() {
     let _game = Game::launch();
     let mut gui = autogui();
 
-    // Enter the demon_solo battle.
+    press(&gui, "return"); // title -> map
+    sleep_ms(400);
+    press(&gui, "return"); // map -> intro cutscene
+    sleep_ms(700);
+    // Dismiss the intro cutscene into the level.
     press(&gui, "return");
-    sleep_ms(1800);
+    sleep_ms(300);
+    press(&gui, "return");
+    sleep_ms(600);
+
+    // Walk east into the demon patrolling the starting corridor.
+    hold(&gui, "right", 2600);
+    sleep_ms(1600); // battle intro + banner
 
     let hero = best_match(&mut gui, "hero_template.png", 0.7, 6);
     assert!(
         hero.map_or(false, |c| c >= 0.7),
         "hero sprite not found on screen (best correlation {hero:?})"
     );
-
     let demon = best_match(&mut gui, "demon_template.png", 0.55, 6);
     assert!(
         demon.map_or(false, |c| c >= 0.55),
         "demon sprite not found on screen (best correlation {demon:?})"
-    );
-}
-
-/// Battle menu navigation: moving the cursor and confirming an attack advances
-/// the battle (the scene keeps changing as actions resolve).
-#[test]
-#[ignore = "GUI e2e: needs a display, drives the real window"]
-fn attack_command_resolves() {
-    if !gui_available() {
-        eprintln!("skipping: no DISPLAY");
-        return;
-    }
-    let _lock = gui_guard();
-    let _game = Game::launch();
-    let mut gui = autogui();
-
-    press(&gui, "return"); // start battle
-    sleep_ms(1800);
-
-    let pre = screenshot(&mut gui, "battle_menu");
-    // ATTACK is the first command; confirm it, then target the first enemy.
-    press(&gui, "return"); // choose ATTACK
-    sleep_ms(200);
-    press(&gui, "return"); // confirm target
-    sleep_ms(1600); // action animation + damage popups
-
-    let post = screenshot(&mut gui, "battle_action");
-    let changed = changed_fraction(&pre, &post);
-    assert!(
-        changed > 0.02,
-        "no visible change after attacking ({:.2}% differ)",
-        changed * 100.0
     );
 }

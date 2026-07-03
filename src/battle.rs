@@ -910,14 +910,22 @@ impl Battle {
             color::rgba(0, 0, 0, 90),
         );
 
-        let tint = if b.flash > 0.0 {
+        // State tint (hit flash / KO desaturation) multiplied by the sprite's
+        // own recolour so reskinned characters keep their palette.
+        let (sr, sg, sb) = b
+            .sprite
+            .tint
+            .map(|(r, g, b)| (r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0))
+            .unwrap_or((1.0, 1.0, 1.0));
+        let (mr, mg, mb) = if b.flash > 0.0 {
             let k = (b.flash / 0.3).clamp(0.0, 1.0);
-            [1.0, 1.0 - k * 0.6, 1.0 - k * 0.6, b.fade]
+            (1.0, 1.0 - k * 0.6, 1.0 - k * 0.6)
         } else if !b.alive() {
-            [0.5, 0.5, 0.6, b.fade]
+            (0.5, 0.5, 0.6)
         } else {
-            [1.0, 1.0, 1.0, b.fade]
+            (1.0, 1.0, 1.0)
         };
+        let tint = [mr * sr, mg * sg, mb * sb, b.fade];
         r.draw_sprite(b.texture, dest, src, b.flip_x(), tint);
     }
 
