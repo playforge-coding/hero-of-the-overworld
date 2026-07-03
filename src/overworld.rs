@@ -14,7 +14,7 @@ use glam::Vec2;
 use crate::data::{BattlerSprite, OverworldWalk, Registry};
 use crate::input::{Button, Input};
 use crate::party::Party;
-use crate::renderer::{color, Renderer, TextureHandle, VIRTUAL_H, VIRTUAL_W};
+use crate::renderer::{color, Color, Renderer, TextureHandle, VIRTUAL_H, VIRTUAL_W};
 use crate::util::TextureCache;
 
 /// Tile edge length in virtual pixels (matches the 16x16 tile art).
@@ -95,6 +95,11 @@ struct Enemy {
     walk: OverworldWalk,
     facing: Facing,
     tex: TextureHandle,
+    /// Chase speed in px/s (from the enemy's `overworld_speed`, else the default).
+    speed: f32,
+    /// Recolour multiplied over the sprite so reskinned foes (green slimes, stony
+    /// gargoyles) read differently on the map. White = no tint.
+    tint: Color,
     /// Seconds spent chasing, for the walk-cycle frame; reset when idle.
     walk_t: f32,
     defeated: bool,
@@ -140,11 +145,13 @@ impl Screen {
 }
 
 struct TileTex {
-    grass: TextureHandle,
+    /// Walkable base ground, drawn under every tile (per-level: grass/stone/…).
+    ground: TextureHandle,
+    /// Texture for solid `#` wall tiles (per-level: barricade/dark_wall).
+    wall: TextureHandle,
     water: TextureHandle,
     tree: TextureHandle,
     rock: TextureHandle,
-    barricade: TextureHandle,
 }
 
 pub struct Overworld {
@@ -171,12 +178,14 @@ impl Overworld {
     ) -> Self {
         let level = &reg.data.levels[level_idx];
 
+        // Ground/wall are per-level so each region reads as its own place
+        // (grassy GREENWOOD, stony STONE PASS, dark DEMON KEEP).
         let tex = TileTex {
-            grass: cache.get(r, "grass"),
+            ground: cache.get(r, level.ground.as_deref().unwrap_or("grass")),
+            wall: cache.get(r, level.wall.as_deref().unwrap_or("barricade")),
             water: cache.get(r, "water"),
             tree: cache.get(r, "tree"),
             rock: cache.get(r, "rock"),
-            barricade: cache.get(r, "barricade"),
         };
 
         // The party leader walks the map. Use its overworld sprite, or synthesize
@@ -220,6 +229,11 @@ impl Overworld {
                     .unwrap_or_else(|| fallback_walk(&def.sprite));
                 let etex = cache.get(r, &ewalk.texture);
                 let pos = tile_center(sp.col, sp.row);
+                let tint = def
+                    .sprite
+                    .tint
+                    .map(|(cr, cg, cb)| color::rgb(cr, cg, cb))
+                    .unwrap_or(color::WHITE);
                 enemies.push(Enemy {
                     pos,
                     home: pos,
@@ -227,6 +241,8 @@ impl Overworld {
                     walk: ewalk,
                     facing: Facing::Down,
                     tex: etex,
+                    speed: def.overworld_speed.unwrap_or(ENEMY_SPEED),
+                    tint,
                     walk_t: 0.0,
                     defeated: false,
                 });
@@ -385,7 +401,7 @@ impl Overworld {
             let to = target - e.pos;
             let dist = to.length();
             if dist > 0.5 && dist < AGGRO {
-                let delta = to / dist * ENEMY_SPEED * dt;
+                let delta = to / dist * e.speed * dt;
                 e.facing = facing_of(delta);
                 e.pos = slide_on(tiles, sw, sh, e.pos, delta);
                 e.walk_t += dt;
@@ -502,13 +518,13 @@ impl Overworld {
                 let x = col as f32 * TILE - cam.x;
                 let y = row as f32 * TILE - cam.y;
                 let t = s.tiles[row * s.w + col];
-                // Grass is the base under everything.
-                r.draw_texture(self.tex.grass, x, y, TILE, TILE, color::WHITE);
+                // The level's ground texture is the base under everything.
+                r.draw_texture(self.tex.ground, x, y, TILE, TILE, color::WHITE);
                 match t {
                     Tile::Grass => {}
                     Tile::Water => r.draw_texture(self.tex.water, x, y, TILE, TILE, color::WHITE),
                     Tile::Barricade => {
-                        r.draw_texture(self.tex.barricade, x, y, TILE, TILE, color::WHITE)
+                        r.draw_texture(self.tex.wall, x, y, TILE, TILE, color::WHITE)
                     }
                     Tile::Tree => blit_object(r, self.tex.tree, x, y),
                     Tile::Rock => blit_object(r, self.tex.rock, x, y),
@@ -550,15 +566,26 @@ impl Overworld {
             w.draw_h,
             src,
             false,
+            color::WHITE,
         );
     }
 
     fn draw_enemy(&self, r: &mut Renderer, e: &Enemy) {
         let src = walk_src(&e.walk, e.facing, e.walk_t);
-        self.blit_sprite(r, e.tex, e.pos, e.walk.draw_w, e.walk.draw_h, src, false);
+        self.blit_sprite(
+            r,
+            e.tex,
+            e.pos,
+            e.walk.draw_w,
+            e.walk.draw_h,
+            src,
+            false,
+            e.tint,
+        );
     }
 
     /// Draw a battler sprite standing on `pos` (feet), with a soft shadow.
+    #[allow(clippy::too_many_arguments)]
     fn blit_sprite(
         &self,
         r: &mut Renderer,
@@ -568,6 +595,7 @@ impl Overworld {
         dh: f32,
         src: [f32; 4],
         flip: bool,
+        tint: Color,
     ) {
         let sx = pos.x - self.cam.x;
         let sy = pos.y - self.cam.y;
@@ -579,7 +607,7 @@ impl Overworld {
             color::rgba(0, 0, 0, 80),
         );
         let dest = [sx - dw / 2.0, sy + HALF.y - dh, dw, dh];
-        r.draw_sprite(tex, dest, src, flip, color::WHITE);
+        r.draw_sprite(tex, dest, src, flip, tint);
     }
 
     fn draw_hud(&self, r: &mut Renderer) {

@@ -90,11 +90,12 @@ fn enter_map_then_level_via_cutscene() {
     );
 }
 
-/// Walking the overworld player into a roaming demon starts a battle, and the
-/// hero and demon sprites are drawn (verified via template matching).
+/// Walking the overworld player into the first roaming foe (a slime swarm now
+/// guards the GREENWOOD corridor) starts a battle, and the hero and slime sprites
+/// are drawn (verified via template matching).
 #[test]
 #[ignore = "GUI e2e: needs a display, drives the real window"]
-fn walking_into_demon_starts_battle() {
+fn walking_into_slime_starts_battle() {
     if !gui_available() {
         eprintln!("skipping: no DISPLAY");
         return;
@@ -113,7 +114,7 @@ fn walking_into_demon_starts_battle() {
     press(&gui, "return");
     sleep_ms(600);
 
-    // Walk east into the demon patrolling the starting corridor.
+    // Walk east into the slime swarm patrolling the starting corridor.
     hold(&gui, "right", 2600);
     sleep_ms(1600); // battle intro + banner
 
@@ -122,9 +123,9 @@ fn walking_into_demon_starts_battle() {
         hero.map_or(false, |c| c >= 0.7),
         "hero sprite not found on screen (best correlation {hero:?})"
     );
-    let demon = best_match(&mut gui, "demon_template.png", 0.55, 6);
+    let slime = best_match(&mut gui, "slime_template.png", 0.55, 6);
     assert!(
-        demon.map_or(false, |c| c >= 0.55),
-        "demon sprite not found on screen (best correlation {demon:?})"
+        slime.map_or(false, |c| c >= 0.55),
+        "slime sprite not found on screen (best correlation {slime:?})"
     );
 }

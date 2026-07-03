@@ -16,7 +16,8 @@ use std::collections::HashMap;
 use glam::Vec2;
 
 use crate::data::{
-    BattlerSprite, EnemyAi, EquipmentDef, Registry, SkillDef, SkillKind, Stats, TargetKind,
+    BattlerSprite, EnemyAi, EquipmentDef, Registry, SkillDef, SkillKind, Stats, StatusDef,
+    TargetKind,
 };
 use crate::input::{Button, Input};
 use crate::party::Party;
@@ -72,6 +73,17 @@ impl Anim {
     }
 }
 
+// ---- Status effects ---------------------------------------------------------
+
+/// A status condition currently afflicting a battler, with how many rounds it
+/// has left. The behaviour (damage per turn, stat shifts, colour) lives in the
+/// data-driven [`crate::data::StatusDef`] this `id` points at, so new effects are
+/// content, not code.
+struct ActiveStatus {
+    id: String,
+    remaining: i32,
+}
+
 // ---- Battler ----------------------------------------------------------------
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -102,6 +114,9 @@ struct Battler {
     idle: Anim,
     anim: Anim,
     defending: bool,
+    /// Status conditions currently in effect (burn, slow, …). Drives per-round
+    /// ticks and effective-stat adjustments.
+    statuses: Vec<ActiveStatus>,
     ai: EnemyAi,
     xp: i32,
     gold: i32,
@@ -213,6 +228,9 @@ struct Execute {
     idx: usize,
     elapsed: f32,
     applied: bool,
+    /// Whether end-of-round status ticks (burn damage, etc.) have been resolved
+    /// for this round. They fire once, after the last action.
+    statuses_ticked: bool,
     banner: String,
     popups: Vec<Popup>,
 }
@@ -277,6 +295,7 @@ impl Battle {
                 sprite: m.sprite.clone(),
                 texture,
                 defending: false,
+                statuses: Vec::new(),
                 ai: EnemyAi::Basic,
                 xp: 0,
                 gold: 0,
@@ -320,6 +339,7 @@ impl Battle {
                 sprite: def.sprite.clone(),
                 texture,
                 defending: false,
+                statuses: Vec::new(),
                 ai: def.ai(),
                 xp: def.xp,
                 gold: def.gold,
@@ -382,6 +402,25 @@ impl Battle {
         }
     }
 
+    /// A battler's effective combat stats: base+equipment with every active
+    /// status's [`stat_mods`](crate::data::StatusDef::stat_mods) folded in. This
+    /// is the single place status stat shifts (slow, weaken, …) take effect, so
+    /// they apply everywhere — turn order, damage, hit rolls — and revert on their
+    /// own once the status list no longer contains them.
+    fn eff_stats(&self, reg: &Registry, i: usize) -> Stats {
+        let b = &self.battlers[i];
+        let mut s = b.stats.clone();
+        for st in &b.statuses {
+            if let Some(def) = reg.status(&st.id) {
+                s.attack += def.stat_mods.attack;
+                s.defense += def.stat_mods.defense;
+                s.magic += def.stat_mods.magic;
+                s.speed += def.stat_mods.speed;
+            }
+        }
+        s
+    }
+
     // ---- Update -------------------------------------------------------------
 
     pub fn update(
@@ -409,7 +448,7 @@ impl Battle {
             State::Intro(timer) => {
                 *timer -= dt;
                 if *timer <= 0.0 {
-                    self.state = self.begin_command();
+                    self.state = self.begin_command(reg);
                 } else {
                     self.state = State::Intro(*timer);
                 }
@@ -439,7 +478,7 @@ impl Battle {
                             timer: 1.6,
                         };
                     } else {
-                        self.state = self.begin_command();
+                        self.state = self.begin_command(reg);
                     }
                 } else {
                     self.state = State::Execute(std::mem::replace(exec, dummy_execute()));
@@ -474,12 +513,12 @@ impl Battle {
             .fold((0, 0), |(xp, gold), b| (xp + b.xp, gold + b.gold))
     }
 
-    fn begin_command(&mut self) -> State {
+    fn begin_command(&mut self, reg: &Registry) -> State {
         for b in &mut self.battlers {
             b.defending = false;
         }
         let mut order = self.living(Side::Hero);
-        order.sort_by_key(|&i| -self.battlers[i].stats.speed);
+        order.sort_by_key(|&i| -self.eff_stats(reg, i).speed);
         State::Command(Command {
             order,
             current: 0,
@@ -617,13 +656,14 @@ impl Battle {
         }
 
         // Order by speed (desc). Stable enough for a basic JRPG.
-        queue.sort_by_key(|a| -self.battlers[a.actor].stats.speed);
+        queue.sort_by_key(|a| -self.eff_stats(reg, a.actor).speed);
 
         Execute {
             queue,
             idx: 0,
             elapsed: 0.0,
             applied: false,
+            statuses_ticked: false,
             banner: String::new(),
             popups: Vec::new(),
         }
@@ -633,9 +673,17 @@ impl Battle {
         let b = &self.battlers[enemy];
         // Random AI may use a skill; Basic always attacks.
         let use_skill = matches!(b.ai, EnemyAi::Random) && !b.skills.is_empty();
-        // Deterministic-ish selection without borrowing the rng here: pick by hp.
+        // Deterministic-ish selection without borrowing the rng here: cast on even
+        // HP, and rotate which known skill by HP so multi-skill foes (e.g. a demon
+        // with FIREBALL and CLAW) mix it up. Falls through to the first affordable
+        // one with a valid target.
         if use_skill && (b.hp % 2 == 0) {
-            if let Some(def) = reg.skill(&b.skills[0]) {
+            let n = b.skills.len();
+            let start = (b.hp as usize / 2) % n;
+            for k in 0..n {
+                let Some(def) = reg.skill(&b.skills[(start + k) % n]) else {
+                    continue;
+                };
                 if b.mp >= def.mp_cost {
                     let targets = self.pick_targets(enemy, def.target);
                     if !targets.is_empty() {
@@ -680,7 +728,12 @@ impl Battle {
         exec.popups.retain(|p| p.t < 0.9);
 
         if exec.idx >= exec.queue.len() {
-            // Wait for popups to clear, then finish the round.
+            // Every action has resolved: tick status effects once (burn damage,
+            // regen, …), then wait for popups to clear and finish the round.
+            if !exec.statuses_ticked {
+                exec.statuses_ticked = true;
+                self.tick_statuses(reg, &mut exec.popups);
+            }
             return exec.popups.is_empty();
         }
 
@@ -760,10 +813,10 @@ impl Battle {
                 self.battlers[actor].defending = true;
             }
             ActionKind::Attack => {
-                let atk = self.battlers[actor].stats.attack;
+                let atk = self.eff_stats(reg, actor).attack;
                 for &tgt in &action.targets {
                     if self.battlers[tgt].alive() {
-                        self.strike(actor, tgt, atk, 100, rng, popups);
+                        self.strike(actor, tgt, atk, 100, reg, rng, popups);
                     }
                 }
             }
@@ -775,7 +828,7 @@ impl Battle {
                 let targets = self.resolve_live_targets(actor, &action.targets, def.target);
                 match def.kind {
                     SkillKind::Heal => {
-                        let mag = self.battlers[actor].stats.magic;
+                        let mag = self.eff_stats(reg, actor).magic;
                         for &tgt in &targets {
                             let heal = (mag * def.power / 100).max(1);
                             let b = &mut self.battlers[tgt];
@@ -792,18 +845,22 @@ impl Battle {
                         }
                     }
                     SkillKind::Physical => {
-                        let atk = self.battlers[actor].stats.attack;
+                        let atk = self.eff_stats(reg, actor).attack;
                         for &tgt in &targets {
-                            if self.battlers[tgt].alive() {
-                                self.strike(actor, tgt, atk, def.power, rng, popups);
+                            if self.battlers[tgt].alive()
+                                && self.strike(actor, tgt, atk, def.power, reg, rng, popups)
+                            {
+                                self.inflict_all(reg, tgt, &def.inflicts, popups);
                             }
                         }
                     }
                     SkillKind::Magical => {
-                        let mag = self.battlers[actor].stats.magic;
+                        let mag = self.eff_stats(reg, actor).magic;
                         for &tgt in &targets {
-                            if self.battlers[tgt].alive() {
-                                self.strike(actor, tgt, mag, def.power, rng, popups);
+                            if self.battlers[tgt].alive()
+                                && self.strike(actor, tgt, mag, def.power, reg, rng, popups)
+                            {
+                                self.inflict_all(reg, tgt, &def.inflicts, popups);
                             }
                         }
                     }
@@ -837,23 +894,30 @@ impl Battle {
         }
     }
 
+    /// Resolve one hit from `actor` onto `target`. Returns `true` if it connected
+    /// (so the caller can apply on-hit riders like status effects), `false` on a
+    /// miss.
+    #[allow(clippy::too_many_arguments)]
     fn strike(
         &mut self,
         actor: usize,
         target: usize,
         offense: i32,
         power: i32,
+        reg: &Registry,
         rng: &mut Rng,
         popups: &mut Vec<Popup>,
-    ) {
-        // Read attacker attributes up front, before borrowing the target.
+    ) -> bool {
+        // Read attacker/target attributes up front, before borrowing the target.
+        // Speed and defense come from effective stats so statuses (slow, …) count.
         let atk_acc = self.battlers[actor].accuracy;
         let atk_crit = self.battlers[actor].crit;
-        let atk_spd = self.battlers[actor].stats.speed;
+        let atk_spd = self.eff_stats(reg, actor).speed;
+        let tgt = self.eff_stats(reg, target);
         let tgt_eva = self.battlers[target].evasion;
-        let tgt_spd = self.battlers[target].stats.speed;
+        let tgt_spd = tgt.speed;
         let defending = self.battlers[target].defending;
-        let defense = self.battlers[target].stats.defense;
+        let defense = tgt.defense;
 
         // Hit or miss: accuracy and being faster help you land; the target's
         // evasion and speed help it dodge.
@@ -866,7 +930,7 @@ impl Battle {
                 t: 0.0,
                 color: color::rgb(170, 170, 185),
             });
-            return;
+            return false;
         }
 
         // Base damage.
@@ -902,6 +966,103 @@ impl Battle {
             t: 0.0,
             color,
         });
+        true
+    }
+
+    // ---- Status effects -----------------------------------------------------
+
+    /// Apply each status id in `ids` to `target` (used as an on-hit rider). See
+    /// [`Self::apply_status`].
+    fn inflict_all(
+        &mut self,
+        reg: &Registry,
+        target: usize,
+        ids: &[String],
+        popups: &mut Vec<Popup>,
+    ) {
+        for id in ids {
+            self.apply_status(reg, target, id, popups);
+        }
+    }
+
+    /// Attach status `id` to `target` (or refresh its duration if already
+    /// present) and float its name so the player sees it land. Unknown ids and
+    /// dead targets are ignored.
+    fn apply_status(&mut self, reg: &Registry, target: usize, id: &str, popups: &mut Vec<Popup>) {
+        let Some(def) = reg.status(id) else { return };
+        if def.duration <= 0 || !self.battlers[target].alive() {
+            return;
+        }
+        let b = &mut self.battlers[target];
+        match b.statuses.iter_mut().find(|s| s.id == id) {
+            // Re-applying refreshes to the longer of the two remaining counts.
+            Some(s) => s.remaining = def.duration.max(s.remaining),
+            None => b.statuses.push(ActiveStatus {
+                id: id.to_string(),
+                remaining: def.duration,
+            }),
+        }
+        let pos = b.pos() + Vec2::new(0.0, -16.0);
+        let color = status_color(def);
+        popups.push(Popup {
+            text: def.name.clone(),
+            pos,
+            t: 0.0,
+            color,
+        });
+    }
+
+    /// End-of-round resolution for every active status: deal (or heal) its
+    /// per-turn HP, float a number, then count it down and drop the expired ones.
+    fn tick_statuses(&mut self, reg: &Registry, popups: &mut Vec<Popup>) {
+        for i in 0..self.battlers.len() {
+            if !self.battlers[i].alive() {
+                self.battlers[i].statuses.clear();
+                continue;
+            }
+            // Sum this round's HP change and remember a colour, decrementing each
+            // status and keeping only those with rounds left.
+            let taken = std::mem::take(&mut self.battlers[i].statuses);
+            let mut kept = Vec::with_capacity(taken.len());
+            let mut delta = 0;
+            let mut color = color::rgb(255, 170, 80);
+            for st in taken {
+                if let Some(def) = reg.status(&st.id) {
+                    delta += def.damage_per_turn;
+                    if def.damage_per_turn != 0 {
+                        color = status_color(def);
+                    }
+                }
+                let remaining = st.remaining - 1;
+                if remaining > 0 {
+                    kept.push(ActiveStatus {
+                        id: st.id,
+                        remaining,
+                    });
+                }
+            }
+            self.battlers[i].statuses = kept;
+
+            if delta == 0 {
+                continue;
+            }
+            let b = &mut self.battlers[i];
+            b.flash = 0.3;
+            let (text, popup_color) = if delta > 0 {
+                b.hp = (b.hp - delta).max(0);
+                (format!("{delta}"), color)
+            } else {
+                let before = b.hp;
+                b.hp = (b.hp - delta).min(b.max_hp); // delta<0 heals
+                (format!("+{}", b.hp - before), color::rgb(120, 240, 140))
+            };
+            popups.push(Popup {
+                text,
+                pos: b.pos() + Vec2::new(0.0, -6.0),
+                t: 0.0,
+                color: popup_color,
+            });
+        }
     }
 
     // ---- Rendering ----------------------------------------------------------
@@ -1228,6 +1389,7 @@ fn dummy_execute() -> Execute {
         idx: 0,
         elapsed: 0.0,
         applied: false,
+        statuses_ticked: false,
         banner: String::new(),
         popups: vec![],
     }
@@ -1235,6 +1397,13 @@ fn dummy_execute() -> Execute {
 
 fn needs_cursor(t: TargetKind) -> bool {
     matches!(t, TargetKind::OneEnemy | TargetKind::OneAlly)
+}
+
+/// A status's popup colour: its configured `tint`, or a warm orange default.
+fn status_color(def: &StatusDef) -> Color {
+    def.tint
+        .map(|(r, g, b)| color::rgb(r, g, b))
+        .unwrap_or_else(|| color::rgb(255, 170, 80))
 }
 
 fn menu_move(cursor: &mut usize, len: usize, input: &Input) {

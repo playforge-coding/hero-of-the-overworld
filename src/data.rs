@@ -85,6 +85,43 @@ pub struct SkillDef {
     pub power: i32,
     pub kind: SkillKind,
     pub target: TargetKind,
+    /// Status effect ids (into [`GameData::statuses`]) inflicted on each target
+    /// the skill successfully hits — e.g. a fireball that leaves a `burn`. A
+    /// skill may inflict several at once; unknown ids are ignored.
+    #[serde(default)]
+    pub inflicts: Vec<String>,
+}
+
+/// A status condition that can be attached to a battler (burn, poison, slow, …).
+///
+/// This is the **extension point for status effects**: a new condition is a pure
+/// data entry — no engine change — as long as it can be expressed with the
+/// composable fields below. A status can drain (or restore) HP each round and
+/// shift the afflicted battler's combat stats while it lasts; skills apply them
+/// via [`SkillDef::inflicts`]. When a genuinely new *mechanic* is needed (say,
+/// "skip a turn"), add one optional field here plus its single apply site in
+/// `battle.rs` — the same additive pattern the rest of the data model uses.
+#[derive(Clone, Debug, Deserialize)]
+pub struct StatusDef {
+    pub id: String,
+    /// Short label shown in the floating popup when the status is applied and on
+    /// each damage tick.
+    pub name: String,
+    /// How many rounds it persists. Ticks down at the end of every round; the
+    /// status clears when it reaches zero.
+    pub duration: i32,
+    /// HP lost at the end of each round while afflicted. Negative values *heal*
+    /// (so the same field expresses both poison/burn and regeneration).
+    #[serde(default)]
+    pub damage_per_turn: i32,
+    /// Stat shifts applied on top of base+equipment while the status is active
+    /// (e.g. a `slow` status with `speed: -6`). Reverts automatically when it
+    /// expires because effective stats are recomputed from the live status list.
+    #[serde(default)]
+    pub stat_mods: StatMods,
+    /// Colour of the status's popups (RGB). Defaults to a warm orange.
+    #[serde(default)]
+    pub tint: Option<(u8, u8, u8)>,
 }
 
 /// Which slot a piece of equipment occupies. A battler holds at most one of each.
@@ -222,6 +259,11 @@ pub struct EnemyDef {
     /// directional walk on the map; otherwise it falls back to its battle idle.
     #[serde(default)]
     pub overworld: Option<OverworldWalk>,
+    /// Chase speed (virtual px/s) of this enemy while roaming the overworld. When
+    /// omitted the map uses its default enemy speed. Lower it for lumbering foes
+    /// like gargoyles so the player can outrun and dodge them.
+    #[serde(default)]
+    pub overworld_speed: Option<f32>,
 }
 
 /// A named group of enemies used to seed a battle.
@@ -278,6 +320,14 @@ pub struct LevelDef {
     pub start_screen: usize,
     /// Player start tile (col, row) within `start_screen`.
     pub start: (u32, u32),
+    /// Texture key for this level's walkable base ground (drawn under everything).
+    /// Defaults to `grass`; set to `stone`/`dark_floor` to re-theme a region.
+    #[serde(default)]
+    pub ground: Option<String>,
+    /// Texture key used for solid `#` wall tiles. Defaults to `barricade`; set to
+    /// `dark_wall` for the keep's brickwork.
+    #[serde(default)]
+    pub wall: Option<String>,
     pub screens: Vec<ScreenDef>,
     /// Cutscene id played the first time this level is entered.
     #[serde(default)]
@@ -318,6 +368,10 @@ pub struct GameData {
     pub characters: Vec<CharacterDef>,
     pub enemies: Vec<EnemyDef>,
     pub skills: Vec<SkillDef>,
+    /// Status conditions (burn, poison, slow, …) referenced by skills via
+    /// [`SkillDef::inflicts`]. Optional — a game with no statuses just omits it.
+    #[serde(default)]
+    pub statuses: Vec<StatusDef>,
     /// Weapons and armor referenced by characters/enemies.
     #[serde(default)]
     pub equipment: Vec<EquipmentDef>,
@@ -337,6 +391,7 @@ pub struct Registry {
     characters: HashMap<String, usize>,
     enemies: HashMap<String, usize>,
     skills: HashMap<String, usize>,
+    statuses: HashMap<String, usize>,
     equipment: HashMap<String, usize>,
     encounters: HashMap<String, usize>,
     cutscenes: HashMap<String, usize>,
@@ -356,6 +411,7 @@ impl Registry {
         let characters = index(&|| data.characters.iter().map(|c| c.id.clone()).collect());
         let enemies = index(&|| data.enemies.iter().map(|c| c.id.clone()).collect());
         let skills = index(&|| data.skills.iter().map(|c| c.id.clone()).collect());
+        let statuses = index(&|| data.statuses.iter().map(|c| c.id.clone()).collect());
         let equipment = index(&|| data.equipment.iter().map(|c| c.id.clone()).collect());
         let encounters = index(&|| data.encounters.iter().map(|c| c.id.clone()).collect());
         let cutscenes = index(&|| data.cutscenes.iter().map(|c| c.id.clone()).collect());
@@ -364,6 +420,7 @@ impl Registry {
             characters,
             enemies,
             skills,
+            statuses,
             equipment,
             encounters,
             cutscenes,
@@ -380,6 +437,10 @@ impl Registry {
 
     pub fn skill(&self, id: &str) -> Option<&SkillDef> {
         self.skills.get(id).map(|&i| &self.data.skills[i])
+    }
+
+    pub fn status(&self, id: &str) -> Option<&StatusDef> {
+        self.statuses.get(id).map(|&i| &self.data.statuses[i])
     }
 
     pub fn equipment(&self, id: &str) -> Option<&EquipmentDef> {
@@ -435,6 +496,8 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "swordsman" => include_bytes!("../assets/textures/entities/playables/swordsman.png"),
         "mage" => include_bytes!("../assets/textures/entities/playables/mage.png"),
         "demon" => include_bytes!("../assets/textures/entities/monsters/demon.png"),
+        "slime" => include_bytes!("../assets/textures/entities/monsters/slime.png"),
+        "gargoyle" => include_bytes!("../assets/textures/entities/monsters/gargoyle.png"),
         "starter_sword" => include_bytes!("../assets/textures/items/starter_sword.png"),
         "starter_gear" => include_bytes!("../assets/textures/items/starter_gear.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
@@ -442,6 +505,11 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "tree" => include_bytes!("../assets/textures/tiles/tree.png"),
         "rock" => include_bytes!("../assets/textures/tiles/rock.png"),
         "barricade" => include_bytes!("../assets/textures/tiles/barricade.png"),
+        // Environment tilesets for the later levels: stony ground for STONE PASS,
+        // dark flagstones + brick walls for DEMON KEEP.
+        "stone" => include_bytes!("../assets/textures/tiles/stone.png"),
+        "dark_floor" => include_bytes!("../assets/textures/tiles/dark_tile_0.png"),
+        "dark_wall" => include_bytes!("../assets/textures/tiles/dark_wall.png"),
         _ => return None,
     })
 }

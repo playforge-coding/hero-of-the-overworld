@@ -73,10 +73,41 @@ GameData(
     ],
 
     enemies: [
+        // Weak swarm fodder. Slimes come three at a time; individually harmless,
+        // but a pack can whittle you down. slime.png is a 6x4 sheet: rows 0-3 are
+        // the walk cycles (down/up/right/left); it has no separate attack rows, so
+        // the "attack" clip just reuses the walk row played faster (a quick hop).
+        EnemyDef(
+            id: "slime",
+            name: "SLIME",
+            stats: Stats(max_hp: 22, max_mp: 0, attack: 8, defense: 4, magic: 0, speed: 8),
+            sprite: BattlerSprite(
+                texture: "slime",
+                frame_w: 16, frame_h: 16,
+                draw_w: 40.0, draw_h: 40.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 4.0),
+                attack: AnimClip(row: 0, first_col: 0, frames: 4, fps: 10.0),
+            ),
+            overworld: Some(OverworldWalk(
+                texture: "slime",
+                frame_w: 16, frame_h: 16,
+                draw_w: 18.0, draw_h: 18.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 4, fps: 8.0,
+            )),
+            skills: [],
+            ai: Basic,
+            xp: 4,
+            gold: 3,
+        ),
+        // The demons are now the elite threat, held back in DEMON KEEP (plus a
+        // lone one guarding the end of GREENWOOD). FIREBALL leaves the target
+        // BURNING for three rounds, so they punish a drawn-out fight.
         EnemyDef(
             id: "demon",
             name: "DEMON",
-            stats: Stats(max_hp: 58, max_mp: 12, attack: 16, defense: 8, magic: 9, speed: 9),
+            stats: Stats(max_hp: 68, max_mp: 30, attack: 18, defense: 9, magic: 16, speed: 10),
             sprite: BattlerSprite(
                 texture: "demon",
                 frame_w: 16, frame_h: 16,
@@ -94,10 +125,42 @@ GameData(
                 row_down: 0, row_up: 1, row_right: 2, row_left: 3,
                 frames: 5, fps: 8.0,
             )),
-            skills: ["claw"],
+            skills: ["fireball", "claw"],
             ai: Random,
-            xp: 12,
-            gold: 8,
+            xp: 16,
+            gold: 12,
+        ),
+        // Stone sentinels of STONE PASS. They hit like a landslide (via the
+        // STONE FISTS weapon) but are ponderously slow — last to act in battle
+        // and easy to outrun on the map — and their crude swings miss often
+        // (the weapon carries a big accuracy penalty). gargoyle.png shares the
+        // demon's 6x8 layout: rows 0-3 walk, rows 4-7 attack.
+        EnemyDef(
+            id: "gargoyle",
+            name: "GARGOYLE",
+            stats: Stats(max_hp: 64, max_mp: 0, attack: 20, defense: 14, magic: 0, speed: 3),
+            sprite: BattlerSprite(
+                texture: "gargoyle",
+                frame_w: 16, frame_h: 16,
+                draw_w: 62.0, draw_h: 62.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 3.0),
+                attack: AnimClip(row: 4, first_col: 0, frames: 4, fps: 7.0),
+            ),
+            overworld: Some(OverworldWalk(
+                texture: "gargoyle",
+                frame_w: 16, frame_h: 16,
+                draw_w: 24.0, draw_h: 24.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 5, fps: 5.0,
+            )),
+            skills: [],
+            weapon: Some("stone_fists"),
+            ai: Basic,
+            xp: 18,
+            gold: 14,
+            // Lumbering: far slower than the player, so easy to dodge on the map.
+            overworld_speed: Some(18.0),
         ),
     ],
 
@@ -123,6 +186,12 @@ GameData(
             mp_cost: 0, power: 125, kind: Physical, target: OneEnemy,
         ),
         SkillDef(
+            id: "fireball", name: "FIREBALL",
+            description: "A demon's blazing orb; leaves the target burning.",
+            mp_cost: 6, power: 150, kind: Magical, target: OneEnemy,
+            inflicts: ["burn"],
+        ),
+        SkillDef(
             id: "firebolt", name: "FIREBOLT",
             description: "Hurl a searing bolt of flame at one foe.",
             mp_cost: 6, power: 180, kind: Magical, target: OneEnemy,
@@ -131,6 +200,27 @@ GameData(
             id: "frost", name: "FROST",
             description: "A biting frost that chills all foes.",
             mp_cost: 12, power: 115, kind: Magical, target: AllEnemies,
+        ),
+    ],
+
+    // ------------------------------------------------------------------------
+    // Status effects. This list is the extension point for conditions: a new
+    // one is a pure data entry so long as it can be expressed with the fields
+    // below (see StatusDef in src/data.rs). A status drains or restores HP each
+    // round (`damage_per_turn`; negative heals) and/or shifts the afflicted
+    // battler's stats while it lasts (`stat_mods`, e.g. a SLOW with speed: -6).
+    // Skills apply them via their `inflicts` list. Ticks resolve at the end of
+    // each round; the status counts down and clears on its own.
+    //
+    // To add e.g. POISON or REGEN, just append an entry here and reference it
+    // from a skill's `inflicts` — no engine change. A genuinely new *mechanic*
+    // (like "skip a turn") is one new optional field here plus its apply site.
+    // ------------------------------------------------------------------------
+    statuses: [
+        StatusDef(
+            id: "burn", name: "BURN",
+            duration: 3, damage_per_turn: 8,
+            tint: Some((255, 140, 60)),
         ),
     ],
 
@@ -159,9 +249,23 @@ GameData(
             slot: Armor, icon: "starter_gear",
             mods: StatMods(defense: 3, magic: 2), evasion: 8,
         ),
+        // A gargoyle's fists: brutal power, but so clumsy they whiff constantly
+        // (the accuracy penalty is what makes gargoyles "prone to missing").
+        EquipmentDef(
+            id: "stone_fists", name: "STONE FISTS",
+            description: "Crushing stone knuckles; heavy and clumsy.",
+            slot: Weapon, icon: "starter_sword",
+            mods: StatMods(attack: 18), crit: 12, accuracy: -34,
+        ),
     ],
 
     encounters: [
+        // Slime swarms — three to a fight — fill the GREENWOOD.
+        EncounterDef(id: "slime_trio", enemies: ["slime", "slime", "slime"]),
+        // Gargoyle patrols hold STONE PASS.
+        EncounterDef(id: "gargoyle_solo", enemies: ["gargoyle"]),
+        EncounterDef(id: "gargoyle_duo",  enemies: ["gargoyle", "gargoyle"]),
+        // Demons: the lone GREENWOOD guardian, and the packs in DEMON KEEP.
         EncounterDef(id: "demon_solo", enemies: ["demon"]),
         EncounterDef(id: "demon_duo",  enemies: ["demon", "demon"]),
         EncounterDef(id: "demon_trio", enemies: ["demon", "demon", "demon"]),
@@ -199,7 +303,7 @@ GameData(
                     ],
                     east: Some(1),
                     spawns: [
-                        SpawnDef(col: 11, row: 5, encounter: "demon_solo"),
+                        SpawnDef(col: 11, row: 5, encounter: "slime_trio"),
                     ],
                 ),
                 ScreenDef(
@@ -218,8 +322,8 @@ GameData(
                     ],
                     east: Some(2), west: Some(0),
                     spawns: [
-                        SpawnDef(col: 10, row: 5, encounter: "demon_duo"),
-                        SpawnDef(col: 15, row: 8, encounter: "demon_solo"),
+                        SpawnDef(col: 10, row: 5, encounter: "slime_trio"),
+                        SpawnDef(col: 15, row: 8, encounter: "slime_trio"),
                     ],
                 ),
                 ScreenDef(
@@ -238,8 +342,9 @@ GameData(
                     ],
                     west: Some(1),
                     spawns: [
-                        SpawnDef(col: 7, row: 5, encounter: "demon_solo"),
-                        SpawnDef(col: 13, row: 4, encounter: "demon_duo"),
+                        SpawnDef(col: 7, row: 5, encounter: "slime_trio"),
+                        // The lone demon guarding the end of the GREENWOOD.
+                        SpawnDef(col: 13, row: 4, encounter: "demon_solo"),
                     ],
                 ),
             ],
@@ -248,45 +353,47 @@ GameData(
             id: "stonepass", name: "STONE PASS",
             node: (3, 1),
             start_screen: 0, start: (10, 2),
+            ground: Some("stone"),
             screens: [
                 ScreenDef(
                     map: [
-                        "TTTTTTTTTTTTTTTTTTTT",
-                        "T..................T",
-                        "T..................T",
-                        "T..................T",
-                        "T....RR......RR....T",
-                        "T....R........R....T",
-                        "T..................T",
-                        "T........###.......T",
-                        "T..................T",
-                        "T..................T",
-                        "TTTTTTTT....TTTTTTTT",
+                        "RRRRRRRRRRRRRRRRRRRR",
+                        "R..................R",
+                        "R..................R",
+                        "R..................R",
+                        "R....RR......RR....R",
+                        "R....R........R....R",
+                        "R..................R",
+                        "R........###.......R",
+                        "R..................R",
+                        "R..................R",
+                        "RRRRRRRR....RRRRRRRR",
                     ],
                     south: Some(1),
                     spawns: [
-                        SpawnDef(col: 6, row: 6, encounter: "demon_duo"),
-                        SpawnDef(col: 14, row: 6, encounter: "demon_solo"),
+                        SpawnDef(col: 6, row: 6, encounter: "gargoyle_duo"),
+                        SpawnDef(col: 14, row: 6, encounter: "gargoyle_solo"),
                     ],
                 ),
                 ScreenDef(
                     map: [
-                        "TTTTTTTT....TTTTTTTT",
-                        "T..................T",
-                        "T..................T",
-                        "T...R..........R...T",
-                        "T.......####.......T",
-                        "T..................T",
-                        "T..................T",
-                        "T...R..........R...T",
-                        "T..................T",
-                        "T..................T",
-                        "TTTTTTTTTTTTTTTTTTTT",
+                        "RRRRRRRR....RRRRRRRR",
+                        "R..................R",
+                        "R..................R",
+                        "R...R..........R...R",
+                        "R.......####.......R",
+                        "R..................R",
+                        "R..................R",
+                        "R...R..........R...R",
+                        "R..................R",
+                        "R..................R",
+                        "RRRRRRRRRRRRRRRRRRRR",
                     ],
                     north: Some(0),
                     spawns: [
-                        SpawnDef(col: 10, row: 7, encounter: "demon_duo"),
-                        SpawnDef(col: 6, row: 4, encounter: "demon_solo"),
+                        SpawnDef(col: 10, row: 7, encounter: "gargoyle_solo"),
+                        // A stray slime pack wanders the pass among the gargoyles.
+                        SpawnDef(col: 6, row: 4, encounter: "slime_trio"),
                     ],
                 ),
             ],
@@ -295,20 +402,22 @@ GameData(
             id: "demonkeep", name: "DEMON KEEP",
             node: (5, 2),
             start_screen: 0, start: (2, 5),
+            ground: Some("dark_floor"),
+            wall: Some("dark_wall"),
             screens: [
                 ScreenDef(
                     map: [
-                        "TTTTTTTTTTTTTTTTTTTT",
-                        "T..................T",
-                        "T........##........T",
-                        "T........##........T",
-                        "T...................",
-                        "T...................",
-                        "T...................",
-                        "T....RR.......R....T",
-                        "T..................T",
-                        "T..................T",
-                        "TTTTTTTTTTTTTTTTTTTT",
+                        "####################",
+                        "#..................#",
+                        "#........##........#",
+                        "#........##........#",
+                        "#...................",
+                        "#...................",
+                        "#...................",
+                        "#....RR.......R....#",
+                        "#..................#",
+                        "#..................#",
+                        "####################",
                     ],
                     east: Some(1),
                     spawns: [
@@ -317,17 +426,17 @@ GameData(
                 ),
                 ScreenDef(
                     map: [
-                        "TTTTTTTTTTTTTTTTTTTT",
-                        "T..................T",
-                        "T..................T",
-                        "T.......####.......T",
-                        "...................T",
-                        "...................T",
-                        "...................T",
-                        "T.......####.......T",
-                        "T..................T",
-                        "T..................T",
-                        "TTTTTTTTTTTTTTTTTTTT",
+                        "####################",
+                        "#..................#",
+                        "#..................#",
+                        "#.......####.......#",
+                        "...................#",
+                        "...................#",
+                        "...................#",
+                        "#.......####.......#",
+                        "#..................#",
+                        "#..................#",
+                        "####################",
                     ],
                     west: Some(0),
                     spawns: [
@@ -349,7 +458,7 @@ GameData(
             id: "greenwood_intro",
             steps: [
                 Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
-                    text: "THE GREENWOOD CRAWLS WITH DEMONS. LET'S DRIVE THEM OUT."),
+                    text: "THE GREENWOOD SWARMS WITH SLIMES - AND A DEMON LURKS DEEP WITHIN."),
             ],
         ),
         CutsceneDef(

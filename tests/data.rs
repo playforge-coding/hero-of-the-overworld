@@ -41,6 +41,36 @@ fn all_references_resolve() {
             assert!(reg.skill(s).is_some(), "enemy {} skill '{s}' missing", e.id);
         }
     }
+    // Every status a skill inflicts exists (e.g. FIREBALL -> burn).
+    for s in &reg.data.skills {
+        for st in &s.inflicts {
+            assert!(
+                reg.status(st).is_some(),
+                "skill {} inflicts unknown status '{st}'",
+                s.id
+            );
+        }
+    }
+    // Every weapon/armor a character or enemy equips exists.
+    for (who, weapon, armor) in reg
+        .data
+        .characters
+        .iter()
+        .map(|c| (&c.id, &c.weapon, &c.armor))
+        .chain(
+            reg.data
+                .enemies
+                .iter()
+                .map(|e| (&e.id, &e.weapon, &e.armor)),
+        )
+    {
+        for id in [weapon, armor].into_iter().flatten() {
+            assert!(
+                reg.equipment(id).is_some(),
+                "{who} equips unknown item '{id}'"
+            );
+        }
+    }
     // Every enemy referenced by an encounter exists.
     for enc in &reg.data.encounters {
         assert!(
@@ -143,7 +173,7 @@ fn levels_are_valid_and_linked() {
 
 /// Within each screen, every edge opening and every enemy spawn is reachable
 /// from a single walkable component — so the player can always cross to the next
-/// screen and touch every demon (a walled-off demon makes a level uncompletable).
+/// screen and touch every foe (a walled-off spawn makes a level uncompletable).
 #[test]
 fn screens_are_traversable() {
     let reg = registry();
@@ -232,7 +262,7 @@ fn screens_are_traversable() {
             for sp in &sc.spawns {
                 assert!(
                     seen[sp.row as usize][sp.col as usize],
-                    "level {} screen {si} demon at ({},{}) is walled off",
+                    "level {} screen {si} spawn at ({},{}) is walled off",
                     lv.id, sp.col, sp.row
                 );
             }
@@ -268,6 +298,16 @@ fn overworld_textures_are_embedded() {
                 "enemy {} overworld texture '{}' not embedded",
                 e.id,
                 ow.texture
+            );
+        }
+    }
+    // Per-level ground/wall overrides (stone, dark_floor, dark_wall, …).
+    for lv in &reg.data.levels {
+        for key in [&lv.ground, &lv.wall].into_iter().flatten() {
+            assert!(
+                embedded_texture(key).is_some(),
+                "level {} tileset texture '{key}' not embedded",
+                lv.id
             );
         }
     }
