@@ -3,7 +3,7 @@ name = "hero-of-the-overworld"
 version = "0.1.0"
 edition = "2021"
 description = "A basic but extensible JRPG built with wgpu + winit (native) and trunk (web)."
-license = "MIT"
+license = "AGPL-3.0-only"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
