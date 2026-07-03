@@ -16,3 +16,13 @@ Fix any issues in the docs when they are reported. If you stumble across existin
 UPDATE IT. Do NOT ignore it.
 
 Also update the README when it has outdated info.
+
+## CLIPPY (VERY VERY IMPORTANT)
+
+IMPORTANT!!! Run clippy to lint.
+
+If you see something, fix it! (EVEN IF YOU DID NOT CREATE IT, THAT IS IMPORTANT!!!)
+
+## rustfmt
+
+Keep the code nicely formatted with `rustfmt` (using `cargo fmt`).
