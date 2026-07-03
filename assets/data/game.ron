@@ -1,0 +1,80 @@
+// ============================================================================
+// Hero of the Overworld — game data
+// ----------------------------------------------------------------------------
+// This RON file is the whole content database. To add a new party member or
+// enemy, add an entry here (and register its texture key in src/data.rs).
+// No engine/battle code needs to change.
+//
+// Sprite sheets are 16x16 grids. Animation clips select a `row` and a run of
+// `frames` starting at `first_col`, played at `fps`.
+//   swordsman.png : 5 cols x 12 rows. rows 0-3 = walk down/up/right/left,
+//                   rows 4-7 = attack down/up/right/left.
+//   demon.png     : 6 cols x 8 rows.
+// ============================================================================
+GameData(
+    starting_party: ["swordsman"],
+
+    characters: [
+        CharacterDef(
+            id: "swordsman",
+            name: "ROLAND",
+            stats: Stats(max_hp: 120, max_mp: 24, attack: 22, defense: 14, magic: 10, speed: 12),
+            sprite: BattlerSprite(
+                texture: "swordsman",
+                frame_w: 16, frame_h: 16,
+                draw_w: 48.0, draw_h: 48.0,
+                faces_left: false,
+                // "walk right" row read as a ready/idle march.
+                idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+                // "attack right" row.
+                attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 14.0),
+            ),
+            skills: ["power_strike", "whirlwind", "mend"],
+        ),
+    ],
+
+    enemies: [
+        EnemyDef(
+            id: "demon",
+            name: "DEMON",
+            stats: Stats(max_hp: 58, max_mp: 12, attack: 16, defense: 8, magic: 9, speed: 9),
+            sprite: BattlerSprite(
+                texture: "demon",
+                frame_w: 16, frame_h: 16,
+                draw_w: 56.0, draw_h: 56.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 4.0),
+                attack: AnimClip(row: 1, first_col: 0, frames: 4, fps: 10.0),
+            ),
+            skills: ["claw"],
+            ai: Random,
+            xp: 12,
+            gold: 8,
+        ),
+    ],
+
+    skills: [
+        SkillDef(
+            id: "power_strike", name: "POWER STRIKE",
+            mp_cost: 4, power: 175, kind: Physical, target: OneEnemy,
+        ),
+        SkillDef(
+            id: "whirlwind", name: "WHIRLWIND",
+            mp_cost: 8, power: 95, kind: Physical, target: AllEnemies,
+        ),
+        SkillDef(
+            id: "mend", name: "MEND",
+            mp_cost: 6, power: 140, kind: Heal, target: OneAlly,
+        ),
+        SkillDef(
+            id: "claw", name: "CLAW",
+            mp_cost: 0, power: 125, kind: Physical, target: OneEnemy,
+        ),
+    ],
+
+    encounters: [
+        EncounterDef(id: "demon_solo", enemies: ["demon"]),
+        EncounterDef(id: "demon_duo",  enemies: ["demon", "demon"]),
+        EncounterDef(id: "demon_trio", enemies: ["demon", "demon", "demon"]),
+    ],
+)

@@ -1,0 +1,48 @@
+[package]
+name = "hero-of-the-overworld"
+version = "0.1.0"
+edition = "2021"
+description = "A basic but extensible JRPG built with wgpu + winit (native) and trunk (web)."
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# Native binary. Named `hero` so tests can find it via CARGO_BIN_EXE_hero.
+[[bin]]
+name = "hero"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+
+[profile.release.package."*"]
+opt-level = 3
+
+[dependencies]
+bytemuck = { version = "1.25.0", features = ["derive"] }
+cfg-if = "1.0.4"
+glam = { version = "0.33.2", features = ["bytemuck"] }
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+log = "0.4.33"
+ron = "0.12.2"
+serde = { version = "1.0.228", features = ["derive"] }
+web-time = "1.1.0"
+wgpu = "30.0.0"
+winit = "0.30.13"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger = "0.11.11"
+pollster = "0.4.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1.7"
+console_log = "1.0.0"
+wasm-bindgen = "0.2.126"
+wasm-bindgen-futures = "0.4.76"
+web-sys = { version = "0.3.103", features = ["Document", "Window", "Element", "HtmlCanvasElement"] }
+
+[dev-dependencies]
+rustautogui = "2.5"
+# Used by the e2e suite to load/analyse screenshots and generate templates.
+image = { version = "0.25.10", default-features = false, features = ["png"] }
