@@ -28,9 +28,11 @@ whoever is present.
 | **SKILL** | Open the hero's skill list and pick one (costs MP). Then choose a target if the skill needs one. |
 | **DEFEND** | Brace: incoming damage to this hero is reduced until their next turn. |
 
-Choosing **SKILL** shows what that hero knows and each skill's MP cost. A skill
-you can't afford can't be selected. Depending on the skill you'll then choose a
-**single** target or it will hit **all** valid targets at once.
+Choosing **SKILL** shows what that hero knows, each skill's MP cost, and a short
+**description** of the highlighted skill. A skill you can't afford can't be
+selected. Depending on the skill you'll then choose a **single** target or it will
+hit **all** valid targets at once. While you're picking a command, a panel also
+shows the acting hero's equipped **[weapon and armor](#weapons-armor)**.
 
 ## Skills
 
@@ -51,22 +53,57 @@ The bundled skills:
 | FROST | Magical | 12 | All enemies | Chills every enemy at once |
 | CLAW | Physical | 0 | One enemy | The demon's attack |
 
+## Hit, miss, and crit
+
+Before an attack deals damage, it has to **land** — and it might land **hard**.
+
+- **Miss.** Every offensive hit rolls against an accuracy check. The chance to
+  land starts around **92%**, rises with the attacker's **accuracy** (from
+  weapons) and **speed**, and falls with the target's **evasion** (from armor) and
+  speed. It's clamped so nothing is ever a sure thing or hopeless. A miss shows a
+  grey **MISS** and deals no damage.
+- **Critical hit.** A landed hit has a small chance (about **5%**, higher with a
+  weapon's **crit** bonus) to **crit**, dealing **+50% damage**. Crits flash
+  brighter and show their number in orange with an exclamation mark.
+
+Heals always land and never crit.
+
 ## How damage works
 
-A hit's damage is based on the attacker's offensive stat and the skill's power,
-softened by the target's defense, then nudged by a small random spread:
+A landed hit's damage is based on the attacker's offensive stat and the skill's
+power, softened by the target's defense, boosted if it crit, then nudged by a
+small random spread:
 
 ```
 damage ≈ (offense × power / 100) − defense / 2      (at least 1)
+        × 1.5 on a critical hit
+        × 0.88–1.12 random variance
+        × 0.66 if the target is defending
 ```
 
 - **ATTACK** uses power 100; skills use their own power value.
-- A little **±12% variance** keeps hits from being identical.
-- A **defending** target takes reduced damage that round.
+- **offense** is **attack** for physical hits and **magic** for magical ones —
+  both raised by your **[equipped weapon](#weapons-armor)**.
+- **defense** is raised by your **[equipped armor](#weapons-armor)**.
 - **MEND** and other heals restore HP up to the target's maximum.
 
-So high **attack**/**magic** hits harder, high **defense** absorbs more, and high
-**speed** acts earlier in the round.
+So high **attack**/**magic** hits harder, high **defense** absorbs more, high
+**speed** acts earlier *and* helps you hit and dodge, and the right **gear** tilts
+all of it in your favour.
+
+## Weapons & armor
+
+Every hero can equip a **weapon** and a piece of **armor**, and each item has a
+description you can read on the command screen. Broadly:
+
+- **Weapons** raise **attack** or **magic** and add **crit** and **accuracy**.
+- **Armor** raises **defense** and adds **evasion** (the chance to dodge a hit
+  entirely).
+
+ROLAND starts with an **IRON SWORD** and **LEATHER ARMOR**; ELARA joins in a
+**TRAVELER'S ROBE**. For the full list — and how to add your own — see
+**[Weapons & Armor](equipment.md)** and
+**[Extending the Game](modding.md#add-equipment)**.
 
 ## Enemy behaviour
 

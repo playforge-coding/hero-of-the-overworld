@@ -18,6 +18,7 @@ mage. Your cause is mine now.*") and fights alongside you for the rest of the ru
 | **Magic** | 26 |
 | **Speed** | 13 |
 | **Role** | Magic damage & support |
+| **Gear** | [Traveler's Robe](../equipment.md) |
 | **Joins** | After clearing Greenwood (via the `mage_joins` cutscene) |
 
 Elara is Roland's opposite: **fragile but devastating**. Her magic is the highest in
@@ -37,6 +38,13 @@ most battles fall quickly.
 **FIREBOLT** is a hard single-target nuke off her high magic; **FROST** hits every
 demon at once (a duo or trio can be softened or finished in one cast); **MEND** lets
 her double as a healer. See [Battles](../battles.md#skills).
+
+## Gear
+
+Elara joins wearing a **[Traveler's Robe](../equipment.md)** — light enchanted
+cloth that leans on **evasion** (and a touch of magic) rather than heavy plate, so
+she dodges more than she blocks. Fitting for a wanderer who fights with spells, she
+carries no weapon; her power is in her magic stat.
 
 ## Appearance
 

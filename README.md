@@ -49,7 +49,9 @@ Press Enter on the title to reach the **world map**, pick a level, and enter it.
 the tiled overworld freely; roaming demons chase you inside an aggro radius and start a
 **battle** on contact — but you move faster than they do, so encounters can be dodged. In
 battle each living party member chooses **ATTACK**, a **SKILL**, or **DEFEND**, then
-everyone acts in speed order. Clear every demon in a level to mark it done on the map.
+everyone acts in speed order. Hits can **miss** or land a **critical** for extra damage,
+and each hero's **weapon and armor** tilt those odds. Clear every demon in a level to
+mark it done on the map.
 
 ---
 
@@ -114,9 +116,11 @@ battle needs no engine changes** — the party is just a `Vec`.
 Adding genuinely new art is the only code touch: register the PNG once in
 [`embedded_texture`](src/data.rs) so it ships inside the wasm bundle too.
 
-The data file also defines **skills** (physical / magical / heal, single or all targets),
-**enemies** (stats, skills, AI, XP/gold rewards), **encounters** (named groups of enemies),
-**levels** (a map marker plus a set of connected ASCII-tile screens with enemy spawns), and
+The data file also defines **skills** (physical / magical / heal, single or all targets,
+each with a description), **equipment** (weapons and armor with stat bonuses, crit /
+accuracy / evasion, and descriptions — heroes and enemies equip them by id), **enemies**
+(stats, skills, AI, XP/gold rewards), **encounters** (named groups of enemies), **levels**
+(a map marker plus a set of connected ASCII-tile screens with enemy spawns), and
 **cutscenes** (scripted dialogue lines and recruits).
 
 ### The sprite sheets

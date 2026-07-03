@@ -25,6 +25,8 @@ and in the browser (via WebGL) using **[Trunk](https://trunkrs.dev)**.
 
 - :material-shield-sword: **[Battles](battles.md)**
 
+- :material-sword: **[Weapons & Armor](equipment.md)**
+
 - :material-book-open-page-variant: **[The Story](story.md)**
 
 - :material-paw: **[Bestiary](entities/index.md)**

@@ -25,10 +25,12 @@ the exact same path. The mapping lives in
 in `embedded_texture`:
 
 ```rust
-"swordsman" => include_bytes!("../assets/textures/entities/playables/swordsman.png"),
-"mage"      => include_bytes!("../assets/textures/entities/playables/mage.png"),
-"demon"     => include_bytes!("../assets/textures/entities/monsters/demon.png"),
-"grass"     => include_bytes!("../assets/textures/tiles/grass.png"),
+"swordsman"     => include_bytes!("../assets/textures/entities/playables/swordsman.png"),
+"mage"          => include_bytes!("../assets/textures/entities/playables/mage.png"),
+"demon"         => include_bytes!("../assets/textures/entities/monsters/demon.png"),
+"starter_sword" => include_bytes!("../assets/textures/items/starter_sword.png"),
+"starter_gear"  => include_bytes!("../assets/textures/items/starter_gear.png"),
+"grass"         => include_bytes!("../assets/textures/tiles/grass.png"),
 // ...
 ```
 
@@ -66,18 +68,23 @@ CharacterDef(
         attack: AnimClip(row: 7, first_col: 0, frames: 5, fps: 14.0),
     ),
     skills: ["firebolt", "frost", "mend"],
+    // armor: Some("travelers_robe"),   // optional starting gear (see below)
 ),
 ```
 
 Then either list its `id` in `starting_party` so it begins in the party, or add
 it via a cutscene `Recruit` step (below). The battle scene iterates the whole
-party, so a second or third hero fights with **no engine changes**.
+party, so a second or third hero fights with **no engine changes**. A character
+can also start with a `weapon` and/or `armor` — see [Add equipment](#add-equipment).
 
 ## Add a skill
+
+Every skill needs a one-line `description` (shown in the skill menu):
 
 ```ron
 SkillDef(
     id: "firebolt", name: "FIREBOLT",
+    description: "Hurl a searing bolt of flame at one foe.",
     mp_cost: 6, power: 180, kind: Magical, target: OneEnemy,
 ),
 ```
@@ -86,6 +93,50 @@ SkillDef(
 - `target` is `OneEnemy`, `AllEnemies`, `OneAlly`, `AllAllies`, or `SelfOnly`.
 - `power` is a percentage multiplier on the relevant stat (see
   [How damage works](battles.md#how-damage-works)).
+
+## Add equipment
+
+Weapons and armor live in an `equipment` list. Each item has a **slot**, a 16×16
+**icon** (register its texture key like any other art), stat **mods**, optional
+**crit / accuracy / evasion** bonuses, and a **description**:
+
+```ron
+EquipmentDef(
+    id: "iron_sword", name: "IRON SWORD",
+    description: "Standard-issue soldier's blade.",
+    slot: Weapon, icon: "starter_sword",     // register the icon in embedded_texture
+    mods: StatMods(attack: 6), crit: 6, accuracy: 4,
+),
+EquipmentDef(
+    id: "leather_armor", name: "LEATHER ARMOR",
+    description: "Boiled leather; turns a glance.",
+    slot: Armor, icon: "starter_gear",
+    mods: StatMods(defense: 5), evasion: 4,
+),
+```
+
+- `slot` is `Weapon` or `Armor` (a battler holds one of each).
+- `mods` is a `StatMods(...)` of flat bonuses — any of `attack`, `defense`,
+  `magic`, `speed` (all default to 0). Equipment deliberately **can't** change max
+  HP/MP; that stays the domain of levelling up.
+- `crit`, `accuracy`, and `evasion` are percent bonuses (see
+  [Battles](battles.md#hit-miss-and-crit)).
+- Keep the `description` short — it's drawn on one line in the in-battle gear
+  panel.
+
+Then equip it on a character or enemy by id:
+
+```ron
+CharacterDef(
+    id: "swordsman", name: "ROLAND",
+    // ...
+    weapon: Some("iron_sword"),
+    armor:  Some("leather_armor"),
+),
+```
+
+Both fields are optional; a battler with neither just fights on its base stats.
+For the shipped items and what they do, see **[Weapons & Armor](equipment.md)**.
 
 ## Add an enemy and an encounter
 

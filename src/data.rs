@@ -77,12 +77,72 @@ pub enum TargetKind {
 pub struct SkillDef {
     pub id: String,
     pub name: String,
+    /// One-line flavour/effect text shown in the skill menu.
+    pub description: String,
     #[serde(default)]
     pub mp_cost: i32,
     /// Percentage multiplier applied to the relevant offensive stat.
     pub power: i32,
     pub kind: SkillKind,
     pub target: TargetKind,
+}
+
+/// Which slot a piece of equipment occupies. A battler holds at most one of each.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+pub enum EquipSlot {
+    Weapon,
+    Armor,
+}
+
+/// Flat stat bonuses granted by a piece of equipment, added on top of a
+/// battler's base stats. Deliberately excludes max HP/MP — equipment tunes the
+/// *combat* stats, while HP/MP growth stays the domain of levelling up.
+#[derive(Clone, Copy, Debug, Default, Deserialize)]
+pub struct StatMods {
+    #[serde(default)]
+    pub attack: i32,
+    #[serde(default)]
+    pub defense: i32,
+    #[serde(default)]
+    pub magic: i32,
+    #[serde(default)]
+    pub speed: i32,
+}
+
+/// A weapon or piece of armor. Weapons typically raise attack/magic and add
+/// **crit** and **accuracy**; armor raises defense and adds **evasion** (the
+/// chance to dodge a blow entirely). Every item carries a description.
+#[derive(Clone, Debug, Deserialize)]
+pub struct EquipmentDef {
+    pub id: String,
+    pub name: String,
+    /// Flavour / effect text shown wherever the item is inspected.
+    pub description: String,
+    pub slot: EquipSlot,
+    /// Texture key for the item's 16×16 icon (resolved by [`embedded_texture`]).
+    pub icon: String,
+    #[serde(default)]
+    pub mods: StatMods,
+    /// Added crit chance, in percent (mostly weapons).
+    #[serde(default)]
+    pub crit: i32,
+    /// Added accuracy, in percent (mostly weapons).
+    #[serde(default)]
+    pub accuracy: i32,
+    /// Added evasion, in percent (mostly armor).
+    #[serde(default)]
+    pub evasion: i32,
+}
+
+/// A battler's stats after equipment is applied, plus the derived combat
+/// attributes ([crit](Equipped::crit) / [accuracy](Equipped::accuracy) /
+/// [evasion](Equipped::evasion)) that drive hit and critical rolls.
+#[derive(Clone, Debug)]
+pub struct Equipped {
+    pub stats: Stats,
+    pub crit: i32,
+    pub accuracy: i32,
+    pub evasion: i32,
 }
 
 /// How a character is drawn while walking around the overworld.
@@ -118,6 +178,11 @@ pub struct CharacterDef {
     /// Skill ids this character knows (in addition to the basic Attack).
     #[serde(default)]
     pub skills: Vec<String>,
+    /// Starting equipment, as ids into `equipment`. Both optional.
+    #[serde(default)]
+    pub weapon: Option<String>,
+    #[serde(default)]
+    pub armor: Option<String>,
     /// Optional overworld walk sprite. If absent the character can't lead the
     /// party on the map (only the front-runner needs one).
     #[serde(default)]
@@ -143,6 +208,11 @@ pub struct EnemyDef {
     pub sprite: BattlerSprite,
     #[serde(default)]
     pub skills: Vec<String>,
+    /// Optional equipment (ids into `equipment`), same as characters.
+    #[serde(default)]
+    pub weapon: Option<String>,
+    #[serde(default)]
+    pub armor: Option<String>,
     /// Behaviour selector; defaults to [`EnemyAi::Basic`] when omitted.
     #[serde(default)]
     pub ai: EnemyAi,
@@ -248,6 +318,9 @@ pub struct GameData {
     pub characters: Vec<CharacterDef>,
     pub enemies: Vec<EnemyDef>,
     pub skills: Vec<SkillDef>,
+    /// Weapons and armor referenced by characters/enemies.
+    #[serde(default)]
+    pub equipment: Vec<EquipmentDef>,
     pub encounters: Vec<EncounterDef>,
     /// Character ids that make up the party at the start of the game.
     pub starting_party: Vec<String>,
@@ -264,6 +337,7 @@ pub struct Registry {
     characters: HashMap<String, usize>,
     enemies: HashMap<String, usize>,
     skills: HashMap<String, usize>,
+    equipment: HashMap<String, usize>,
     encounters: HashMap<String, usize>,
     cutscenes: HashMap<String, usize>,
 }
@@ -282,6 +356,7 @@ impl Registry {
         let characters = index(&|| data.characters.iter().map(|c| c.id.clone()).collect());
         let enemies = index(&|| data.enemies.iter().map(|c| c.id.clone()).collect());
         let skills = index(&|| data.skills.iter().map(|c| c.id.clone()).collect());
+        let equipment = index(&|| data.equipment.iter().map(|c| c.id.clone()).collect());
         let encounters = index(&|| data.encounters.iter().map(|c| c.id.clone()).collect());
         let cutscenes = index(&|| data.cutscenes.iter().map(|c| c.id.clone()).collect());
         Self {
@@ -289,6 +364,7 @@ impl Registry {
             characters,
             enemies,
             skills,
+            equipment,
             encounters,
             cutscenes,
         }
@@ -304,6 +380,34 @@ impl Registry {
 
     pub fn skill(&self, id: &str) -> Option<&SkillDef> {
         self.skills.get(id).map(|&i| &self.data.skills[i])
+    }
+
+    pub fn equipment(&self, id: &str) -> Option<&EquipmentDef> {
+        self.equipment.get(id).map(|&i| &self.data.equipment[i])
+    }
+
+    /// Apply a weapon and armor to `base`, returning the effective stats plus the
+    /// derived crit / accuracy / evasion. Unknown or absent ids are skipped, so a
+    /// battler with no gear just gets its base stats and zeroed attributes.
+    pub fn equipped(&self, base: &Stats, weapon: Option<&str>, armor: Option<&str>) -> Equipped {
+        let mut eq = Equipped {
+            stats: base.clone(),
+            crit: 0,
+            accuracy: 0,
+            evasion: 0,
+        };
+        for id in [weapon, armor].into_iter().flatten() {
+            if let Some(item) = self.equipment(id) {
+                eq.stats.attack += item.mods.attack;
+                eq.stats.defense += item.mods.defense;
+                eq.stats.magic += item.mods.magic;
+                eq.stats.speed += item.mods.speed;
+                eq.crit += item.crit;
+                eq.accuracy += item.accuracy;
+                eq.evasion += item.evasion;
+            }
+        }
+        eq
     }
 
     pub fn encounter(&self, id: &str) -> Option<&EncounterDef> {
@@ -331,6 +435,8 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "swordsman" => include_bytes!("../assets/textures/entities/playables/swordsman.png"),
         "mage" => include_bytes!("../assets/textures/entities/playables/mage.png"),
         "demon" => include_bytes!("../assets/textures/entities/monsters/demon.png"),
+        "starter_sword" => include_bytes!("../assets/textures/items/starter_sword.png"),
+        "starter_gear" => include_bytes!("../assets/textures/items/starter_gear.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
         "water" => include_bytes!("../assets/textures/tiles/water.png"),
         "tree" => include_bytes!("../assets/textures/tiles/tree.png"),

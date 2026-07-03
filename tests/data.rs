@@ -408,3 +408,73 @@ fn xp_grants_levels_and_growth() {
         "max hp should grow"
     );
 }
+
+/// Equipment referenced by characters/enemies resolves, every item icon is
+/// embedded, and every item and skill carries a (non-empty) description.
+#[test]
+fn equipment_references_resolve() {
+    let reg = registry();
+
+    for c in &reg.data.characters {
+        for id in [&c.weapon, &c.armor].into_iter().flatten() {
+            assert!(
+                reg.equipment(id).is_some(),
+                "character {} equips unknown item '{id}'",
+                c.id
+            );
+        }
+    }
+    for e in &reg.data.enemies {
+        for id in [&e.weapon, &e.armor].into_iter().flatten() {
+            assert!(
+                reg.equipment(id).is_some(),
+                "enemy {} equips unknown item '{id}'",
+                e.id
+            );
+        }
+    }
+
+    for item in &reg.data.equipment {
+        assert!(
+            embedded_texture(&item.icon).is_some(),
+            "item {} icon '{}' not embedded",
+            item.id,
+            item.icon
+        );
+        assert!(
+            !item.description.trim().is_empty(),
+            "item {} has no description",
+            item.id
+        );
+    }
+    for s in &reg.data.skills {
+        assert!(
+            !s.description.trim().is_empty(),
+            "skill {} has no description",
+            s.id
+        );
+    }
+}
+
+/// Equipment actually changes a battler's effective stats (the extensibility
+/// contract for gear: bonuses apply without touching battle code).
+#[test]
+fn equipping_gear_changes_effective_stats() {
+    let reg = registry();
+    let sword = &reg.data.characters[0]; // ROLAND, with iron_sword + leather_armor
+    let base = &sword.stats;
+    let eq = reg.equipped(base, sword.weapon.as_deref(), sword.armor.as_deref());
+    assert!(
+        eq.stats.attack > base.attack,
+        "the iron sword should raise attack"
+    );
+    assert!(
+        eq.stats.defense > base.defense,
+        "the leather armor should raise defense"
+    );
+    assert!(
+        eq.crit > 0 || eq.accuracy > 0,
+        "the weapon should add crit/accuracy"
+    );
+    assert!(eq.evasion > 0, "the armor should add evasion");
+}

@@ -17,6 +17,9 @@ pub struct PartyMember {
     pub mp: i32,
     pub skills: Vec<String>,
     pub sprite: BattlerSprite,
+    /// Equipped weapon / armor ids (into the registry's `equipment`).
+    pub weapon: Option<String>,
+    pub armor: Option<String>,
     pub level: i32,
     pub xp: i32,
 }
@@ -33,6 +36,8 @@ impl PartyMember {
             mp: def.stats.max_mp,
             skills: def.skills.clone(),
             sprite: def.sprite.clone(),
+            weapon: def.weapon.clone(),
+            armor: def.armor.clone(),
             level: 1,
             xp: 0,
         })

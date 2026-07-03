@@ -11,9 +11,13 @@
 //! encounter in the [`Registry`], so more party members or new enemies work
 //! with zero changes here.
 
+use std::collections::HashMap;
+
 use glam::Vec2;
 
-use crate::data::{BattlerSprite, EnemyAi, Registry, SkillDef, SkillKind, Stats, TargetKind};
+use crate::data::{
+    BattlerSprite, EnemyAi, EquipmentDef, Registry, SkillDef, SkillKind, Stats, TargetKind,
+};
 use crate::input::{Button, Input};
 use crate::party::Party;
 use crate::renderer::{color, Color, Renderer, TextureHandle, VIRTUAL_H, VIRTUAL_W};
@@ -86,6 +90,13 @@ struct Battler {
     mp: i32,
     max_mp: i32,
     skills: Vec<String>,
+    /// Equipped item ids (into the registry's `equipment`), for the gear panel.
+    weapon: Option<String>,
+    armor: Option<String>,
+    /// Derived combat attributes (base + equipment), in percent.
+    crit: i32,
+    accuracy: i32,
+    evasion: i32,
     sprite: BattlerSprite,
     texture: TextureHandle,
     idle: Anim,
@@ -208,10 +219,20 @@ struct Execute {
 
 const ROOT_ITEMS: [&str; 3] = ["ATTACK", "SKILL", "DEFEND"];
 
+// Combat rolls. Hit chance rises with the attacker's accuracy and speed and
+// falls with the target's evasion and speed; crit adds +50% damage.
+const BASE_HIT: i32 = 92;
+const MIN_HIT: i32 = 40;
+const MAX_HIT: i32 = 99;
+const BASE_CRIT: i32 = 5;
+const MAX_CRIT: i32 = 90;
+
 pub struct Battle {
     battlers: Vec<Battler>,
     state: State,
     encounter_name: String,
+    /// Icon texture for each equipped item id, resolved once at construction.
+    icons: HashMap<String, TextureHandle>,
 }
 
 impl Battle {
@@ -223,6 +244,7 @@ impl Battle {
         encounter_id: &str,
     ) -> Self {
         let mut battlers = Vec::new();
+        let mut icons: HashMap<String, TextureHandle> = HashMap::new();
 
         // Heroes on the left.
         let living: Vec<usize> = (0..party.members.len())
@@ -232,16 +254,24 @@ impl Battle {
             let m = &party.members[pi];
             let texture = cache.get(renderer, &m.sprite.texture);
             let home = hero_home(slot);
+            // Fold equipment into the battler's stats and combat attributes.
+            let eq = reg.equipped(&m.stats, m.weapon.as_deref(), m.armor.as_deref());
+            load_item_icons(renderer, cache, reg, &mut icons, [&m.weapon, &m.armor]);
             battlers.push(Battler {
                 name: m.name.clone(),
                 side: Side::Hero,
                 party_index: Some(pi),
-                stats: m.stats.clone(),
+                stats: eq.stats,
                 hp: m.hp,
                 max_hp: m.stats.max_hp,
                 mp: m.mp,
                 max_mp: m.stats.max_mp,
                 skills: m.skills.clone(),
+                weapon: m.weapon.clone(),
+                armor: m.armor.clone(),
+                crit: eq.crit,
+                accuracy: eq.accuracy,
+                evasion: eq.evasion,
                 idle: Anim::from_clip(&m.sprite.idle, true),
                 anim: Anim::from_clip(&m.sprite.idle, true),
                 sprite: m.sprite.clone(),
@@ -268,16 +298,23 @@ impl Battle {
                 .unwrap_or_else(|| panic!("unknown enemy '{eid}'"));
             let texture = cache.get(renderer, &def.sprite.texture);
             let home = enemy_home(slot);
+            let eq = reg.equipped(&def.stats, def.weapon.as_deref(), def.armor.as_deref());
+            load_item_icons(renderer, cache, reg, &mut icons, [&def.weapon, &def.armor]);
             battlers.push(Battler {
                 name: def.name.clone(),
                 side: Side::Enemy,
                 party_index: None,
-                stats: def.stats.clone(),
+                stats: eq.stats,
                 hp: def.stats.max_hp,
                 max_hp: def.stats.max_hp,
                 mp: def.stats.max_mp,
                 max_mp: def.stats.max_mp,
                 skills: def.skills.clone(),
+                weapon: def.weapon.clone(),
+                armor: def.armor.clone(),
+                crit: eq.crit,
+                accuracy: eq.accuracy,
+                evasion: eq.evasion,
                 idle: Anim::from_clip(&def.sprite.idle, true),
                 anim: Anim::from_clip(&def.sprite.idle, true),
                 sprite: def.sprite.clone(),
@@ -297,6 +334,7 @@ impl Battle {
             battlers,
             state: State::Intro(0.6),
             encounter_name: name,
+            icons,
         }
     }
 
@@ -725,7 +763,7 @@ impl Battle {
                 let atk = self.battlers[actor].stats.attack;
                 for &tgt in &action.targets {
                     if self.battlers[tgt].alive() {
-                        self.strike(tgt, atk, 100, SkillKind::Physical, rng, popups);
+                        self.strike(actor, tgt, atk, 100, rng, popups);
                     }
                 }
             }
@@ -757,7 +795,7 @@ impl Battle {
                         let atk = self.battlers[actor].stats.attack;
                         for &tgt in &targets {
                             if self.battlers[tgt].alive() {
-                                self.strike(tgt, atk, def.power, SkillKind::Physical, rng, popups);
+                                self.strike(actor, tgt, atk, def.power, rng, popups);
                             }
                         }
                     }
@@ -765,7 +803,7 @@ impl Battle {
                         let mag = self.battlers[actor].stats.magic;
                         for &tgt in &targets {
                             if self.battlers[tgt].alive() {
-                                self.strike(tgt, mag, def.power, SkillKind::Magical, rng, popups);
+                                self.strike(actor, tgt, mag, def.power, rng, popups);
                             }
                         }
                     }
@@ -801,19 +839,49 @@ impl Battle {
 
     fn strike(
         &mut self,
+        actor: usize,
         target: usize,
         offense: i32,
         power: i32,
-        _kind: SkillKind,
         rng: &mut Rng,
         popups: &mut Vec<Popup>,
     ) {
+        // Read attacker attributes up front, before borrowing the target.
+        let atk_acc = self.battlers[actor].accuracy;
+        let atk_crit = self.battlers[actor].crit;
+        let atk_spd = self.battlers[actor].stats.speed;
+        let tgt_eva = self.battlers[target].evasion;
+        let tgt_spd = self.battlers[target].stats.speed;
         let defending = self.battlers[target].defending;
         let defense = self.battlers[target].stats.defense;
+
+        // Hit or miss: accuracy and being faster help you land; the target's
+        // evasion and speed help it dodge.
+        let hit = hit_chance(atk_acc, atk_spd, tgt_eva, tgt_spd);
+        if !rng.chance(hit as f32 / 100.0) {
+            let b = &mut self.battlers[target];
+            popups.push(Popup {
+                text: "MISS".to_string(),
+                pos: b.pos() + Vec2::new(0.0, -6.0),
+                t: 0.0,
+                color: color::rgb(170, 170, 185),
+            });
+            return;
+        }
+
+        // Base damage.
         let mut dmg = (offense * power / 100) - defense / 2;
         if dmg < 1 {
             dmg = 1;
         }
+
+        // Critical hit: +50% damage.
+        let is_crit = rng.chance(crit_chance(atk_crit) as f32 / 100.0);
+        if is_crit {
+            dmg = (dmg * 3 / 2).max(1);
+        }
+
+        // Random spread, then the defending reduction.
         let variance = rng.range(88, 112);
         dmg = (dmg * variance / 100).max(1);
         if defending {
@@ -822,12 +890,17 @@ impl Battle {
 
         let b = &mut self.battlers[target];
         b.hp = (b.hp - dmg).max(0);
-        b.flash = 0.3;
+        b.flash = if is_crit { 0.45 } else { 0.3 };
+        let (text, color) = if is_crit {
+            (format!("{dmg}!"), color::rgb(255, 150, 60))
+        } else {
+            (format!("{dmg}"), color::rgb(255, 226, 120))
+        };
         popups.push(Popup {
-            text: format!("{dmg}"),
+            text,
             pos: b.pos() + Vec2::new(0.0, -6.0),
             t: 0.0,
-            color: color::rgb(255, 226, 120),
+            color,
         });
     }
 
@@ -1002,6 +1075,7 @@ impl Battle {
 
         match &cmd.stage {
             Stage::Root { cursor } => {
+                self.draw_gear_panel(r, reg, hero);
                 menu_box(r, 160.0, 118.0, 90.0, &ROOT_ITEMS, *cursor);
             }
             Stage::Skill { cursor } => {
@@ -1018,6 +1092,7 @@ impl Battle {
                     .collect();
                 items.push("BACK".to_string());
                 let refs: Vec<&str> = items.iter().map(|s| s.as_str()).collect();
+                self.draw_skill_info(r, reg, hero, *cursor);
                 menu_box(r, 150.0, 96.0, 120.0, &refs, *cursor);
             }
             Stage::Target {
@@ -1038,6 +1113,95 @@ impl Battle {
                     );
                 }
             }
+        }
+    }
+
+    /// The acting hero's equipped weapon and armor, with icons, bonuses, and
+    /// descriptions — shown while choosing a command.
+    fn draw_gear_panel(&self, r: &mut Renderer, reg: &Registry, hero: usize) {
+        let b = &self.battlers[hero];
+        let (x, y, w, h) = (6.0, 16.0, 196.0, 52.0);
+        r.draw_rect(x, y, w, h, color::rgba(12, 14, 28, 232));
+        r.draw_rect_outline(x, y, w, h, 1.0, color::rgba(80, 90, 140, 255));
+        r.draw_text(
+            "EQUIPMENT",
+            x + 4.0,
+            y + 3.0,
+            1.0,
+            color::rgb(170, 180, 210),
+        );
+        self.draw_gear_row(r, reg, "WPN", &b.weapon, x + 4.0, y + 14.0);
+        self.draw_gear_row(r, reg, "ARM", &b.armor, x + 4.0, y + 33.0);
+    }
+
+    fn draw_gear_row(
+        &self,
+        r: &mut Renderer,
+        reg: &Registry,
+        label: &str,
+        id: &Option<String>,
+        x: f32,
+        y: f32,
+    ) {
+        // Icon slot background.
+        r.draw_rect(x, y, 16.0, 16.0, color::rgba(20, 24, 44, 255));
+        r.draw_rect_outline(x, y, 16.0, 16.0, 0.5, color::rgba(90, 100, 150, 200));
+        let tx = x + 20.0;
+        match id
+            .as_deref()
+            .and_then(|id| reg.equipment(id).map(|it| (id, it)))
+        {
+            Some((id, item)) => {
+                if let Some(&tex) = self.icons.get(id) {
+                    r.draw_texture(tex, x, y, 16.0, 16.0, color::WHITE);
+                }
+                r.draw_text(&item.name, tx, y, 1.0, color::WHITE);
+                let mods = mods_summary(item);
+                if !mods.is_empty() {
+                    let nw = r.text_width(&item.name, 1.0);
+                    r.draw_text(&mods, tx + nw + 6.0, y, 1.0, color::rgb(150, 220, 160));
+                }
+                r.draw_text(
+                    &item.description,
+                    tx,
+                    y + 9.0,
+                    1.0,
+                    color::rgb(190, 190, 205),
+                );
+            }
+            None => {
+                r.draw_text(
+                    &format!("{label}: (none)"),
+                    tx,
+                    y + 4.0,
+                    1.0,
+                    color::rgb(120, 120, 140),
+                );
+            }
+        }
+    }
+
+    /// The highlighted skill's name and description, shown in the skill menu.
+    fn draw_skill_info(&self, r: &mut Renderer, reg: &Registry, hero: usize, cursor: usize) {
+        let skills = &self.battlers[hero].skills;
+        if cursor >= skills.len() {
+            return; // "BACK" is highlighted
+        }
+        let Some(def) = reg.skill(&skills[cursor]) else {
+            return;
+        };
+        let (x, y, w, h) = (6.0, 16.0, 138.0, 42.0);
+        r.draw_rect(x, y, w, h, color::rgba(12, 14, 28, 232));
+        r.draw_rect_outline(x, y, w, h, 1.0, color::rgba(90, 110, 170, 255));
+        r.draw_text(&def.name, x + 4.0, y + 3.0, 1.0, color::rgb(255, 226, 120));
+        for (i, line) in wrap_text(&def.description, 26).iter().take(3).enumerate() {
+            r.draw_text(
+                line,
+                x + 4.0,
+                y + 13.0 + i as f32 * 9.0,
+                1.0,
+                color::rgb(200, 200, 215),
+            );
         }
     }
 }
@@ -1082,6 +1246,85 @@ fn menu_move(cursor: &mut usize, len: usize, input: &Input) {
     }
     if input.pressed(Button::Down) {
         *cursor = (*cursor + 1) % len;
+    }
+}
+
+/// Chance (percent) that an attack lands, given the attacker's accuracy/speed
+/// and the target's evasion/speed. Clamped so nothing is a guaranteed hit or a
+/// hopeless one.
+fn hit_chance(atk_acc: i32, atk_spd: i32, tgt_eva: i32, tgt_spd: i32) -> i32 {
+    (BASE_HIT + atk_acc - tgt_eva + (atk_spd - tgt_spd)).clamp(MIN_HIT, MAX_HIT)
+}
+
+/// Chance (percent) that a landed hit is a critical (deals +50% damage).
+fn crit_chance(atk_crit: i32) -> i32 {
+    (BASE_CRIT + atk_crit).clamp(0, MAX_CRIT)
+}
+
+/// A compact "+6 ATK  +5% CRIT" line summarising an item's bonuses.
+fn mods_summary(item: &EquipmentDef) -> String {
+    let m = &item.mods;
+    let mut parts = Vec::new();
+    if m.attack != 0 {
+        parts.push(format!("{:+} ATK", m.attack));
+    }
+    if m.defense != 0 {
+        parts.push(format!("{:+} DEF", m.defense));
+    }
+    if m.magic != 0 {
+        parts.push(format!("{:+} MAG", m.magic));
+    }
+    if m.speed != 0 {
+        parts.push(format!("{:+} SPD", m.speed));
+    }
+    if item.crit != 0 {
+        parts.push(format!("{:+}% CRIT", item.crit));
+    }
+    if item.accuracy != 0 {
+        parts.push(format!("{:+}% ACC", item.accuracy));
+    }
+    if item.evasion != 0 {
+        parts.push(format!("{:+}% EVA", item.evasion));
+    }
+    parts.join(" ")
+}
+
+/// Greedy word-wrap to at most `max` characters per line (fixed-width font).
+fn wrap_text(text: &str, max: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut cur = String::new();
+    for word in text.split_whitespace() {
+        if cur.is_empty() {
+            cur = word.to_string();
+        } else if cur.chars().count() + 1 + word.chars().count() <= max {
+            cur.push(' ');
+            cur.push_str(word);
+        } else {
+            lines.push(std::mem::take(&mut cur));
+            cur = word.to_string();
+        }
+    }
+    if !cur.is_empty() {
+        lines.push(cur);
+    }
+    lines
+}
+
+/// Resolve and cache the icon texture for each given equipped item id.
+fn load_item_icons(
+    renderer: &mut Renderer,
+    cache: &mut TextureCache,
+    reg: &Registry,
+    icons: &mut HashMap<String, TextureHandle>,
+    ids: [&Option<String>; 2],
+) {
+    for id in ids.into_iter().flatten() {
+        if !icons.contains_key(id) {
+            if let Some(item) = reg.equipment(id) {
+                let h = cache.get(renderer, &item.icon);
+                icons.insert(id.clone(), h);
+            }
+        }
     }
 }
 
@@ -1146,4 +1389,41 @@ fn draw_background(r: &mut Renderer) {
     );
     // A faint horizon band.
     r.draw_rect(0.0, 116.0, VIRTUAL_W, 3.0, color::rgba(90, 70, 100, 160));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hit_chance_baseline_and_clamps() {
+        // Equal, unequipped combatants sit at the baseline.
+        assert_eq!(hit_chance(0, 10, 0, 10), BASE_HIT);
+        // Accuracy raises it and speed advantage helps, but it never hits 100%.
+        assert_eq!(hit_chance(50, 20, 0, 5), MAX_HIT);
+        // Overwhelming evasion can't drop it below the floor.
+        assert_eq!(hit_chance(0, 5, 80, 30), MIN_HIT);
+    }
+
+    #[test]
+    fn hit_chance_reacts_to_evasion_and_speed() {
+        let base = hit_chance(0, 10, 0, 10);
+        assert!(hit_chance(0, 10, 8, 10) < base, "evasion lowers hit chance");
+        assert!(
+            hit_chance(6, 10, 0, 10) > base,
+            "accuracy raises hit chance"
+        );
+        assert!(
+            hit_chance(0, 14, 0, 9) > base,
+            "being faster raises hit chance"
+        );
+    }
+
+    #[test]
+    fn crit_chance_baseline_and_clamps() {
+        assert_eq!(crit_chance(0), BASE_CRIT);
+        assert!(crit_chance(6) > BASE_CRIT, "weapon crit adds to the rate");
+        assert_eq!(crit_chance(1000), MAX_CRIT, "crit is capped");
+        assert_eq!(crit_chance(-1000), 0, "crit never goes negative");
+    }
 }

@@ -41,6 +41,8 @@ GameData(
                 frames: 4, fps: 8.0,
             )),
             skills: ["power_strike", "whirlwind", "mend"],
+            weapon: Some("iron_sword"),
+            armor: Some("leather_armor"),
         ),
         // Joins the party via a cutscene after GREENWOOD is cleared (she is not
         // in `starting_party`). Has her own purple mage sheet (mage.png).
@@ -66,6 +68,7 @@ GameData(
                 frames: 4, fps: 8.0,
             )),
             skills: ["firebolt", "frost", "mend"],
+            armor: Some("travelers_robe"),
         ),
     ],
 
@@ -101,27 +104,60 @@ GameData(
     skills: [
         SkillDef(
             id: "power_strike", name: "POWER STRIKE",
+            description: "A focused two-handed blow to one foe.",
             mp_cost: 4, power: 175, kind: Physical, target: OneEnemy,
         ),
         SkillDef(
             id: "whirlwind", name: "WHIRLWIND",
+            description: "A spinning slash that hits every foe.",
             mp_cost: 8, power: 95, kind: Physical, target: AllEnemies,
         ),
         SkillDef(
             id: "mend", name: "MEND",
+            description: "Knit an ally's wounds with white magic.",
             mp_cost: 6, power: 140, kind: Heal, target: OneAlly,
         ),
         SkillDef(
             id: "claw", name: "CLAW",
+            description: "A raking swipe of the demon's claws.",
             mp_cost: 0, power: 125, kind: Physical, target: OneEnemy,
         ),
         SkillDef(
             id: "firebolt", name: "FIREBOLT",
+            description: "Hurl a searing bolt of flame at one foe.",
             mp_cost: 6, power: 180, kind: Magical, target: OneEnemy,
         ),
         SkillDef(
             id: "frost", name: "FROST",
+            description: "A biting frost that chills all foes.",
             mp_cost: 12, power: 115, kind: Magical, target: AllEnemies,
+        ),
+    ],
+
+    // ------------------------------------------------------------------------
+    // Equipment. Weapons raise attack/magic and add crit/accuracy; armor raises
+    // defense and adds evasion (the chance to dodge a hit entirely). Every item
+    // carries a description. Characters/enemies equip them by id via their
+    // `weapon` / `armor` fields. Icons are 16x16 (register keys in src/data.rs).
+    // ------------------------------------------------------------------------
+    equipment: [
+        EquipmentDef(
+            id: "iron_sword", name: "IRON SWORD",
+            description: "Standard-issue soldier's blade.",
+            slot: Weapon, icon: "starter_sword",
+            mods: StatMods(attack: 6), crit: 6, accuracy: 4,
+        ),
+        EquipmentDef(
+            id: "leather_armor", name: "LEATHER ARMOR",
+            description: "Boiled leather; turns a glance.",
+            slot: Armor, icon: "starter_gear",
+            mods: StatMods(defense: 5), evasion: 4,
+        ),
+        EquipmentDef(
+            id: "travelers_robe", name: "TRAVELER'S ROBE",
+            description: "Light, enchanted travel cloth.",
+            slot: Armor, icon: "starter_gear",
+            mods: StatMods(defense: 3, magic: 2), evasion: 8,
         ),
     ],
 

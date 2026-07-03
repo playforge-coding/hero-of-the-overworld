@@ -17,7 +17,11 @@ Stats are the six values every battler shares:
 - **Magic** — powers spells and heals.
 - **Speed** — decides who acts first each round.
 
-See **[Battles](../battles.md)** for how these combine into damage.
+The tables below list **base** stats. On top of these, a hero's equipped
+**[weapon and armor](../equipment.md)** add to attack/defense/magic/speed and grant
+combat attributes — **crit**, **accuracy**, and **evasion** — that drive hits,
+misses, and critical strikes. See **[Battles](../battles.md#hit-miss-and-crit)** for
+how everything combines into damage.
 
 ## Heroes
 

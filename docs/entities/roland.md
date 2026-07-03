@@ -18,6 +18,7 @@ the game's story.
 | **Magic** | 10 |
 | **Speed** | 12 |
 | **Role** | Physical front-liner / party leader |
+| **Gear** | [Iron Sword](../equipment.md) + [Leather Armor](../equipment.md) |
 | **Joins** | Start of the game (in `starting_party`) |
 
 Roland has the **highest HP and defense** in the party and a strong attack, so he
@@ -38,6 +39,13 @@ heal. As the party leader he's the one you steer around the map; a roaming
 **WHIRLWIND** sweeps a whole pack of demons at once (great against a duo or trio);
 **MEND** tops up a wounded ally in a pinch. See [Battles](../battles.md#skills) for
 how each is resolved.
+
+## Gear
+
+Roland marches out in a first-month conscript's starter kit: an **[Iron Sword](../equipment.md)**
+(+6 ATK, extra crit and accuracy) and **[Leather Armor](../equipment.md)** (+5 DEF,
+a little evasion) — reliable, unglamorous, and exactly what you'd expect to be
+handed on day one.
 
 ## Appearance
 
