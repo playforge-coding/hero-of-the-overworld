@@ -12,7 +12,7 @@ use crate::audio::Audio;
 use crate::battle::{Battle, BattleOutcome};
 use crate::cutscene::{Cutscene, CutsceneOutcome};
 use crate::data::{Registry, BATTLE_MUSIC_OGG};
-use crate::input::{Button, Input};
+use crate::input::{Button, Controllers, Input};
 use crate::overworld::{Event, Overworld, Trigger};
 use crate::party::Party;
 use crate::renderer::{color, Renderer, VIRTUAL_H, VIRTUAL_W};
@@ -90,8 +90,12 @@ impl Game {
         Some(Cutscene::new(renderer, &mut self.cache, &self.reg, steps))
     }
 
-    pub fn update(&mut self, input: &Input, renderer: &mut Renderer, dt: f32) {
+    pub fn update(&mut self, controllers: &Controllers, renderer: &mut Renderer, dt: f32) {
         self.time += dt;
+        // Every screen but battle is single-player, so it reads the shared input
+        // (keyboard + any gamepad). Battle hands each party member their own
+        // gamepad, so it takes the whole controller set.
+        let input = controllers.shared();
         // Take the scene out to sidestep borrow conflicts, put it back after.
         let scene = std::mem::replace(&mut self.scene, Scene::Title);
         self.scene = match scene {
@@ -114,13 +118,15 @@ impl Game {
                 }
                 None => Scene::Cutscene(cs),
             },
-            Scene::Battle(mut battle) => match battle.update(input, &mut self.rng, &self.reg, dt) {
-                Some(outcome) => {
-                    battle.sync_party(&mut self.party);
-                    self.finish_battle(outcome, renderer)
+            Scene::Battle(mut battle) => {
+                match battle.update(controllers, &mut self.rng, &self.reg, dt) {
+                    Some(outcome) => {
+                        battle.sync_party(&mut self.party);
+                        self.finish_battle(outcome, renderer)
+                    }
+                    None => Scene::Battle(battle),
                 }
-                None => Scene::Battle(battle),
-            },
+            }
             Scene::Report {
                 win,
                 lines,
@@ -233,7 +239,7 @@ impl Game {
                 _ => (dy.abs(), dx.abs()),
             };
             let score = along + perp * 3;
-            if best.map_or(true, |(b, _)| score < b) {
+            if best.is_none_or(|(b, _)| score < b) {
                 best = Some((score, i));
             }
         }

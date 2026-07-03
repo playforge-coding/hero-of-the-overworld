@@ -4,21 +4,41 @@ comments: true
 
 # Controls
 
-The whole game is played on the keyboard — there is no mouse input. The same
-handful of logical buttons drive every screen; only what they *do* changes with
-context.
+The game plays on the keyboard **or a gamepad** — there is no mouse input. The
+same handful of logical buttons drive every screen; only what they *do* changes
+with context.
 
 ## Buttons
 
-| Button | Keys | What it does |
-| ------ | ---- | ------------ |
-| **Move** | <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> / <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | Move the party leader, the map cursor, or a menu selection |
-| **Confirm** | <kbd>Enter</kbd> / <kbd>Z</kbd> / <kbd>Space</kbd> | Start, select, confirm a command, advance dialogue |
-| **Cancel** | <kbd>Esc</kbd> / <kbd>X</kbd> / <kbd>Backspace</kbd> | Back out of a menu, leave a level to the map |
-| **Menu** | <kbd>Shift</kbd> / <kbd>C</kbd> | Leave the current level and return to the world map |
+| Button | Keys | Gamepad | What it does |
+| ------ | ---- | ------- | ------------ |
+| **Move** | <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> / <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | D-pad or left stick | Move the party leader, the map cursor, or a menu selection |
+| **Confirm** | <kbd>Enter</kbd> / <kbd>Z</kbd> / <kbd>Space</kbd> | A (south button) | Start, select, confirm a command, advance dialogue |
+| **Cancel** | <kbd>Esc</kbd> / <kbd>X</kbd> / <kbd>Backspace</kbd> | B (east button) | Back out of a menu, leave a level to the map |
+| **Menu** | <kbd>Shift</kbd> / <kbd>C</kbd> | Start / Select | Leave the current level and return to the world map |
 
 Movement is analog-feeling: hold a direction to keep walking, and diagonals work
-by holding two directions at once.
+by holding two directions at once (a diagonal on the stick counts too).
+
+## Gamepads
+
+Plug in a controller and it just works — anywhere the keyboard does, a gamepad
+does too, and you can use both at once. Gamepad support is native-only; the
+[web build](getting-started.md) stays keyboard-only.
+
+### One controller per party member
+
+Connect **more than one** gamepad and each one takes over a **party member**:
+the first gamepad (and the keyboard) drives member 1, the second drives member 2,
+and so on. This matters in the [battle](battles.md) command phase — when it's a
+hero's turn to choose ATTACK / SKILL / DEFEND, *that hero's* controller drives
+the menu, so a couch of players can each plan their own character. Everywhere
+else (the world map, walking a level, dialogue) any connected controller works,
+since those screens are single-player.
+
+If there are more party members than gamepads, the extra members fall back to
+the shared input, so a lone player still commands the whole party in turn — the
+game plays exactly as it does on a single controller.
 
 ## What the buttons do, screen by screen
 
@@ -49,6 +69,9 @@ Touching a roaming demon starts a [battle](battles.md).
 - **Confirm** — choose the highlighted command / skill / target.
 - **Cancel** — back up one step (out of the skill or target menu, or back to the
   previous hero's turn to re-plan it).
+
+With multiple gamepads connected, the hero currently choosing is driven by the
+controller assigned to their party slot (see [Gamepads](#gamepads) above).
 
 See **[Battles](battles.md)** for the ATTACK / SKILL / DEFEND menu in detail.
 

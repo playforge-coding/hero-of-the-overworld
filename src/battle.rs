@@ -19,7 +19,7 @@ use crate::data::{
     BattlerSprite, EnemyAi, EquipmentDef, Registry, SkillDef, SkillKind, Stats, StatusDef,
     TargetKind,
 };
-use crate::input::{Button, Input};
+use crate::input::{Button, Controllers, Input};
 use crate::party::Party;
 use crate::renderer::{color, Color, Renderer, TextureHandle, VIRTUAL_H, VIRTUAL_W};
 use crate::util::{Rng, TextureCache};
@@ -425,7 +425,7 @@ impl Battle {
 
     pub fn update(
         &mut self,
-        input: &Input,
+        controllers: &Controllers,
         rng: &mut Rng,
         reg: &Registry,
         dt: f32,
@@ -455,7 +455,7 @@ impl Battle {
                 None
             }
             State::Command(cmd) => {
-                let next = self.update_command(cmd, input, reg);
+                let next = self.update_command(cmd, controllers, reg);
                 match next {
                     CommandResult::Stay => {
                         self.state = State::Command(std::mem::replace(cmd, dummy_command()));
@@ -487,7 +487,7 @@ impl Battle {
             }
             State::Result { win, timer } => {
                 *timer -= dt;
-                if *timer <= 0.0 && input.any_pressed() || *timer <= -3.0 {
+                if *timer <= 0.0 && controllers.shared().any_pressed() || *timer <= -3.0 {
                     if *win {
                         let (xp, gold) = self.spoils();
                         Some(BattleOutcome::Victory { xp, gold })
@@ -530,7 +530,7 @@ impl Battle {
     fn update_command(
         &mut self,
         cmd: &mut Command,
-        input: &Input,
+        controllers: &Controllers,
         reg: &Registry,
     ) -> CommandResult {
         if cmd.current >= cmd.order.len() {
@@ -538,6 +538,10 @@ impl Battle {
             return CommandResult::Execute(self.build_execution(cmd, reg));
         }
         let hero = cmd.order[cmd.current];
+        // Each hero is commanded by the gamepad assigned to their party slot;
+        // with one controller (or the keyboard) `player` falls back to the shared
+        // input, so a lone player still commands every hero in turn.
+        let input = controllers.player(self.battlers[hero].party_index.unwrap_or(0));
 
         match &mut cmd.stage {
             Stage::Root { cursor } => {
@@ -1189,10 +1193,7 @@ impl Battle {
             // HP bar.
             bar(
                 r,
-                62.0,
-                y + 1.0,
-                44.0,
-                4.0,
+                [62.0, y + 1.0, 44.0, 4.0],
                 b.hp,
                 b.max_hp,
                 color::rgb(80, 210, 90),
@@ -1200,10 +1201,7 @@ impl Battle {
             // MP bar.
             bar(
                 r,
-                62.0,
-                y + 6.0,
-                44.0,
-                3.0,
+                [62.0, y + 6.0, 44.0, 3.0],
                 b.mp,
                 b.max_mp,
                 color::rgb(90, 150, 240),
@@ -1506,7 +1504,8 @@ fn enemy_home(slot: usize) -> Vec2 {
     Vec2::new(228.0 + (slot % 2) as f32 * 20.0, 74.0 + slot as f32 * 26.0)
 }
 
-fn bar(r: &mut Renderer, x: f32, y: f32, w: f32, h: f32, value: i32, max: i32, fill: Color) {
+fn bar(r: &mut Renderer, rect: [f32; 4], value: i32, max: i32, fill: Color) {
+    let [x, y, w, h] = rect;
     r.draw_rect(x, y, w, h, color::rgba(0, 0, 0, 180));
     let frac = if max > 0 {
         (value.max(0) as f32 / max as f32).clamp(0.0, 1.0)

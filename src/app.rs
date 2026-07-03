@@ -7,7 +7,7 @@ use macroquad::prelude::{get_frame_time, next_frame, Conf};
 use crate::audio::Audio;
 use crate::data::{BATTLE_MUSIC_OGG, FONT_TTF};
 use crate::game::Game;
-use crate::input::Input;
+use crate::input::Controllers;
 use crate::renderer::Renderer;
 
 /// Window configuration passed to `#[macroquad::main]`. Honours
@@ -37,15 +37,14 @@ pub async fn run() {
 
     let mut renderer = Renderer::new(FONT_TTF);
     let mut game = Game::new(&mut renderer, audio);
-    let mut input = Input::new();
+    let mut controllers = Controllers::new();
 
     loop {
         // Cap dt so a stall (or a paused tab) can't teleport the simulation.
         let dt = get_frame_time().min(0.05);
 
-        input.poll();
-        game.update(&input, &mut renderer, dt);
-        input.end_frame();
+        controllers.poll();
+        game.update(&controllers, &mut renderer, dt);
         game.draw(&mut renderer);
         renderer.render();
 
