@@ -34,7 +34,9 @@ pub fn gui_guard() -> MutexGuard<'static, ()> {
 
 /// GUI tests need a display; allow opting out via env for headless CI.
 pub fn gui_available() -> bool {
-    std::env::var("DISPLAY").map(|d| !d.is_empty()).unwrap_or(false)
+    std::env::var("DISPLAY")
+        .map(|d| !d.is_empty())
+        .unwrap_or(false)
         && std::env::var("HOTO_SKIP_GUI_TESTS").is_err()
 }
 
@@ -144,14 +146,20 @@ pub fn changed_fraction(a: &RgbaImage, b: &RgbaImage) -> f64 {
 
 /// Prepare a template PNG and return the best correlation found on screen,
 /// retrying for up to `timeout_secs` to ride out sprite animation frames.
-pub fn best_match(gui: &mut RustAutoGui, template: &str, precision: f32, timeout_secs: u64) -> Option<f32> {
+pub fn best_match(
+    gui: &mut RustAutoGui,
+    template: &str,
+    precision: f32,
+    timeout_secs: u64,
+) -> Option<f32> {
     let path = format!("{}/tests/fixtures/{template}", env!("CARGO_MANIFEST_DIR"));
     gui.prepare_template_from_file(&path, None, MatchMode::Segmented)
         .expect("prepare template");
     let result = match gui.loop_find_image_on_screen(precision, timeout_secs) {
-        Ok(Some(matches)) => matches.iter().map(|m| m.2).fold(None, |best, c| {
-            Some(best.map_or(c, |b: f32| b.max(c)))
-        }),
+        Ok(Some(matches)) => matches
+            .iter()
+            .map(|m| m.2)
+            .fold(None, |best, c| Some(best.map_or(c, |b: f32| b.max(c)))),
         _ => None,
     };
     eprintln!("[e2e] template {template}: best correlation = {result:?}");

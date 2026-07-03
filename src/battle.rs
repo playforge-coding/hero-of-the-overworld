@@ -13,9 +13,7 @@
 
 use glam::Vec2;
 
-use crate::data::{
-    BattlerSprite, EnemyAi, Registry, SkillDef, SkillKind, Stats, TargetKind,
-};
+use crate::data::{BattlerSprite, EnemyAi, Registry, SkillDef, SkillKind, Stats, TargetKind};
 use crate::input::{Button, Input};
 use crate::party::Party;
 use crate::renderer::{color, Color, Renderer, TextureHandle, VIRTUAL_H, VIRTUAL_W};
@@ -180,9 +178,17 @@ struct Command {
 }
 
 enum Stage {
-    Root { cursor: usize },
-    Skill { cursor: usize },
-    Target { pending: Pending, cursor: usize, candidates: Vec<usize> },
+    Root {
+        cursor: usize,
+    },
+    Skill {
+        cursor: usize,
+    },
+    Target {
+        pending: Pending,
+        cursor: usize,
+        candidates: Vec<usize>,
+    },
 }
 
 #[derive(Clone)]
@@ -326,7 +332,11 @@ impl Battle {
     /// Living battlers matching a skill's target kind, from `actor`'s view.
     fn candidates(&self, actor: usize, target: TargetKind) -> Vec<usize> {
         let side = self.battlers[actor].side;
-        let foes = if side == Side::Hero { Side::Enemy } else { Side::Hero };
+        let foes = if side == Side::Hero {
+            Side::Enemy
+        } else {
+            Side::Hero
+        };
         match target {
             TargetKind::OneEnemy | TargetKind::AllEnemies => self.living(foes),
             TargetKind::OneAlly | TargetKind::AllAllies => self.living(side),
@@ -381,9 +391,15 @@ impl Battle {
                 let done = self.update_execute(exec, rng, reg, dt);
                 if done {
                     if !self.enemies_alive() {
-                        self.state = State::Result { win: true, timer: 1.6 };
+                        self.state = State::Result {
+                            win: true,
+                            timer: 1.6,
+                        };
                     } else if !self.heroes_alive() {
-                        self.state = State::Result { win: false, timer: 1.6 };
+                        self.state = State::Result {
+                            win: false,
+                            timer: 1.6,
+                        };
                     } else {
                         self.state = self.begin_command();
                     }
@@ -402,7 +418,10 @@ impl Battle {
                         Some(BattleOutcome::Defeat)
                     }
                 } else {
-                    self.state = State::Result { win: *win, timer: *timer };
+                    self.state = State::Result {
+                        win: *win,
+                        timer: *timer,
+                    };
                     None
                 }
             }
@@ -431,7 +450,12 @@ impl Battle {
         })
     }
 
-    fn update_command(&mut self, cmd: &mut Command, input: &Input, reg: &Registry) -> CommandResult {
+    fn update_command(
+        &mut self,
+        cmd: &mut Command,
+        input: &Input,
+        reg: &Registry,
+    ) -> CommandResult {
         if cmd.current >= cmd.order.len() {
             // All heroes have chosen: add enemy actions and build the queue.
             return CommandResult::Execute(self.build_execution(cmd, reg));
@@ -451,7 +475,10 @@ impl Battle {
                         0 => {
                             let cands = self.candidates(hero, TargetKind::OneEnemy);
                             cmd.stage = Stage::Target {
-                                pending: Pending { kind: ActionKind::Attack, target: TargetKind::OneEnemy },
+                                pending: Pending {
+                                    kind: ActionKind::Attack,
+                                    target: TargetKind::OneEnemy,
+                                },
                                 cursor: 0,
                                 candidates: cands,
                             };
@@ -494,7 +521,11 @@ impl Battle {
                                 };
                             } else {
                                 let targets = self.candidates(hero, target);
-                                cmd.planned.push(Action { actor: hero, kind, targets });
+                                cmd.planned.push(Action {
+                                    actor: hero,
+                                    kind,
+                                    targets,
+                                });
                                 cmd.current += 1;
                                 cmd.stage = Stage::Root { cursor: 0 };
                             }
@@ -503,7 +534,11 @@ impl Battle {
                 }
                 CommandResult::Stay
             }
-            Stage::Target { pending, cursor, candidates } => {
+            Stage::Target {
+                pending,
+                cursor,
+                candidates,
+            } => {
                 if candidates.is_empty() {
                     cmd.stage = Stage::Root { cursor: 0 };
                     return CommandResult::Stay;
@@ -745,15 +780,21 @@ impl Battle {
         targets: &[usize],
         target_kind: TargetKind,
     ) -> Vec<usize> {
-        let alive: Vec<usize> = targets.iter().copied().filter(|&t| self.battlers[t].alive()).collect();
+        let alive: Vec<usize> = targets
+            .iter()
+            .copied()
+            .filter(|&t| self.battlers[t].alive())
+            .collect();
         if !alive.is_empty() {
             return alive;
         }
         // Everything originally targeted is gone; pick fresh candidates.
         match target_kind {
-            TargetKind::OneEnemy | TargetKind::OneAlly => {
-                self.candidates(actor, target_kind).into_iter().take(1).collect()
-            }
+            TargetKind::OneEnemy | TargetKind::OneAlly => self
+                .candidates(actor, target_kind)
+                .into_iter()
+                .take(1)
+                .collect(),
             _ => self.candidates(actor, target_kind),
         }
     }
@@ -798,7 +839,11 @@ impl Battle {
         // Draw battlers back-to-front (enemies first so heroes overlap nicely).
         let mut order: Vec<usize> = (0..self.battlers.len()).collect();
         order.sort_by(|&a, &b| {
-            self.battlers[a].pos().y.partial_cmp(&self.battlers[b].pos().y).unwrap()
+            self.battlers[a]
+                .pos()
+                .y
+                .partial_cmp(&self.battlers[b].pos().y)
+                .unwrap()
         });
         for &i in &order {
             self.draw_battler(r, i);
@@ -857,7 +902,13 @@ impl Battle {
         let src = b.anim.src(&b.sprite);
 
         // Shadow.
-        r.draw_rect(pos.x - dw * 0.28, pos.y - 3.0, dw * 0.56, 5.0, color::rgba(0, 0, 0, 90));
+        r.draw_rect(
+            pos.x - dw * 0.28,
+            pos.y - 3.0,
+            dw * 0.56,
+            5.0,
+            color::rgba(0, 0, 0, 90),
+        );
 
         let tint = if b.flash > 0.0 {
             let k = (b.flash / 0.3).clamp(0.0, 1.0);
@@ -887,13 +938,41 @@ impl Battle {
         for (row, &i) in heroes.iter().enumerate() {
             let b = &self.battlers[i];
             let y = y0 + 5.0 + row as f32 * 16.0;
-            let name_col = if b.alive() { color::WHITE } else { color::rgb(150, 90, 90) };
+            let name_col = if b.alive() {
+                color::WHITE
+            } else {
+                color::rgb(150, 90, 90)
+            };
             r.draw_text(&b.name, 6.0, y, 1.0, name_col);
             // HP bar.
-            bar(r, 62.0, y + 1.0, 44.0, 4.0, b.hp, b.max_hp, color::rgb(80, 210, 90));
+            bar(
+                r,
+                62.0,
+                y + 1.0,
+                44.0,
+                4.0,
+                b.hp,
+                b.max_hp,
+                color::rgb(80, 210, 90),
+            );
             // MP bar.
-            bar(r, 62.0, y + 6.0, 44.0, 3.0, b.mp, b.max_mp, color::rgb(90, 150, 240));
-            r.draw_text(&format!("{}", b.hp.max(0)), 110.0, y, 1.0, color::rgb(200, 220, 200));
+            bar(
+                r,
+                62.0,
+                y + 6.0,
+                44.0,
+                3.0,
+                b.mp,
+                b.max_mp,
+                color::rgb(90, 150, 240),
+            );
+            r.draw_text(
+                &format!("{}", b.hp.max(0)),
+                110.0,
+                y,
+                1.0,
+                color::rgb(200, 220, 200),
+            );
         }
     }
 
@@ -933,7 +1012,9 @@ impl Battle {
                 let refs: Vec<&str> = items.iter().map(|s| s.as_str()).collect();
                 menu_box(r, 150.0, 96.0, 120.0, &refs, *cursor);
             }
-            Stage::Target { candidates, cursor, .. } => {
+            Stage::Target {
+                candidates, cursor, ..
+            } => {
                 r.draw_text("SELECT TARGET", 6.0, 18.0, 1.0, color::rgb(255, 210, 120));
                 if let Some(&tgt) = candidates.get(*cursor) {
                     let p = self.battlers[tgt].pos();
@@ -1007,7 +1088,11 @@ fn enemy_home(slot: usize) -> Vec2 {
 
 fn bar(r: &mut Renderer, x: f32, y: f32, w: f32, h: f32, value: i32, max: i32, fill: Color) {
     r.draw_rect(x, y, w, h, color::rgba(0, 0, 0, 180));
-    let frac = if max > 0 { (value.max(0) as f32 / max as f32).clamp(0.0, 1.0) } else { 0.0 };
+    let frac = if max > 0 {
+        (value.max(0) as f32 / max as f32).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
     r.draw_rect(x, y, w * frac, h, fill);
     r.draw_rect_outline(x, y, w, h, 0.5, color::rgba(200, 200, 220, 200));
 }
@@ -1019,7 +1104,13 @@ fn menu_box(r: &mut Renderer, x: f32, y: f32, w: f32, items: &[&str], cursor: us
     for (i, item) in items.iter().enumerate() {
         let iy = y + 4.0 + i as f32 * 11.0;
         if i == cursor {
-            r.draw_rect(x + 2.0, iy - 1.0, w - 4.0, 10.0, color::rgba(60, 80, 150, 220));
+            r.draw_rect(
+                x + 2.0,
+                iy - 1.0,
+                w - 4.0,
+                10.0,
+                color::rgba(60, 80, 150, 220),
+            );
             r.draw_text(">", x + 3.0, iy, 1.0, color::rgb(255, 240, 150));
         }
         r.draw_text(item, x + 11.0, iy, 1.0, color::WHITE);
@@ -1038,7 +1129,13 @@ fn draw_background(r: &mut Renderer) {
     // Simple two-tone sky over ground.
     r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgb(28, 24, 48));
     r.draw_rect(0.0, 60.0, VIRTUAL_W, 60.0, color::rgb(40, 34, 66));
-    r.draw_rect(0.0, 118.0, VIRTUAL_W, VIRTUAL_H - 118.0, color::rgb(46, 40, 40));
+    r.draw_rect(
+        0.0,
+        118.0,
+        VIRTUAL_W,
+        VIRTUAL_H - 118.0,
+        color::rgb(46, 40, 40),
+    );
     // A faint horizon band.
     r.draw_rect(0.0, 116.0, VIRTUAL_W, 3.0, color::rgba(90, 70, 100, 160));
 }

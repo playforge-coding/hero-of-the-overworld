@@ -36,7 +36,12 @@ pub mod color {
         [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0]
     }
     pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
-        [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, a as f32 / 255.0]
+        [
+            r as f32 / 255.0,
+            g as f32 / 255.0,
+            b as f32 / 255.0,
+            a as f32 / 255.0,
+        ]
     }
 }
 
@@ -61,6 +66,13 @@ struct TextureEntry {
 }
 
 /// Metrics for the built-in monospace bitmap font atlas.
+///
+/// `cell_w`/`cell_h` describe the *source* cell stride in the atlas, and
+/// `glyph_x`/`glyph_y`/`glyph_w`/`glyph_h` the ink sub-rect within each cell to
+/// sample (cropping any surrounding padding). `disp_w`/`disp_h`/`advance`
+/// describe the on-screen glyph footprint at scale 1.0. Keeping these separate
+/// lets us swap in an atlas with larger, padded source cells without disturbing
+/// the pixel-tuned UI layout.
 pub struct FontInfo {
     pub texture: TextureHandle,
     pub cell_w: u32,
@@ -68,6 +80,13 @@ pub struct FontInfo {
     pub cols: u32,
     pub first_char: u8,
     pub last_char: u8,
+    pub glyph_x: f32,
+    pub glyph_y: f32,
+    pub glyph_w: f32,
+    pub glyph_h: f32,
+    pub disp_w: f32,
+    pub disp_h: f32,
+    pub advance: f32,
 }
 
 pub struct Renderer {
@@ -105,8 +124,7 @@ impl Renderer {
         let width = size.width.max(1);
         let height = size.height.max(1);
 
-        let instance =
-            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
 
         let surface = instance
             .create_surface(window.clone())
@@ -314,11 +332,18 @@ impl Renderer {
             white: TextureHandle(0),
             font: FontInfo {
                 texture: TextureHandle(0),
-                cell_w: 8,
-                cell_h: 13,
-                cols: 16,
+                cell_w: 30,
+                cell_h: 30,
+                cols: 19,
                 first_char: 32,
                 last_char: 126,
+                glyph_x: 8.0,
+                glyph_y: 4.0,
+                glyph_w: 13.0,
+                glyph_h: 18.0,
+                disp_w: 7.0,
+                disp_h: 13.0,
+                advance: 5.0,
             },
             instances: Vec::new(),
             runs: Vec::new(),
@@ -334,15 +359,26 @@ impl Renderer {
         // 1x1 white pixel used for solid-color rectangles.
         renderer.white = renderer.create_texture_rgba(1, 1, &[255, 255, 255, 255]);
 
-        // Built-in font atlas (8x13 cells, 16 columns, ASCII 32..126).
+        // Built-in font atlas (30x30 source cells, 19 columns × 5 rows = 95
+        // glyphs, ASCII 32..126). Displayed at the compact 8x13 footprint the
+        // UI layout is tuned for.
         let font_tex = renderer.load_png(font_png);
         renderer.font = FontInfo {
             texture: font_tex,
-            cell_w: 8,
-            cell_h: 13,
-            cols: 16,
+            cell_w: 30,
+            cell_h: 30,
+            cols: 19,
             first_char: 32,
             last_char: 126,
+            // Glyphs are centered in each 30px cell with generous padding; crop
+            // to the ink sub-rect so letters aren't spread out when drawn.
+            glyph_x: 8.0,
+            glyph_y: 4.0,
+            glyph_w: 13.0,
+            glyph_h: 18.0,
+            disp_w: 7.0,
+            disp_h: 13.0,
+            advance: 5.0,
         };
 
         renderer
@@ -486,22 +522,30 @@ impl Renderer {
     }
 
     /// Draw a whole texture at a destination rectangle.
-    pub fn draw_texture(&mut self, tex: TextureHandle, x: f32, y: f32, w: f32, h: f32, tint: Color) {
+    pub fn draw_texture(
+        &mut self,
+        tex: TextureHandle,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        tint: Color,
+    ) {
         self.push(tex, [x, y, w, h], [0.0, 0.0, 1.0, 1.0], tint);
     }
 
     /// Width in virtual pixels a string will occupy at the given scale.
     pub fn text_width(&self, text: &str, scale: f32) -> f32 {
-        text.chars().count() as f32 * (self.font.cell_w as f32 - 2.0) * scale
+        text.chars().count() as f32 * self.font.advance * scale
     }
 
     /// Draw a string using the built-in bitmap font. Returns the end X.
     pub fn draw_text(&mut self, text: &str, x: f32, y: f32, scale: f32, color: Color) -> f32 {
         let f = FontLayout::from(&self.font);
         let tex = self.font.texture;
-        let advance = (f.cell_w - 2.0) * scale; // trim a little inter-glyph space
-        let gw = f.cell_w * scale;
-        let gh = f.cell_h * scale;
+        let advance = f.advance * scale;
+        let gw = f.disp_w * scale;
+        let gh = f.disp_h * scale;
         let mut cx = x;
         for ch in text.chars() {
             let c = ch as u32;
@@ -513,10 +557,10 @@ impl Renderer {
             let col = idx % f.cols;
             let row = idx / f.cols;
             let src = [
-                col as f32 * f.cell_w,
-                row as f32 * f.cell_h,
-                f.cell_w,
-                f.cell_h,
+                col as f32 * f.cell_w + f.glyph_x,
+                row as f32 * f.cell_h + f.glyph_y,
+                f.glyph_w,
+                f.glyph_h,
             ];
             self.draw_sprite(tex, [cx, y, gw, gh], src, false, color);
             cx += advance;
@@ -591,7 +635,8 @@ impl Renderer {
         }
 
         let frame = match self.surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(f) | wgpu::CurrentSurfaceTexture::Suboptimal(f) => f,
+            wgpu::CurrentSurfaceTexture::Success(f)
+            | wgpu::CurrentSurfaceTexture::Suboptimal(f) => f,
             wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
                 self.instances.clear();
                 self.runs.clear();
@@ -672,6 +717,13 @@ fn ortho_y_down(w: f32, h: f32) -> [[f32; 4]; 4] {
 struct FontLayout {
     cell_w: f32,
     cell_h: f32,
+    glyph_x: f32,
+    glyph_y: f32,
+    glyph_w: f32,
+    glyph_h: f32,
+    disp_w: f32,
+    disp_h: f32,
+    advance: f32,
     cols: u32,
     first: u32,
     last: u32,
@@ -682,6 +734,13 @@ impl From<&FontInfo> for FontLayout {
         FontLayout {
             cell_w: f.cell_w as f32,
             cell_h: f.cell_h as f32,
+            glyph_x: f.glyph_x,
+            glyph_y: f.glyph_y,
+            glyph_w: f.glyph_w,
+            glyph_h: f.glyph_h,
+            disp_w: f.disp_w,
+            disp_h: f.disp_h,
+            advance: f.advance,
             cols: f.cols,
             first: f.first_char as u32,
             last: f.last_char as u32,

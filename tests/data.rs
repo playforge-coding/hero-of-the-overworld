@@ -29,7 +29,11 @@ fn all_references_resolve() {
     // Every skill a character/enemy references exists.
     for c in &reg.data.characters {
         for s in &c.skills {
-            assert!(reg.skill(s).is_some(), "character {} skill '{s}' missing", c.id);
+            assert!(
+                reg.skill(s).is_some(),
+                "character {} skill '{s}' missing",
+                c.id
+            );
         }
     }
     for e in &reg.data.enemies {
@@ -39,9 +43,17 @@ fn all_references_resolve() {
     }
     // Every enemy referenced by an encounter exists.
     for enc in &reg.data.encounters {
-        assert!(!enc.enemies.is_empty(), "encounter {} has no enemies", enc.id);
+        assert!(
+            !enc.enemies.is_empty(),
+            "encounter {} has no enemies",
+            enc.id
+        );
         for eid in &enc.enemies {
-            assert!(reg.enemy(eid).is_some(), "encounter {} enemy '{eid}' missing", enc.id);
+            assert!(
+                reg.enemy(eid).is_some(),
+                "encounter {} enemy '{eid}' missing",
+                enc.id
+            );
         }
     }
 }
@@ -108,6 +120,12 @@ fn xp_grants_levels_and_growth() {
     let leveled = party.grant_xp(1000);
     assert!(leveled.contains(&0), "member 0 should have leveled up");
     assert!(party.members[0].level > 1);
-    assert!(party.members[0].stats.attack > atk_before, "attack should grow");
-    assert!(party.members[0].stats.max_hp > hp_before, "max hp should grow");
+    assert!(
+        party.members[0].stats.attack > atk_before,
+        "attack should grow"
+    );
+    assert!(
+        party.members[0].stats.max_hp > hp_before,
+        "max hp should grow"
+    );
 }

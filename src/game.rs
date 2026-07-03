@@ -10,9 +10,16 @@ use crate::renderer::{color, Renderer, VIRTUAL_H, VIRTUAL_W};
 use crate::util::{Rng, TextureCache};
 
 enum Scene {
-    Title { cursor: usize },
+    Title {
+        cursor: usize,
+    },
     Battle(Battle),
-    Report { win: bool, lines: Vec<String>, timer: f32, encounter: usize },
+    Report {
+        win: bool,
+        lines: Vec<String>,
+        timer: f32,
+        encounter: usize,
+    },
 }
 
 pub struct Game {
@@ -46,16 +53,19 @@ impl Game {
         let scene = std::mem::replace(&mut self.scene, Scene::Title { cursor: 0 });
         self.scene = match scene {
             Scene::Title { cursor } => self.update_title(cursor, input, renderer),
-            Scene::Battle(mut battle) => {
-                match battle.update(input, &mut self.rng, &self.reg, dt) {
-                    Some(outcome) => {
-                        battle.sync_party(&mut self.party);
-                        self.finish_battle(outcome)
-                    }
-                    None => Scene::Battle(battle),
+            Scene::Battle(mut battle) => match battle.update(input, &mut self.rng, &self.reg, dt) {
+                Some(outcome) => {
+                    battle.sync_party(&mut self.party);
+                    self.finish_battle(outcome)
                 }
-            }
-            Scene::Report { win, lines, mut timer, encounter } => {
+                None => Scene::Battle(battle),
+            },
+            Scene::Report {
+                win,
+                lines,
+                mut timer,
+                encounter,
+            } => {
                 timer -= dt;
                 if timer <= 0.0 && input.any_pressed() {
                     if !win {
@@ -64,7 +74,12 @@ impl Game {
                     }
                     Scene::Title { cursor: encounter }
                 } else {
-                    Scene::Report { win, lines, timer, encounter }
+                    Scene::Report {
+                        win,
+                        lines,
+                        timer,
+                        encounter,
+                    }
                 }
             }
         };
@@ -99,7 +114,12 @@ impl Game {
                         lines.push(format!("{} REACHED LV {}", m.name, m.level));
                     }
                 }
-                Scene::Report { win: true, lines, timer: 0.8, encounter }
+                Scene::Report {
+                    win: true,
+                    lines,
+                    timer: 0.8,
+                    encounter,
+                }
             }
             BattleOutcome::Defeat => Scene::Report {
                 win: false,
@@ -112,7 +132,9 @@ impl Game {
 
     pub fn draw(&mut self, renderer: &mut Renderer) {
         match &mut self.scene {
-            Scene::Title { cursor } => Self::draw_title(&self.reg, &self.party, *cursor, self.time, renderer),
+            Scene::Title { cursor } => {
+                Self::draw_title(&self.reg, &self.party, *cursor, self.time, renderer)
+            }
             Scene::Battle(battle) => battle.draw(renderer, &self.reg),
             Scene::Report { win, lines, .. } => Self::draw_report(*win, lines, renderer),
         }
@@ -123,10 +145,28 @@ impl Game {
         r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgb(14, 12, 26));
         r.draw_rect(0.0, 40.0, VIRTUAL_W, 40.0, color::rgba(40, 30, 70, 255));
 
-        r.draw_text_centered("HERO OF THE OVERWORLD", VIRTUAL_W / 2.0, 30.0, 1.6, color::rgb(255, 226, 120));
-        r.draw_text_centered("a tiny extensible JRPG", VIRTUAL_W / 2.0, 52.0, 1.0, color::rgb(180, 180, 210));
+        r.draw_text_centered(
+            "HERO OF THE OVERWORLD",
+            VIRTUAL_W / 2.0,
+            30.0,
+            1.6,
+            color::rgb(255, 226, 120),
+        );
+        r.draw_text_centered(
+            "a tiny extensible JRPG",
+            VIRTUAL_W / 2.0,
+            52.0,
+            1.0,
+            color::rgb(180, 180, 210),
+        );
 
-        r.draw_text("CHOOSE A BATTLE:", 60.0, 84.0, 1.0, color::rgb(200, 220, 200));
+        r.draw_text(
+            "CHOOSE A BATTLE:",
+            60.0,
+            84.0,
+            1.0,
+            color::rgb(200, 220, 200),
+        );
         for (i, enc) in reg.data.encounters.iter().enumerate() {
             let y = 98.0 + i as f32 * 12.0;
             let label = format!("{}  ({} FOES)", enc.id.to_uppercase(), enc.enemies.len());
@@ -142,7 +182,13 @@ impl Game {
         r.draw_text("PARTY:", px, 150.0, 1.0, color::rgb(160, 200, 255));
         px += 46.0;
         for m in &party.members {
-            r.draw_text(&format!("{} LV{}", m.name, m.level), px, 150.0, 1.0, color::WHITE);
+            r.draw_text(
+                &format!("{} LV{}", m.name, m.level),
+                px,
+                150.0,
+                1.0,
+                color::WHITE,
+            );
             px += r.text_width(&format!("{} LV{} ", m.name, m.level), 1.0) + 6.0;
         }
 
@@ -167,8 +213,20 @@ impl Game {
         };
         r.draw_text_centered(title, VIRTUAL_W / 2.0, 50.0, 2.0, col);
         for (i, line) in lines.iter().enumerate() {
-            r.draw_text_centered(line, VIRTUAL_W / 2.0, 84.0 + i as f32 * 12.0, 1.0, color::WHITE);
+            r.draw_text_centered(
+                line,
+                VIRTUAL_W / 2.0,
+                84.0 + i as f32 * 12.0,
+                1.0,
+                color::WHITE,
+            );
         }
-        r.draw_text_centered("PRESS ENTER TO CONTINUE", VIRTUAL_W / 2.0, 150.0, 1.0, color::rgb(160, 160, 190));
+        r.draw_text_centered(
+            "PRESS ENTER TO CONTINUE",
+            VIRTUAL_W / 2.0,
+            150.0,
+            1.0,
+            color::rgb(160, 160, 190),
+        );
     }
 }

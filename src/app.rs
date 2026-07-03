@@ -97,8 +97,16 @@ impl ApplicationHandler<UserEvent> for App {
                 .expect("no body")
                 .append_child(&canvas)
                 .expect("append canvas");
-            let w = web_window.inner_width().ok().and_then(|v| v.as_f64()).unwrap_or(960.0);
-            let h = web_window.inner_height().ok().and_then(|v| v.as_f64()).unwrap_or(540.0);
+            let w = web_window
+                .inner_width()
+                .ok()
+                .and_then(|v| v.as_f64())
+                .unwrap_or(960.0);
+            let h = web_window
+                .inner_height()
+                .ok()
+                .and_then(|v| v.as_f64())
+                .unwrap_or(540.0);
             let _ = window.request_inner_size(LogicalSize::new(w, h));
 
             let proxy = self.proxy.clone();
