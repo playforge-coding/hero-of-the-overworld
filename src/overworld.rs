@@ -154,6 +154,36 @@ impl Screen {
             Dir::West => self.west,
         }
     }
+
+    fn open_at(&self, col: usize, row: usize) -> bool {
+        !self.tiles[row * self.w + col].solid()
+    }
+
+    /// Row of the walkable opening in column `col` whose center is closest to
+    /// `target_y` — used to line an arriving player up with the doorway they
+    /// walked toward, rather than dumping them at the edge's midpoint.
+    fn nearest_open_row(&self, col: usize, target_y: f32) -> usize {
+        (0..self.h)
+            .filter(|&r| self.open_at(col, r))
+            .min_by(|&a, &b| {
+                let da = ((a as f32 + 0.5) * TILE - target_y).abs();
+                let db = ((b as f32 + 0.5) * TILE - target_y).abs();
+                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .unwrap_or(self.h / 2)
+    }
+
+    /// Column of the walkable opening in row `row` closest to `target_x`.
+    fn nearest_open_col(&self, row: usize, target_x: f32) -> usize {
+        (0..self.w)
+            .filter(|&c| self.open_at(c, row))
+            .min_by(|&a, &b| {
+                let da = ((a as f32 + 0.5) * TILE - target_x).abs();
+                let db = ((b as f32 + 0.5) * TILE - target_x).abs();
+                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .unwrap_or(self.w / 2)
+    }
 }
 
 struct TileTex {
@@ -515,10 +545,13 @@ impl Overworld {
             return;
         }
 
+        // Remember where along the shared edge the player left, so the new
+        // screen can line them up with the doorway nearest that spot.
+        let exit_along = p;
+
         self.current = target;
         let ns = self.cur();
-        let nmap = Vec2::new(ns.w as f32 * TILE, ns.h as f32 * TILE);
-        self.player.pos = entry_pos(dir, nmap);
+        self.player.pos = entry_pos(ns, dir, exit_along);
         self.player.facing = match dir {
             Dir::East => Facing::Right,
             Dir::West => Facing::Left,
@@ -756,15 +789,31 @@ fn tile_center(col: u32, row: u32) -> Vec2 {
     Vec2::new((col as f32 + 0.5) * TILE, (row as f32 + 0.5) * TILE)
 }
 
-/// Where the player appears after flipping screens in direction `dir`: the
-/// middle of the opposite edge of the new screen.
-fn entry_pos(dir: Dir, map: Vec2) -> Vec2 {
-    let mid = map * 0.5;
+/// Where the player appears after flipping screens travelling `dir`. They enter
+/// through the opposite edge of the new screen `ns`, snapped to the walkable
+/// opening on that edge nearest to where they left the old one (`exit`), then
+/// nudged just inside so they don't immediately flip back. This lets a screen's
+/// doorways sit anywhere along an edge — not only its midpoint — so mazes can
+/// wind their exits wherever the layout wants.
+fn entry_pos(ns: &Screen, dir: Dir, exit: Vec2) -> Vec2 {
+    let map = Vec2::new(ns.w as f32 * TILE, ns.h as f32 * TILE);
     match dir {
-        Dir::East => Vec2::new(HALF.x + 2.0, mid.y),
-        Dir::West => Vec2::new(map.x - HALF.x - 2.0, mid.y),
-        Dir::South => Vec2::new(mid.x, HALF.y + 2.0),
-        Dir::North => Vec2::new(mid.x, map.y - HALF.y - 2.0),
+        Dir::East => {
+            let row = ns.nearest_open_row(0, exit.y);
+            Vec2::new(HALF.x + 2.0, (row as f32 + 0.5) * TILE)
+        }
+        Dir::West => {
+            let row = ns.nearest_open_row(ns.w - 1, exit.y);
+            Vec2::new(map.x - HALF.x - 2.0, (row as f32 + 0.5) * TILE)
+        }
+        Dir::South => {
+            let col = ns.nearest_open_col(0, exit.x);
+            Vec2::new((col as f32 + 0.5) * TILE, HALF.y + 2.0)
+        }
+        Dir::North => {
+            let col = ns.nearest_open_col(ns.h - 1, exit.x);
+            Vec2::new((col as f32 + 0.5) * TILE, map.y - HALF.y - 2.0)
+        }
     }
 }
 

@@ -32,9 +32,9 @@ stop, only the deepest reached so far:
 
 | Level | Screens | Enemies | Notes |
 | ----- | ------- | ------- | ----- |
-| **GREENWOOD** | 3 | [Slime](entities/slime.md) swarms + a lone [demon](entities/demon.md) guardian | The opening level. Clearing it triggers the cutscene where ELARA joins. |
-| **STONE PASS** | 2 | [Gargoyle](entities/gargoyle.md) patrols + a slime pack | A rockier route, screens stacked north–south. Unlocks after Greenwood. |
-| **DEMON FORTRESS** | 2 | [Demon](entities/demon.md) packs (duos and trios) + a [dragon](entities/dragon.md) boss | The toughest so far. Unlocks after Stone Pass; a dragon guards its depths. |
+| **GREENWOOD** | 5 | [Slime](entities/slime.md) swarms + a lone [demon](entities/demon.md) guardian | The opening level: a straightforward forest walk with some winding parts, flowing east then bending north into the deep wood. Clearing it triggers the cutscene where ELARA joins. |
+| **STONE PASS** | 5 | [Gargoyle](entities/gargoyle.md) patrols + a slime pack | A straight rocky descent (screens stacked north–south) that ends in a **boulder maze** you must snake through. Unlocks after Greenwood. |
+| **DEMON FORTRESS** | 6 | [Demon](entities/demon.md) packs (duos and trios) + a [dragon](entities/dragon.md) boss | The toughest so far — a **very mazelike** warren of dark-brick corridors: a gatehouse into a crossing that branches to a dead-end cell block or deeper east through twisting galleries to the dragon's lair. Unlocks after Stone Pass. |
 
 ## Screens
 
@@ -43,10 +43,11 @@ screen is a grid of 16×16 tiles. The party leader walks freely in pixels with
 per-axis collision, sliding along walls rather than sticking, and the **camera
 follows**, clamped so it never shows past the edge of a small screen.
 
-Walk into the **opening in the middle of an edge** — where the border tiles stop
-— and, if that side links to another screen, you flip to it and appear at the
-opposite edge. A brief grace period after arriving stops a demon from instantly
-pouncing on you.
+Walk into an **opening in an edge** — anywhere the border tiles stop — and, if
+that side links to another screen, you flip to it and step out of the opening on
+the opposite edge **nearest to where you left**, so a maze can wind its doorways
+wherever the layout wants rather than always at the mid-point. A brief grace
+period after arriving stops a demon from instantly pouncing on you.
 
 ### Tiles
 

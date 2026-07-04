@@ -254,7 +254,9 @@ LevelDef(
 
 - `node` places the marker; the map cursor moves between markers by direction.
 - `north`/`south`/`east`/`west` are **indices into this level's `screens`**. Leave
-  an opening in the middle of the matching wall so the player can walk through it.
+  an opening anywhere in the matching wall so the player can walk through it; on
+  arrival they step out of the opening on the far screen's edge nearest to where
+  they left, so the gaps needn't line up at the mid-point.
 - A roaming enemy takes its on-map look from its encounter's **first** enemy.
 
 ## Add a cutscene
