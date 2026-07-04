@@ -10,6 +10,7 @@
 //!   - [`party`]     — the persistent, extensible party.
 //!   - [`overworld`] — tile-mapped world you explore between battles.
 //!   - [`battle`]    — turn-based battle scene.
+//!   - [`shop`]      — enter-a-store scene: browse and buy gear from a keeper.
 //!   - [`cutscene`]  — data-driven scripted dialogue / party recruitment.
 //!   - [`audio`]     — background music playback (macroquad audio).
 //!   - [`save`]      — persistent save files (native file / web IndexedDB).
@@ -27,6 +28,7 @@ pub mod overworld;
 pub mod party;
 pub mod renderer;
 pub mod save;
+pub mod shop;
 pub mod util;
 
 pub use app::{run, window_conf};

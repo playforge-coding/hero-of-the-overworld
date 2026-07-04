@@ -11,7 +11,7 @@ turn-based battles — then watch a scripted cutscene recruit a new party member
 - **Audio:** looping background music via [`macroquad::audio`](https://docs.rs/macroquad/latest/macroquad/audio/)
   (native + web)
 - **Content:** a plain-text [RON](https://github.com/ron-rs/ron) data file — add heroes,
-  enemies, skills, levels, and cutscenes without touching engine code
+  enemies, skills, levels, shops, and cutscenes without touching engine code
 - **Saves:** progress persists automatically in a small custom binary format — a
   file (via [`dirs`](https://crates.io/crates/dirs)) natively, IndexedDB on the web
 - **Tests:** fast data/logic tests plus a real end-to-end suite that drives the actual game
@@ -57,9 +57,11 @@ the tiled overworld freely; roaming enemies chase you inside an aggro radius and
 **battle** on contact — but you move faster than they do, so encounters can be dodged. In
 battle each living party member chooses **ATTACK**, a **SKILL**, or **DEFEND**, then
 everyone acts in speed order. Hits can **miss** or land a **critical** for extra damage,
-and each hero's **weapon and armor** tilt those odds. Clear every demon in a level to
-mark it done on the map and **unlock the next** — progression is linear. Your party,
-clears, and per-level progress are **saved automatically** and resume on the next launch.
+and each hero's **weapon and armor** tilt those odds. Walk up to a **shopkeeper** on the
+map to step into a store and spend battle winnings on new gear. Clear every demon in a
+level to mark it done on the map and **unlock the next** — progression is linear. Your
+party, clears, and per-level progress are **saved automatically** and resume on the next
+launch.
 
 ---
 
@@ -75,10 +77,11 @@ that is letterboxed into the real window, so game code never deals with real pix
 | [`src/party.rs`](src/party.rs) | the persistent, extensible party (HP/MP/XP carried between battles) |
 | [`src/overworld.rs`](src/overworld.rs) | tile-mapped levels: screens, walking, camera, roaming enemies |
 | [`src/battle.rs`](src/battle.rs) | the turn-based battle scene (commands → AI → resolve) |
+| [`src/shop.rs`](src/shop.rs) | the shop interior scene: walk-in store + buy-and-equip UI |
 | [`src/cutscene.rs`](src/cutscene.rs) | data-driven scripted dialogue + party recruitment |
 | [`src/audio.rs`](src/audio.rs) | background music via `macroquad::audio` (native + web) |
 | [`src/save.rs`](src/save.rs) | custom binary save format + storage (native file via `dirs`, web IndexedDB) |
-| [`src/game.rs`](src/game.rs) | scene state machine (title → map → level → cutscene → battle → report) |
+| [`src/game.rs`](src/game.rs) | scene state machine (title → map → level → cutscene → battle → shop → report) |
 | [`src/input.rs`](src/input.rs) | logical buttons polled from the keyboard and gamepads (`gilrs`) each frame |
 | [`src/app.rs`](src/app.rs) | the macroquad main loop + window config |
 
@@ -134,8 +137,9 @@ The data file also defines **skills** (physical / magical / heal, single or all 
 each with a description), **equipment** (weapons and armor with stat bonuses, crit /
 accuracy / evasion, and descriptions — heroes and enemies equip them by id), **enemies**
 (stats, skills, AI, XP/gold rewards), **encounters** (named groups of enemies), **levels**
-(a map marker plus a set of connected ASCII-tile screens with enemy spawns), and
-**cutscenes** (scripted dialogue lines and recruits).
+(a map marker plus a set of connected ASCII-tile screens with enemy spawns and shop
+entrances), **shops** (a keeper, a facing/exit wall, and priced wares that buy-and-equip),
+and **cutscenes** (scripted dialogue lines and recruits).
 
 ### The sprite sheets
 
@@ -158,8 +162,9 @@ Tiles (`grass`, `water`, `tree`, `rock`, `barricade`) are their own 16×16 PNGs 
 Two layers:
 
 **1. Fast data/logic tests** — run on every `cargo test`, no display needed. They validate the
-RON parses, every skill/enemy/encounter/texture/cutscene cross-reference resolves, that every
-level's screens are linked and traversable, and that the party mechanics (build, recruit,
+RON parses, every skill/enemy/encounter/texture/cutscene/shop cross-reference resolves, that
+every level's screens are linked and traversable, that shop wares and keeper placements are
+valid, that the shop interior/buy logic behaves, and that the party mechanics (build, recruit,
 level-up) behave.
 
 ```bash
@@ -184,6 +189,7 @@ They need a display (X11 here) and the `libX11`/`libXtst` runtime libs. What the
 | `title_screen_renders_content` | the title actually renders (not a blank frame) |
 | `enter_map_then_level_via_cutscene` | title → map → intro cutscene → tiled level, each transition visibly changing the screen |
 | `walking_into_slime_starts_battle` | walking into a roaming enemy starts a battle; hero and slime sprites are found on screen via template match |
+| `enter_shop_and_buy` | walk to the keeper → enter the shop → open the buy menu → buy an item, each step visibly changing the screen |
 
 > A subtle bug the e2e suite caught: automation tools deliver a key press and release within
 > a single frame, so classic `down && !previous` edge detection (sampled once per update)
@@ -199,7 +205,8 @@ assets/
   data/game.ron                     # the content database
   textures/entities/playables/...   # party sprite sheets
   textures/entities/monsters/...    # enemy sprite sheets
-  textures/tiles/...                # overworld tile art
+  textures/entities/npcs/...        # shopkeeper + other NPC sprites
+  textures/tiles/...                # overworld + shop tile art
   textures/ui/font.ttf              # embedded UI font (TrueType)
   music/battle.ogg                  # looping battle theme (embedded)
   music/boss.ogg                    # looping boss theme (embedded)

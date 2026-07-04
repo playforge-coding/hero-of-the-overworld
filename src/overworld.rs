@@ -26,6 +26,8 @@ const ENEMY_SPEED: f32 = 34.0;
 const AGGRO: f32 = 108.0;
 /// Center-to-center distance at which an enemy triggers a battle.
 const CONTACT: f32 = 11.0;
+/// How close (px) the player must stand to a shop keeper to enter on Confirm.
+const SHOP_REACH: f32 = 22.0;
 /// Half-extents of the (feet) collision box used against solid tiles.
 const HALF: Vec2 = Vec2::new(5.0, 4.0);
 /// How close to an edge (px) counts as "in the opening" for a screen flip.
@@ -62,7 +64,7 @@ impl Tile {
 // ---- Actors -----------------------------------------------------------------
 
 #[derive(Copy, Clone)]
-enum Facing {
+pub(crate) enum Facing {
     Down,
     Up,
     Left,
@@ -112,10 +114,19 @@ pub struct Trigger {
     pub encounter: String,
 }
 
+/// A shop doorway on a screen: a shopkeeper standing at `pos` who ushers the
+/// player into the referenced shop when they walk up and press Confirm.
+struct ShopEntrance {
+    pos: Vec2,
+    shop: String,
+}
+
 /// What an [`Overworld::update`] wants the game to do next.
 pub enum Event {
     /// Start a battle (an enemy touched the player).
     Battle(Trigger),
+    /// Enter the shop with this id (player walked up to a keeper and confirmed).
+    EnterShop(String),
     /// Leave the level and go back to the map screen.
     ExitToMap,
 }
@@ -127,6 +138,7 @@ struct Screen {
     w: usize,
     h: usize,
     enemies: Vec<Enemy>,
+    shops: Vec<ShopEntrance>,
     north: Option<usize>,
     south: Option<usize>,
     east: Option<usize>,
@@ -159,6 +171,8 @@ pub struct Overworld {
     screens: Vec<Screen>,
     current: usize,
     tex: TileTex,
+    /// Sprite drawn for a shop keeper standing at an entrance.
+    shop_tex: TextureHandle,
     player: Player,
     cam: Vec2,
     /// Brief window during which contact can't trigger a fight (post-battle or
@@ -196,12 +210,11 @@ impl Overworld {
 
         // The party leader walks the map. Use its overworld sprite, or synthesize
         // one from the battle sprite so any character can lead in a pinch.
-        let leader = &party.members[0];
-        let walk = reg
-            .character(&leader.def_id)
-            .and_then(|c| c.overworld.clone())
-            .unwrap_or_else(|| fallback_walk(&leader.sprite));
+        let walk = leader_walk(reg, party);
         let player_tex = cache.get(r, &walk.texture);
+
+        // Shopkeepers standing at shop entrances share one small NPC sprite.
+        let shop_tex = cache.get(r, "shopkeeper");
 
         let mut screens = Vec::new();
         for (screen_idx, sd) in level.screens.iter().enumerate() {
@@ -261,11 +274,22 @@ impl Overworld {
                 });
             }
 
+            // Shop doorways: a keeper standing at each placed tile.
+            let shops = sd
+                .shops
+                .iter()
+                .map(|sp| ShopEntrance {
+                    pos: tile_center(sp.col, sp.row),
+                    shop: sp.shop.clone(),
+                })
+                .collect();
+
             screens.push(Screen {
                 tiles,
                 w,
                 h,
                 enemies,
+                shops,
                 north: sd.north,
                 south: sd.south,
                 east: sd.east,
@@ -287,6 +311,7 @@ impl Overworld {
             screens,
             current,
             tex,
+            shop_tex,
             player,
             cam: Vec2::ZERO,
             grace: 0.0,
@@ -406,6 +431,19 @@ impl Overworld {
 
         // A screen flip may relocate the player and change the current screen.
         self.check_transition();
+
+        // --- Shop entrance: walk up to a keeper and confirm to go inside ----
+        if input.pressed(Button::Confirm) {
+            let p = self.player.pos;
+            if let Some(sh) = self
+                .cur()
+                .shops
+                .iter()
+                .find(|s| (s.pos - p).length() < SHOP_REACH)
+            {
+                return Some(Event::EnterShop(sh.shop.clone()));
+            }
+        }
 
         // --- Enemies chase (current screen only) ----------------------------
         let target = self.player.pos;
@@ -561,6 +599,7 @@ impl Overworld {
         enum Item {
             Player,
             Enemy(usize),
+            Shop(usize),
         }
         let mut items: Vec<(f32, Item)> = vec![(self.player.pos.y, Item::Player)];
         for (i, e) in self.cur().enemies.iter().enumerate() {
@@ -568,13 +607,48 @@ impl Overworld {
                 items.push((e.pos.y, Item::Enemy(i)));
             }
         }
+        for (i, s) in self.cur().shops.iter().enumerate() {
+            items.push((s.pos.y, Item::Shop(i)));
+        }
         items.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         for (_, item) in &items {
             match item {
                 Item::Player => self.draw_player(r),
                 Item::Enemy(i) => self.draw_enemy(r, &self.cur().enemies[*i]),
+                Item::Shop(i) => self.draw_shop_entrance(r, &self.cur().shops[*i]),
             }
+        }
+    }
+
+    /// A shop keeper standing at a doorway, with a "SHOP" banner and a "PRESS Z"
+    /// prompt once the player is close enough to enter.
+    fn draw_shop_entrance(&self, r: &mut Renderer, s: &ShopEntrance) {
+        let (tw, th) = r.texture_size(self.shop_tex);
+        // Draw the small keeper sprite at roughly double size so it reads on the
+        // field next to the ~20px hero/enemy sprites.
+        let dw = tw as f32 * 1.6;
+        let dh = th as f32 * 1.6;
+        let sx = s.pos.x - self.cam.x;
+        let sy = s.pos.y - self.cam.y;
+        r.draw_rect(
+            sx - dw * 0.32,
+            sy - 1.0,
+            dw * 0.64,
+            3.0,
+            color::rgba(0, 0, 0, 80),
+        );
+        r.draw_texture(
+            self.shop_tex,
+            sx - dw / 2.0,
+            sy + HALF.y - dh,
+            dw,
+            dh,
+            color::WHITE,
+        );
+        r.draw_text_centered("SHOP", sx, sy - dh - 6.0, 1.0, color::rgb(255, 226, 120));
+        if (s.pos - self.player.pos).length() < SHOP_REACH && (self.time * 2.0) as i32 % 2 == 0 {
+            r.draw_text_centered("PRESS Z", sx, sy + 4.0, 1.0, color::rgb(200, 240, 200));
         }
     }
 
@@ -711,7 +785,7 @@ fn facing_of(v: Vec2) -> Facing {
 
 /// Source rect for a directional walk sprite: the row for `facing`, cycling all
 /// `frames` while moving (`walk_t > 0`) and resting on frame 0 when idle.
-fn walk_src(w: &OverworldWalk, facing: Facing, walk_t: f32) -> [f32; 4] {
+pub(crate) fn walk_src(w: &OverworldWalk, facing: Facing, walk_t: f32) -> [f32; 4] {
     let row = match facing {
         Facing::Down => w.row_down,
         Facing::Up => w.row_up,
@@ -769,6 +843,16 @@ fn slide_on(tiles: &[Tile], w: usize, h: usize, pos: Vec2, delta: Vec2) -> Vec2 
         p.y = ny.y;
     }
     p
+}
+
+/// The party leader's overworld walk sprite: its dedicated art, or one
+/// synthesized from its battle sprite so any character can lead. Shared by the
+/// overworld and the shop interior so the walking hero looks the same in both.
+pub(crate) fn leader_walk(reg: &Registry, party: &Party) -> OverworldWalk {
+    let leader = &party.members[0];
+    reg.character(&leader.def_id)
+        .and_then(|c| c.overworld.clone())
+        .unwrap_or_else(|| fallback_walk(&leader.sprite))
 }
 
 /// Build a serviceable overworld walk sprite from a battle sprite when a

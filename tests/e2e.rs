@@ -129,3 +129,63 @@ fn walking_into_slime_starts_battle() {
         "slime sprite not found on screen (best correlation {slime:?})"
     );
 }
+
+/// Enter the GREENWOOD, walk to the OUTFITTER's keeper, step inside, open the
+/// buy menu, and buy an item. Each step visibly changes the screen, proving the
+/// shop scene, its UI, and the purchase flow all work end to end.
+#[test]
+#[ignore = "GUI e2e: needs a display, drives the real window"]
+fn enter_shop_and_buy() {
+    if !gui_available() {
+        eprintln!("skipping: no DISPLAY");
+        return;
+    }
+    let _lock = gui_guard();
+    let _game = Game::launch();
+    let mut gui = autogui();
+
+    // Title -> map -> intro cutscene -> level (GREENWOOD, screen 0).
+    press(&gui, "return");
+    sleep_ms(500);
+    press(&gui, "return");
+    sleep_ms(700);
+    press(&gui, "return");
+    sleep_ms(300);
+    press(&gui, "return");
+    sleep_ms(700);
+    let level = screenshot(&mut gui, "shop_level");
+
+    // The keeper stall is at tile (5,6); the player starts at (2,5). Walk right
+    // and down to reach it, then confirm to step inside the shop.
+    hold(&gui, "d", 700);
+    hold(&gui, "s", 250);
+    press(&gui, "z"); // enter the shop
+    sleep_ms(600);
+    let inside = screenshot(&mut gui, "shop_inside");
+    assert!(
+        changed_fraction(&level, &inside) > 0.2,
+        "screen didn't change entering the shop"
+    );
+    assert!(
+        luminance_stddev(&inside) > 12.0,
+        "shop interior looks blank"
+    );
+
+    // Open the buy menu at the counter.
+    press(&gui, "z");
+    sleep_ms(400);
+    let menu = screenshot(&mut gui, "shop_menu");
+    assert!(
+        changed_fraction(&inside, &menu) > 0.15,
+        "buy menu didn't open at the counter"
+    );
+
+    // Buy the highlighted item; the gold readout / feedback line changes.
+    press(&gui, "z");
+    sleep_ms(400);
+    let bought = screenshot(&mut gui, "shop_bought");
+    assert!(
+        changed_fraction(&menu, &bought) > 0.02,
+        "buying didn't change anything (no feedback / gold update)"
+    );
+}

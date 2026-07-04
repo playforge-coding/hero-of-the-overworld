@@ -84,3 +84,12 @@ swaps in its own boss theme.
 Clear every enemy in every screen and the level shows **LEVEL CLEARED!** — press
 **Cancel**/**Menu** to return to the map (now green), which **unlocks the next
 level** to pick.
+
+## Shops
+
+A screen can also hold a **[shop](shops.md)**: a keeper standing under a **SHOP**
+banner. Walk up and press **Confirm** to step into a wood-floored store where you
+spend the gold you've won on new [weapons and armor](equipment.md). You leave the
+way the keeper faces — walk back out the doorway to return to the map. The
+Greenwood's opening screen has an **OUTFITTER** right by your start, so you can
+kit out before your first fight.

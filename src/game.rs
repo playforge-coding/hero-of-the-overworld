@@ -17,6 +17,7 @@ use crate::overworld::{Event, Overworld, Trigger};
 use crate::party::{Party, PartyMember};
 use crate::renderer::{color, Renderer, VIRTUAL_H, VIRTUAL_W};
 use crate::save::{self, SaveData, SavedLevel, SavedMember};
+use crate::shop::{Shop, ShopEvent};
 use crate::util::{Rng, TextureCache};
 
 enum Scene {
@@ -25,6 +26,9 @@ enum Scene {
     Level,
     Cutscene(Cutscene),
     Battle(Battle),
+    /// Inside a shop, entered from a keeper on the overworld. The `Level` runtime
+    /// stays alive in `self.level` so leaving drops you back where you entered.
+    Shop(Shop),
     Report {
         win: bool,
         lines: Vec<String>,
@@ -234,6 +238,14 @@ impl Game {
                     None => Scene::Battle(battle),
                 }
             }
+            Scene::Shop(mut shop) => match shop.update(input, &mut self.party, dt) {
+                // Leaving a shop can have changed gold/equipment, so persist it.
+                Some(ShopEvent::Exit) => {
+                    self.save();
+                    Scene::Level
+                }
+                None => Scene::Shop(shop),
+            },
             Scene::Report {
                 win,
                 lines,
@@ -311,6 +323,14 @@ impl Game {
                 self.save();
                 self.level = None;
                 Scene::Map
+            }
+            Some(Event::EnterShop(id)) => {
+                let Some(def) = self.reg.shop(&id) else {
+                    log::warn!("entrance references unknown shop '{id}'");
+                    return Scene::Level;
+                };
+                let shop = Shop::new(renderer, &mut self.cache, &self.reg, &self.party, def);
+                Scene::Shop(shop)
             }
             Some(Event::Battle(trigger)) => {
                 let battle = Battle::new(
@@ -445,6 +465,7 @@ impl Game {
             }
             Scene::Cutscene(cs) => cs.draw(renderer),
             Scene::Battle(battle) => battle.draw(renderer, &self.reg),
+            Scene::Shop(shop) => shop.draw(renderer, &self.reg, &self.party),
             Scene::Report { win, lines, .. } => Self::draw_report(*win, lines, renderer),
         }
     }

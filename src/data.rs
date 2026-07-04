@@ -266,6 +266,58 @@ pub struct EnemyDef {
     pub overworld_speed: Option<f32>,
 }
 
+/// One line of a shop's stock: an equipment id and what it costs. Buying it in
+/// the [`crate::shop`] deducts the gold and equips the item to the chosen party
+/// member. Stock is unlimited (you can re-buy), so gold is the only limiter.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ShopStock {
+    /// Equipment id (into [`GameData::equipment`]) sold here.
+    pub item: String,
+    /// Price in gold.
+    pub price: i32,
+}
+
+/// Which wall the shopkeeper faces — and therefore where the interior's exit
+/// doorway is. "You leave the way the keeper is looking." Defaults to `Down`
+/// (the keeper faces the player, the door is on the near/bottom wall).
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Default)]
+pub enum ShopFacing {
+    #[default]
+    Down,
+    Up,
+    Left,
+    Right,
+}
+
+/// A shop: its name, a greeting line, the direction the keeper faces (which is
+/// also the interior's exit), and the goods for sale. Pure data, like every
+/// other content type — adding a shop is a RON edit plus a placement in a screen
+/// (see [`ShopSpawn`]).
+#[derive(Clone, Debug, Deserialize)]
+pub struct ShopDef {
+    pub id: String,
+    pub name: String,
+    /// A line the keeper greets you with when the counter opens.
+    #[serde(default)]
+    pub greeting: Option<String>,
+    /// The wall the keeper faces / the exit doorway. Defaults to `Down`.
+    #[serde(default)]
+    pub facing: ShopFacing,
+    /// The wares on sale.
+    pub stock: Vec<ShopStock>,
+}
+
+/// A shop entrance placed on an overworld screen. Walk up to the keeper standing
+/// here and press Confirm to step inside the referenced [`ShopDef`].
+#[derive(Clone, Debug, Deserialize)]
+pub struct ShopSpawn {
+    /// Tile column / row of the entrance.
+    pub col: u32,
+    pub row: u32,
+    /// Shop id opened on interaction.
+    pub shop: String,
+}
+
 /// A named group of enemies used to seed a battle.
 #[derive(Clone, Debug, Deserialize)]
 pub struct EncounterDef {
@@ -302,6 +354,9 @@ pub struct ScreenDef {
     pub map: Vec<String>,
     #[serde(default)]
     pub spawns: Vec<SpawnDef>,
+    /// Shop entrances on this screen (walk up + Confirm to enter).
+    #[serde(default)]
+    pub shops: Vec<ShopSpawn>,
     #[serde(default)]
     pub north: Option<usize>,
     #[serde(default)]
@@ -379,6 +434,10 @@ pub struct GameData {
     /// Weapons and armor referenced by characters/enemies.
     #[serde(default)]
     pub equipment: Vec<EquipmentDef>,
+    /// Shops the player can enter from the overworld. Optional — a game with no
+    /// shops just omits it.
+    #[serde(default)]
+    pub shops: Vec<ShopDef>,
     pub encounters: Vec<EncounterDef>,
     /// Character ids that make up the party at the start of the game.
     pub starting_party: Vec<String>,
@@ -397,6 +456,7 @@ pub struct Registry {
     skills: HashMap<String, usize>,
     statuses: HashMap<String, usize>,
     equipment: HashMap<String, usize>,
+    shops: HashMap<String, usize>,
     encounters: HashMap<String, usize>,
     cutscenes: HashMap<String, usize>,
 }
@@ -417,6 +477,7 @@ impl Registry {
         let skills = index(&|| data.skills.iter().map(|c| c.id.clone()).collect());
         let statuses = index(&|| data.statuses.iter().map(|c| c.id.clone()).collect());
         let equipment = index(&|| data.equipment.iter().map(|c| c.id.clone()).collect());
+        let shops = index(&|| data.shops.iter().map(|c| c.id.clone()).collect());
         let encounters = index(&|| data.encounters.iter().map(|c| c.id.clone()).collect());
         let cutscenes = index(&|| data.cutscenes.iter().map(|c| c.id.clone()).collect());
         Self {
@@ -426,6 +487,7 @@ impl Registry {
             skills,
             statuses,
             equipment,
+            shops,
             encounters,
             cutscenes,
         }
@@ -475,6 +537,10 @@ impl Registry {
         eq
     }
 
+    pub fn shop(&self, id: &str) -> Option<&ShopDef> {
+        self.shops.get(id).map(|&i| &self.data.shops[i])
+    }
+
     pub fn encounter(&self, id: &str) -> Option<&EncounterDef> {
         self.encounters.get(id).map(|&i| &self.data.encounters[i])
     }
@@ -500,6 +566,7 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "swordsman" => include_bytes!("../assets/textures/entities/playables/swordsman.png"),
         "mage" => include_bytes!("../assets/textures/entities/playables/mage.png"),
         "demon" => include_bytes!("../assets/textures/entities/monsters/demon.png"),
+        "shopkeeper" => include_bytes!("../assets/textures/entities/npcs/shopkeeper.png"),
         "slime" => include_bytes!("../assets/textures/entities/monsters/slime.png"),
         "gargoyle" => include_bytes!("../assets/textures/entities/monsters/gargoyle.png"),
         "dragon" => include_bytes!("../assets/textures/entities/monsters/dragon.png"),
@@ -510,6 +577,8 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "tree" => include_bytes!("../assets/textures/tiles/tree.png"),
         "rock" => include_bytes!("../assets/textures/tiles/rock.png"),
         "barricade" => include_bytes!("../assets/textures/tiles/barricade.png"),
+        // Shop interior: a warm wood plank floor.
+        "wood" => include_bytes!("../assets/textures/tiles/wood.png"),
         // Environment tilesets for the later levels: stony ground for STONE PASS,
         // dark flagstones + brick walls for the DEMON FORTRESS.
         "stone" => include_bytes!("../assets/textures/tiles/stone.png"),

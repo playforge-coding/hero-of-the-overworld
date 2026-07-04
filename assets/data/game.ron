@@ -302,6 +302,28 @@ GameData(
         ),
     ],
 
+    // ------------------------------------------------------------------------
+    // Shops. Each is a little interior you enter from a keeper standing on an
+    // overworld screen (see a screen's `shops:` list). `facing` is the wall the
+    // keeper looks at — and the doorway you leave by. `stock` items are ids into
+    // `equipment` above; buying deducts `price` gold and equips to a chosen
+    // party member. Adding a shop is pure data — no engine change.
+    // ------------------------------------------------------------------------
+    shops: [
+        ShopDef(
+            id: "greenwood_outfitter",
+            name: "OUTFITTER",
+            greeting: Some("FRESH FROM THE FORGE - WHAT'LL IT BE?"),
+            facing: Down,
+            stock: [
+                ShopStock(item: "iron_sword",     price: 40),
+                ShopStock(item: "leather_armor",  price: 40),
+                ShopStock(item: "travelers_robe", price: 70),
+                ShopStock(item: "stone_fists",    price: 120),
+            ],
+        ),
+    ],
+
     encounters: [
         // Slime swarms — three to a fight — fill the GREENWOOD.
         EncounterDef(id: "slime_trio", enemies: ["slime", "slime", "slime"]),
@@ -350,6 +372,10 @@ GameData(
                     east: Some(1),
                     spawns: [
                         SpawnDef(col: 11, row: 5, encounter: "slime_trio"),
+                    ],
+                    // The OUTFITTER's stall, right by where you start.
+                    shops: [
+                        ShopSpawn(col: 5, row: 6, shop: "greenwood_outfitter"),
                     ],
                 ),
                 ScreenDef(

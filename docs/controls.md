@@ -57,11 +57,21 @@ game plays exactly as it does on a single controller.
 
 - **Move** — walk the party leader around the [tile screen](world.md#screens).
   Walking into a mid-edge opening flips to the neighbouring screen.
+- **Confirm** — when standing by a [shopkeeper](shops.md) (a **PRESS Z** prompt
+  shows), step into their shop.
 - **Cancel** / **Menu** — leave the level and go back to the world map. Progress
   in the level (which demons you've beaten) is [saved](gameplay.md#saving), so
   it's kept even across sessions.
 
 Touching a roaming enemy starts a [battle](battles.md).
+
+### Inside a shop
+
+- **Move** — walk the room, or walk **out the doorway** (the wall the keeper
+  faces) to leave.
+- **Confirm** at the counter — open the [buy menu](shops.md#buying).
+- In the buy menu: **Up/Down** pick an item, **Left/Right** pick which hero to
+  outfit, **Confirm** buys and equips, **Cancel** closes the menu.
 
 ### Battle
 

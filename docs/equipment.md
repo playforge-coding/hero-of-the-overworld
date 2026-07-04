@@ -39,6 +39,13 @@ heavy protection. Equipment isn't hero-only: the **[gargoyle](entities/gargoyle.
 swings the brutal but wildly inaccurate **STONE FISTS**, which is exactly why it
 hits like a truck yet misses so often — the accuracy penalty is a real stat.
 
+## Getting new gear
+
+A hero can **start** with gear (set on their `CharacterDef`), or you can **buy**
+it at a **[shop](shops.md)**. The Greenwood's OUTFITTER sells the kit above;
+buying an item equips it to the hero you choose and spends the gold you've won in
+battle, replacing whatever was in that slot.
+
 ## Adding your own
 
 Weapons and armor are pure data, like everything else — an `EquipmentDef` in

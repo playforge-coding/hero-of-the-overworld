@@ -141,6 +141,50 @@ CharacterDef(
 Both fields are optional; a battler with neither just fights on its base stats.
 For the shipped items and what they do, see **[Weapons & Armor](equipment.md)**.
 
+## Add a shop
+
+A **shop** is a store the player enters from the overworld to buy gear. It's two
+data edits: a `ShopDef` in the `shops` list, and a **placement** on a screen so a
+keeper stands there. Buying deducts the price and equips the item — see
+**[Shops](shops.md)** for the player-facing flow.
+
+```ron
+ShopDef(
+    id: "greenwood_outfitter", name: "OUTFITTER",
+    greeting: Some("FRESH FROM THE FORGE - WHAT'LL IT BE?"),
+    facing: Down,                         // the wall the keeper faces = the exit door
+    stock: [
+        ShopStock(item: "iron_sword",     price: 40),   // ids into `equipment`
+        ShopStock(item: "leather_armor",  price: 40),
+        ShopStock(item: "travelers_robe", price: 70),
+    ],
+),
+```
+
+- `facing` is `Down` (default), `Up`, `Left`, or `Right` — it picks which wall
+  the interior's **doorway** sits on, so the player leaves the way the keeper
+  looks.
+- `greeting` is optional flavour shown in the buy menu.
+- Each `ShopStock` names an `equipment` **id** and its **price** in gold. Stock is
+  unlimited; the buyer chooses which party member to outfit.
+
+Then place a keeper on a screen with a `shops` entry (alongside its `spawns`),
+pointing at the shop id:
+
+```ron
+ScreenDef(
+    map: [ /* ... */ ],
+    spawns: [ /* ... */ ],
+    shops: [
+        ShopSpawn(col: 5, row: 6, shop: "greenwood_outfitter"),
+    ],
+),
+```
+
+- `col`/`row` is the standable tile the keeper stands on (walk up + **Confirm**
+  to enter). Keep it on open ground, like a spawn.
+- The keeper's on-map sprite is the shared `shopkeeper` texture.
+
 ## Add an enemy and an encounter
 
 ```ron
@@ -237,8 +281,9 @@ CutsceneDef(
 ## Check your work
 
 The fast test suite parses the data file and cross-checks every reference — that
-each skill, enemy, encounter, texture, and cutscene id resolves, and that every
-level's screens are linked and traversable. Run it after editing:
+each skill, enemy, encounter, texture, cutscene, and shop id resolves, that shop
+wares and keeper placements are valid, and that every level's screens are linked
+and traversable. Run it after editing:
 
 ```sh
 cargo test --test data

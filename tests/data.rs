@@ -518,3 +518,69 @@ fn equipping_gear_changes_effective_stats() {
     );
     assert!(eq.evasion > 0, "the armor should add evasion");
 }
+
+/// Shops are well-formed: every shop id is unique, every ware and every screen
+/// entrance resolves, prices are sane, and entrances sit on standable tiles.
+/// This guards the shop extensibility contract the same way spawns are guarded.
+#[test]
+fn shops_are_valid_and_placed() {
+    let reg = registry();
+
+    for shop in &reg.data.shops {
+        assert!(!shop.name.trim().is_empty(), "shop {} has no name", shop.id);
+        assert!(!shop.stock.is_empty(), "shop {} sells nothing", shop.id);
+        for s in &shop.stock {
+            assert!(
+                reg.equipment(&s.item).is_some(),
+                "shop {} stocks unknown item '{}'",
+                shop.id,
+                s.item
+            );
+            assert!(
+                s.price >= 0,
+                "shop {} item '{}' has a negative price",
+                shop.id,
+                s.item
+            );
+        }
+    }
+
+    // Every entrance placed on a screen is in-bounds, standable, and names a
+    // real shop (a keeper stranded in a wall or pointing at nothing is a bug).
+    for lv in &reg.data.levels {
+        for (si, sc) in lv.screens.iter().enumerate() {
+            let width = sc.map.iter().map(|r| r.chars().count()).max().unwrap();
+            let height = sc.map.len();
+            let solid = |col: u32, row: u32| -> bool {
+                let ch = sc
+                    .map
+                    .get(row as usize)
+                    .and_then(|r| r.chars().nth(col as usize))
+                    .unwrap_or('.');
+                !matches!(ch, '.' | ' ')
+            };
+            for sp in &sc.shops {
+                assert!(
+                    (sp.col as usize) < width && (sp.row as usize) < height,
+                    "level {} screen {si} shop entrance ({},{}) out of bounds",
+                    lv.id,
+                    sp.col,
+                    sp.row
+                );
+                assert!(
+                    !solid(sp.col, sp.row),
+                    "level {} screen {si} shop entrance ({},{}) sits in a solid tile",
+                    lv.id,
+                    sp.col,
+                    sp.row
+                );
+                assert!(
+                    reg.shop(&sp.shop).is_some(),
+                    "level {} screen {si} entrance references unknown shop '{}'",
+                    lv.id,
+                    sp.shop
+                );
+            }
+        }
+    }
+}
