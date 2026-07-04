@@ -11,15 +11,31 @@ fights whoever is present.
 
 ## A round, step by step
 
-1. **Command phase.** For each living hero, in speed order, you pick an action:
-   **ATTACK**, a **SKILL**, or **DEFEND**. You can **Cancel** back to the previous
-   hero to re-plan their choice.
-2. **Enemies plan.** Each enemy chooses an action via its simple AI.
-3. **Resolve.** Everyone's actions are sorted by **speed** (fastest first) and
-   played out one at a time, with a little lunge animation and floating damage /
-   heal numbers.
-4. **Check the outcome.** If all enemies are down you **win**; if all heroes are
-   down you **lose**. Otherwise a new round begins.
+Every living unit — heroes and enemies alike — takes a turn in **initiative
+order**, and each turn resolves **immediately** before the next begins.
+Initiative is a unit's **speed** with a **dash of randomness** mixed in, so the
+swift usually act first but the exact order shifts round to round and near-equal
+units trade the lead. A unit that's **well above the average speed** of everyone
+in the fight also has a **chance at a second turn** that round — the further
+above average, the better the odds — so a nimble hero can sometimes strike twice
+while slow foes plod. There's no separate planning phase: you command a hero the
+moment it's their turn, and the action plays out right away.
+
+1. **Take turns.** Stepping down the initiative order:
+   - On a **hero's** turn you pick **ATTACK**, a **SKILL**, or **DEFEND** (and a
+     target if needed). It resolves at once — a little lunge animation and
+     floating damage / heal numbers — before play moves on.
+   - On an **enemy's** turn it chooses an action via its simple AI and acts
+     immediately.
+   Because turns resolve as they come, a fast enemy can strike between your
+   heroes, and you command each hero with the up-to-the-moment state in view.
+2. **End of round.** Once everyone has acted, lingering **status effects** (burn,
+   regen, …) tick.
+3. **Check the outcome.** If all enemies are down you **win**; if all heroes are
+   down you **lose**. Otherwise the next round begins.
+
+A committed turn can't be taken back — once you confirm a hero's action it
+happens, so there's no cancelling back to a hero who has already moved.
 
 ## The command menu
 

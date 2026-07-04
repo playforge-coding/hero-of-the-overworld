@@ -1,11 +1,14 @@
 //! Turn-based battle scene.
 //!
-//! Flow per round:
-//!   1. Command phase — the player picks an action for each living hero.
-//!   2. Enemies auto-plan via their [`EnemyAi`].
-//!   3. All actions are ordered by speed and executed one at a time with a
+//! Flow per round: every living unit takes a turn in initiative order (effective
+//! speed plus a little randomness), and each turn resolves immediately. A unit
+//! well above the field's average speed may earn a second turn in the round.
+//!   1. Step to the next unit in the initiative-ordered turn list.
+//!   2. A hero's turn opens the command menu; an enemy's turn auto-plans via its
+//!      [`EnemyAi`]. Either way the chosen action plays out at once, with a
 //!      little movement/impact animation and floating damage numbers.
-//!   4. Check for victory/defeat; otherwise start a new round.
+//!   3. When the turn list is spent, status effects tick; then check for
+//!      victory/defeat, otherwise start a new round.
 //!
 //! The scene is data-driven: heroes come from the [`Party`] and enemies from an
 //! encounter in the [`Registry`], so more party members or new enemies work
@@ -197,9 +200,9 @@ enum State {
 }
 
 struct Command {
-    order: Vec<usize>, // living hero battler indices, in turn order
-    current: usize,    // index into `order`
-    planned: Vec<Action>,
+    /// The single hero whose turn it is (battler index). Their action resolves
+    /// immediately once chosen, rather than being batched with the rest.
+    hero: usize,
     stage: Stage,
 }
 
@@ -228,8 +231,10 @@ struct Execute {
     idx: usize,
     elapsed: f32,
     applied: bool,
-    /// Whether end-of-round status ticks (burn damage, etc.) have been resolved
-    /// for this round. They fire once, after the last action.
+    /// True for the tail-of-round bookkeeping step (an empty-queue execute) that
+    /// resolves status ticks (burn damage, etc.) once before the next round.
+    end_of_round: bool,
+    /// Guards the one-shot status tick on an `end_of_round` execute.
     statuses_ticked: bool,
     banner: String,
     popups: Vec<Popup>,
@@ -249,6 +254,11 @@ pub struct Battle {
     battlers: Vec<Battler>,
     state: State,
     encounter_name: String,
+    /// This round's turn order: all living battlers (heroes and enemies) by
+    /// speed, stepped through one at a time so each unit acts the moment its
+    /// turn comes up.
+    turn_order: Vec<usize>,
+    turn_idx: usize,
     /// Icon texture for each equipped item id, resolved once at construction.
     icons: HashMap<String, TextureHandle>,
 }
@@ -353,6 +363,8 @@ impl Battle {
         Battle {
             battlers,
             state: State::Intro(0.6),
+            turn_order: Vec::new(),
+            turn_idx: 0,
             encounter_name: name,
             icons,
         }
@@ -448,14 +460,14 @@ impl Battle {
             State::Intro(timer) => {
                 *timer -= dt;
                 if *timer <= 0.0 {
-                    self.state = self.begin_command(reg);
+                    self.state = self.begin_round(rng, reg);
                 } else {
                     self.state = State::Intro(*timer);
                 }
                 None
             }
             State::Command(cmd) => {
-                let next = self.update_command(cmd, controllers, rng, reg);
+                let next = self.update_command(cmd, controllers, reg);
                 match next {
                     CommandResult::Stay => {
                         self.state = State::Command(std::mem::replace(cmd, dummy_command()));
@@ -467,19 +479,14 @@ impl Battle {
             State::Execute(exec) => {
                 let done = self.update_execute(exec, rng, reg, dt);
                 if done {
-                    if !self.enemies_alive() {
-                        self.state = State::Result {
-                            win: true,
-                            timer: 1.6,
-                        };
-                    } else if !self.heroes_alive() {
-                        self.state = State::Result {
-                            win: false,
-                            timer: 1.6,
-                        };
+                    // An `end_of_round` execute finishes the round (statuses have
+                    // ticked) and opens the next one; any other execute was a
+                    // single unit's action, so hand off to whoever is next.
+                    self.state = if exec.end_of_round {
+                        self.begin_round(rng, reg)
                     } else {
-                        self.state = self.begin_command(reg);
-                    }
+                        self.after_action(rng, reg)
+                    };
                 } else {
                     self.state = State::Execute(std::mem::replace(exec, dummy_execute()));
                 }
@@ -513,32 +520,132 @@ impl Battle {
             .fold((0, 0), |(xp, gold), b| (xp + b.xp, gold + b.gold))
     }
 
-    fn begin_command(&mut self, reg: &Registry) -> State {
+    /// Open a fresh round: clear defends, rebuild the speed-ordered turn list of
+    /// every living battler, and hand control to whoever moves first.
+    fn begin_round(&mut self, rng: &mut Rng, reg: &Registry) -> State {
+        // A tail-of-round status tick may have wiped a side, so check before
+        // opening a new round.
+        if let Some(win) = self.battle_over() {
+            return State::Result { win, timer: 1.6 };
+        }
         for b in &mut self.battlers {
             b.defending = false;
         }
-        let mut order = self.living(Side::Hero);
-        order.sort_by_key(|&i| -self.eff_stats(reg, i).speed);
-        State::Command(Command {
-            order,
-            current: 0,
-            planned: Vec::new(),
-            stage: Stage::Root { cursor: 0 },
-        })
+        // Turn order is speed-based with a dash of randomness: each living unit
+        // rolls an initiative of its effective speed plus a small jitter, so the
+        // swift usually act first but the exact order shifts round to round and
+        // near-equal units trade the lead. Rolls are done once per unit here (not
+        // inside the sort) so every entry keeps a single stable initiative.
+        let living: Vec<usize> = (0..self.battlers.len())
+            .filter(|&i| self.battlers[i].alive())
+            .collect();
+        // "Relatively fast" is measured against the field's average speed: the
+        // further a unit sits above it, the better its odds of a bonus turn.
+        let avg = living
+            .iter()
+            .map(|&i| self.eff_stats(reg, i).speed)
+            .sum::<i32>() as f32
+            / living.len().max(1) as f32;
+
+        let mut init: Vec<(usize, i32)> = Vec::new();
+        for &i in &living {
+            let speed = self.eff_stats(reg, i).speed;
+            init.push((i, speed + rng.range(0, 3)));
+            // A unit well above the average gets a chance at a second turn, rolled
+            // its own initiative so it slots back into the order by speed. The
+            // edge scales with how far above average it is, capped so even a
+            // blazing-fast unit doesn't get a guaranteed double.
+            let edge = speed as f32 - avg;
+            if edge > 0.0 && rng.chance((edge / avg).min(0.6)) {
+                init.push((i, speed + rng.range(0, 3)));
+            }
+        }
+        init.sort_by_key(|&(_, roll)| -roll);
+        self.turn_order = init.into_iter().map(|(i, _)| i).collect();
+        self.turn_idx = 0;
+        self.advance(rng, reg)
+    }
+
+    /// Win (`Some(true)`) if all enemies are down, loss (`Some(false)`) if all
+    /// heroes are, else `None` — the fight goes on.
+    fn battle_over(&self) -> Option<bool> {
+        if !self.enemies_alive() {
+            Some(true)
+        } else if !self.heroes_alive() {
+            Some(false)
+        } else {
+            None
+        }
+    }
+
+    /// Resolve the state after one unit's action: end the fight if a side is
+    /// wiped, otherwise pass the turn to the next unit.
+    fn after_action(&mut self, rng: &mut Rng, reg: &Registry) -> State {
+        if let Some(win) = self.battle_over() {
+            return State::Result { win, timer: 1.6 };
+        }
+        self.advance(rng, reg)
+    }
+
+    /// Step to the next living unit in the turn order. A hero gets the command
+    /// menu; an enemy plans and acts at once. When the order is spent, run the
+    /// end-of-round status tick.
+    fn advance(&mut self, rng: &mut Rng, reg: &Registry) -> State {
+        while self.turn_idx < self.turn_order.len() {
+            let actor = self.turn_order[self.turn_idx];
+            self.turn_idx += 1;
+            if !self.battlers[actor].alive() {
+                continue; // fell earlier this round — skip its turn
+            }
+            return match self.battlers[actor].side {
+                Side::Hero => State::Command(Command {
+                    hero: actor,
+                    stage: Stage::Root { cursor: 0 },
+                }),
+                Side::Enemy => {
+                    let action = self.plan_enemy(actor, rng, reg);
+                    State::Execute(self.action_exec(action))
+                }
+            };
+        }
+        State::Execute(self.end_of_round_exec())
+    }
+
+    /// An execute that plays out a single unit's action.
+    fn action_exec(&self, action: Action) -> Execute {
+        Execute {
+            queue: vec![action],
+            idx: 0,
+            elapsed: 0.0,
+            applied: false,
+            end_of_round: false,
+            statuses_ticked: false,
+            banner: String::new(),
+            popups: Vec::new(),
+        }
+    }
+
+    /// An empty-queue execute that only ticks end-of-round statuses.
+    fn end_of_round_exec(&self) -> Execute {
+        Execute {
+            queue: Vec::new(),
+            idx: 0,
+            elapsed: 0.0,
+            applied: false,
+            end_of_round: true,
+            statuses_ticked: false,
+            banner: String::new(),
+            popups: Vec::new(),
+        }
     }
 
     fn update_command(
         &mut self,
         cmd: &mut Command,
         controllers: &Controllers,
-        rng: &mut Rng,
         reg: &Registry,
     ) -> CommandResult {
-        if cmd.current >= cmd.order.len() {
-            // All heroes have chosen: add enemy actions and build the queue.
-            return CommandResult::Execute(self.build_execution(cmd, rng, reg));
-        }
-        let hero = cmd.order[cmd.current];
+        let hero = cmd.hero;
         // Each hero is commanded by the gamepad assigned to their party slot;
         // with one controller (or the keyboard) `player` falls back to the shared
         // input, so a lone player still commands every hero in turn.
@@ -547,12 +654,9 @@ impl Battle {
         match &mut cmd.stage {
             Stage::Root { cursor } => {
                 menu_move(cursor, ROOT_ITEMS.len(), input);
-                if input.pressed(Button::Cancel) && cmd.current > 0 {
-                    // Go back and re-plan the previous hero.
-                    cmd.current -= 1;
-                    cmd.planned.pop();
-                    cmd.stage = Stage::Root { cursor: 0 };
-                } else if input.pressed(Button::Confirm) {
+                // No "back": the previous unit has already acted this round, so a
+                // committed turn can't be taken back.
+                if input.pressed(Button::Confirm) {
                     match *cursor {
                         0 => {
                             let cands = self.candidates(hero, TargetKind::OneEnemy);
@@ -567,13 +671,11 @@ impl Battle {
                         }
                         1 => cmd.stage = Stage::Skill { cursor: 0 },
                         _ => {
-                            cmd.planned.push(Action {
+                            return CommandResult::Execute(self.action_exec(Action {
                                 actor: hero,
                                 kind: ActionKind::Defend,
                                 targets: vec![],
-                            });
-                            cmd.current += 1;
-                            cmd.stage = Stage::Root { cursor: 0 };
+                            }));
                         }
                     }
                 }
@@ -603,13 +705,11 @@ impl Battle {
                                 };
                             } else {
                                 let targets = self.candidates(hero, target);
-                                cmd.planned.push(Action {
+                                return CommandResult::Execute(self.action_exec(Action {
                                     actor: hero,
                                     kind,
                                     targets,
-                                });
-                                cmd.current += 1;
-                                cmd.stage = Stage::Root { cursor: 0 };
+                                }));
                             }
                         }
                     }
@@ -638,39 +738,14 @@ impl Battle {
                         TargetKind::AllEnemies | TargetKind::AllAllies => candidates.clone(),
                         _ => vec![candidates[*cursor]],
                     };
-                    cmd.planned.push(Action {
+                    return CommandResult::Execute(self.action_exec(Action {
                         actor: hero,
                         kind: pending.kind.clone(),
                         targets,
-                    });
-                    cmd.current += 1;
-                    cmd.stage = Stage::Root { cursor: 0 };
+                    }));
                 }
                 CommandResult::Stay
             }
-        }
-    }
-
-    fn build_execution(&mut self, cmd: &mut Command, rng: &mut Rng, reg: &Registry) -> Execute {
-        let mut queue = std::mem::take(&mut cmd.planned);
-
-        // Enemy AI plans.
-        for &e in &self.living(Side::Enemy) {
-            let action = self.plan_enemy(e, rng, reg);
-            queue.push(action);
-        }
-
-        // Order by speed (desc). Stable enough for a basic JRPG.
-        queue.sort_by_key(|a| -self.eff_stats(reg, a.actor).speed);
-
-        Execute {
-            queue,
-            idx: 0,
-            elapsed: 0.0,
-            applied: false,
-            statuses_ticked: false,
-            banner: String::new(),
-            popups: Vec::new(),
         }
     }
 
@@ -738,9 +813,10 @@ impl Battle {
         exec.popups.retain(|p| p.t < 0.9);
 
         if exec.idx >= exec.queue.len() {
-            // Every action has resolved: tick status effects once (burn damage,
-            // regen, …), then wait for popups to clear and finish the round.
-            if !exec.statuses_ticked {
+            // The action (if any) has resolved. At the tail of a round, tick
+            // status effects once (burn damage, regen, …). Then wait for the
+            // damage numbers to clear before handing off.
+            if exec.end_of_round && !exec.statuses_ticked {
                 exec.statuses_ticked = true;
                 self.tick_statuses(reg, &mut exec.popups);
             }
@@ -1223,10 +1299,7 @@ impl Battle {
     }
 
     fn draw_command(&self, r: &mut Renderer, cmd: &Command, reg: &Registry) {
-        if cmd.current >= cmd.order.len() {
-            return;
-        }
-        let hero = cmd.order[cmd.current];
+        let hero = cmd.hero;
         let hero_name = &self.battlers[hero].name;
 
         // Prompt.
@@ -1391,9 +1464,7 @@ enum CommandResult {
 
 fn dummy_command() -> Command {
     Command {
-        order: vec![],
-        current: 0,
-        planned: vec![],
+        hero: 0,
         stage: Stage::Root { cursor: 0 },
     }
 }
@@ -1404,6 +1475,7 @@ fn dummy_execute() -> Execute {
         idx: 0,
         elapsed: 0.0,
         applied: false,
+        end_of_round: false,
         statuses_ticked: false,
         banner: String::new(),
         popups: vec![],
