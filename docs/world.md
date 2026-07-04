@@ -75,9 +75,11 @@ Each screen can hold **roaming enemies**, placed at spawn points and tied to an
 swarms in the Greenwood, [gargoyle](entities/gargoyle.md) sentinels on the Stone
 Pass, [demon](entities/demon.md) packs — and a lurking [dragon](entities/dragon.md)
 boss — in the Demon Fortress (see the [Bestiary](entities/index.md)). They wander
-near home until you come within their **aggro radius**, then **chase** you. Touch
-one and its encounter starts a **[battle](battles.md)** — the dragon's fight even
-swaps in its own boss theme.
+near home until you come within their **aggro radius**, then **chase** you —
+routing *around* trees, rocks and barricades rather than snagging on them, so
+there's no hiding behind a boulder in the Stone Pass maze. Touch one and its
+encounter starts a **[battle](battles.md)** — the dragon's fight even swaps in
+its own boss theme.
 
 - You're **faster than they are** (gargoyles and crabs especially are a crawl), so
   you can outrun or juke them — clearing a level doesn't *require* fighting every one

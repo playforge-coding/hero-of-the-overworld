@@ -4,10 +4,14 @@
 //! walks freely in virtual pixels with per-axis tile collision (sliding along
 //! walls), and a camera follows, clamped to the screen. Walking into a mid-edge
 //! opening on a side that links to a neighbour flips to that screen — Zelda
-//! style. Roaming enemies chase the player within an aggro radius; touching one
+//! style. Roaming enemies chase the player within an aggro radius, following a
+//! per-frame BFS flow field ([`dist_field`]) so they path *around* solid tiles
+//! instead of jamming against them; touching one
 //! makes [`update`](Overworld::update) return [`Event::Battle`]. Pressing cancel
 //! returns [`Event::ExitToMap`]. The player is faster than the enemies, so
 //! encounters can be dodged.
+
+use std::collections::VecDeque;
 
 use glam::Vec2;
 
@@ -512,17 +516,23 @@ impl Overworld {
             ..
         } = &mut self.screens[self.current];
         let (sw, sh) = (*w, *h);
+        // One BFS flow field from the player, reused by every chasing enemy so
+        // they steer around obstacles instead of pressing into them.
+        let field = dist_field(tiles, sw, sh, target);
         for e in enemies.iter_mut() {
             if e.defeated {
                 continue;
             }
-            let to = target - e.pos;
-            let dist = to.length();
+            let dist = (target - e.pos).length();
             if dist > 0.5 && dist < AGGRO {
-                let delta = to / dist * e.speed * dt;
-                e.facing = facing_of(delta);
-                e.pos = slide_on(tiles, sw, sh, e.pos, delta);
-                e.walk_t += dt;
+                let dir = chase_dir(tiles, sw, sh, &field, e.pos, target);
+                let len = dir.length();
+                if len > 0.001 {
+                    let delta = dir / len * e.speed * dt;
+                    e.facing = facing_of(delta);
+                    e.pos = slide_on(tiles, sw, sh, e.pos, delta);
+                    e.walk_t += dt;
+                }
             } else {
                 e.walk_t = 0.0;
             }
@@ -895,33 +905,125 @@ fn blit_object(r: &mut Renderer, tex: TextureHandle, x: f32, y: f32) {
     r.draw_texture(tex, ox, oy, tw, th, color::WHITE);
 }
 
+/// Whether the tile containing pixel `(x, y)` is solid (out of bounds counts as
+/// solid). Standalone twin of [`Overworld::tile`]`.solid()` for the enemy loop,
+/// whose mutable borrow of the screen rules out calling `&self` methods.
+fn solid_at(tiles: &[Tile], w: usize, h: usize, x: f32, y: f32) -> bool {
+    let col = (x / TILE).floor();
+    let row = (y / TILE).floor();
+    if col < 0.0 || row < 0.0 || col as usize >= w || row as usize >= h {
+        return true;
+    }
+    tiles[row as usize * w + col as usize].solid()
+}
+
+/// Whether the (feet) collision box centred at `c` overlaps any solid tile.
+fn blocked_box(tiles: &[Tile], w: usize, h: usize, c: Vec2) -> bool {
+    solid_at(tiles, w, h, c.x - HALF.x, c.y - HALF.y)
+        || solid_at(tiles, w, h, c.x + HALF.x, c.y - HALF.y)
+        || solid_at(tiles, w, h, c.x - HALF.x, c.y + HALF.y)
+        || solid_at(tiles, w, h, c.x + HALF.x, c.y + HALF.y)
+}
+
 /// Standalone collision-slide against a tile grid (used for enemies, whose loop
 /// holds a mutable borrow that rules out calling `&self` methods).
 fn slide_on(tiles: &[Tile], w: usize, h: usize, pos: Vec2, delta: Vec2) -> Vec2 {
-    let solid_at = |x: f32, y: f32| -> bool {
-        let col = (x / TILE).floor();
-        let row = (y / TILE).floor();
-        if col < 0.0 || row < 0.0 || col as usize >= w || row as usize >= h {
-            return true;
-        }
-        tiles[row as usize * w + col as usize].solid()
-    };
-    let blocked = |c: Vec2| -> bool {
-        solid_at(c.x - HALF.x, c.y - HALF.y)
-            || solid_at(c.x + HALF.x, c.y - HALF.y)
-            || solid_at(c.x - HALF.x, c.y + HALF.y)
-            || solid_at(c.x + HALF.x, c.y + HALF.y)
-    };
     let mut p = pos;
     let nx = Vec2::new(p.x + delta.x, p.y);
-    if !blocked(nx) {
+    if !blocked_box(tiles, w, h, nx) {
         p.x = nx.x;
     }
     let ny = Vec2::new(p.x, p.y + delta.y);
-    if !blocked(ny) {
+    if !blocked_box(tiles, w, h, ny) {
         p.y = ny.y;
     }
     p
+}
+
+/// Column/row of the tile containing `pos`.
+fn tile_of(pos: Vec2) -> (i32, i32) {
+    ((pos.x / TILE).floor() as i32, (pos.y / TILE).floor() as i32)
+}
+
+/// Breadth-first distance (in tile steps) from `target`'s tile to every walkable
+/// tile on the grid; unreachable/solid tiles stay `u16::MAX`. Descending this
+/// field leads to the target *around* obstacles, so enemies path along walls
+/// instead of pressing straight into them. Computed once per frame, shared by
+/// every chasing enemy on the screen (they all home in on the same player).
+fn dist_field(tiles: &[Tile], w: usize, h: usize, target: Vec2) -> Vec<u16> {
+    let mut dist = vec![u16::MAX; w * h];
+    let (tx, ty) = tile_of(target);
+    if tx < 0 || ty < 0 || tx as usize >= w || ty as usize >= h {
+        return dist;
+    }
+    let start = ty as usize * w + tx as usize;
+    if tiles[start].solid() {
+        return dist;
+    }
+    dist[start] = 0;
+    let mut queue = VecDeque::from([(tx, ty)]);
+    while let Some((cx, cy)) = queue.pop_front() {
+        let d = dist[cy as usize * w + cx as usize];
+        for (nx, ny) in [(cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)] {
+            if nx < 0 || ny < 0 || nx as usize >= w || ny as usize >= h {
+                continue;
+            }
+            let ni = ny as usize * w + nx as usize;
+            if tiles[ni].solid() || dist[ni] != u16::MAX {
+                continue;
+            }
+            dist[ni] = d + 1;
+            queue.push_back((nx, ny));
+        }
+    }
+    dist
+}
+
+/// Whether the straight segment from `a` to `b` stays clear of solid tiles
+/// (sampled at half-tile steps). When true an enemy can just make a beeline;
+/// when false it defers to the [`dist_field`] gradient to route around cover.
+fn line_clear(tiles: &[Tile], w: usize, h: usize, a: Vec2, b: Vec2) -> bool {
+    let seg = b - a;
+    let steps = (seg.length() / (TILE * 0.5)).ceil().max(1.0) as i32;
+    (1..=steps).all(|i| !blocked_box(tiles, w, h, a + seg * (i as f32 / steps as f32)))
+}
+
+/// The direction an enemy at `pos` should head to reach `target`. With clear
+/// line of sight it beelines; otherwise it steps toward the neighbouring tile
+/// whose [`dist_field`] value is lowest, routing around obstacles. Falls back to
+/// the straight vector if the field offers no better neighbour (open ground or
+/// an unreachable target).
+fn chase_dir(tiles: &[Tile], w: usize, h: usize, field: &[u16], pos: Vec2, target: Vec2) -> Vec2 {
+    let straight = target - pos;
+    if line_clear(tiles, w, h, pos, target) {
+        return straight;
+    }
+    let (cx, cy) = tile_of(pos);
+    let here = if cx >= 0 && cy >= 0 && (cx as usize) < w && (cy as usize) < h {
+        field[cy as usize * w + cx as usize]
+    } else {
+        u16::MAX
+    };
+    let mut best: Option<(u16, Vec2)> = None;
+    for (nx, ny) in [(cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)] {
+        if nx < 0 || ny < 0 || nx as usize >= w || ny as usize >= h {
+            continue;
+        }
+        let d = field[ny as usize * w + nx as usize];
+        if d == u16::MAX {
+            continue;
+        }
+        if best.is_none_or(|(bd, _)| d < bd) {
+            let center = Vec2::new(nx as f32 * TILE + TILE / 2.0, ny as f32 * TILE + TILE / 2.0);
+            best = Some((d, center));
+        }
+    }
+    match best {
+        // Head for the best neighbour only when it actually gets us closer (or
+        // we're stranded on an unreachable tile); otherwise beeline.
+        Some((d, center)) if d < here => center - pos,
+        _ => straight,
+    }
 }
 
 /// The party leader's overworld walk sprite: its dedicated art, or one
