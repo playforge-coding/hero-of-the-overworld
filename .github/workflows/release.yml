@@ -52,7 +52,7 @@ jobs:
         # macroquad/miniquad links X11 + OpenGL, and its audio backend uses ALSA.
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libxi-dev libgl1-mesa-dev libasound2-dev
+          sudo apt-get install -y libx11-dev libxi-dev libgl1-mesa-dev libasound2-dev libudev-dev
 
       - name: Build
         run: cargo build --release --locked --target ${{ matrix.target }}
