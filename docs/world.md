@@ -27,14 +27,15 @@ open; each later one stays locked (and can't be entered) until the level before
 it is fully cleared. Selecting a locked level shows *"CLEAR THE PREVIOUS LEVEL
 FIRST"* instead of the usual prompt, so the world opens up as you win.
 
-The bundled world has three levels — and the Demon Fortress is not the last
+The bundled world has four levels — and the Demon Fortress is not the last
 stop, only the deepest reached so far:
 
 | Level | Screens | Enemies | Notes |
 | ----- | ------- | ------- | ----- |
 | **GREENWOOD** | 5 | [Slime](entities/slime.md) swarms + a lone [demon](entities/demon.md) guardian | The opening level: a straightforward forest walk with some winding parts, flowing east then bending north into the deep wood. Clearing it triggers the cutscene where ELARA joins. |
 | **STONE PASS** | 5 | [Gargoyle](entities/gargoyle.md) patrols + a slime pack | A straight rocky descent (screens stacked north–south) that ends in a **boulder maze** you must snake through. Unlocks after Greenwood. |
-| **DEMON FORTRESS** | 6 | [Demon](entities/demon.md) packs (duos and trios) + a [dragon](entities/dragon.md) boss | The toughest so far — a **very mazelike** warren of dark-brick corridors: a gatehouse into a crossing that branches to a dead-end cell block or deeper east through twisting galleries to the dragon's lair. Unlocks after Stone Pass. |
+| **TRAVELLER'S END** | 12 | [Crabs](entities/mountain_crab.md), [skeletons](entities/skeleton.md), [gargoyles](entities/gargoyle.md), mounted [dark knights](entities/dark_knight.md) + stray [demons](entities/demon.md) | The **longest trek** in the game: a switchbacking climb up a stony mountain range, grass and pines giving way to bare scree and boneyards. Foes escalate the higher you go — crabs and slimes at the foot, skeletons and gargoyles on the shelves, dark knights and demons holding the storm-lashed summit. Unlocks after Stone Pass. |
+| **DEMON FORTRESS** | 6 | [Demon](entities/demon.md) packs (duos and trios) + a [dragon](entities/dragon.md) boss | The toughest so far — a **very mazelike** warren of dark-brick corridors: a gatehouse into a crossing that branches to a dead-end cell block or deeper east through twisting galleries to the dragon's lair. Unlocks after Traveller's End. |
 
 ## Screens
 
@@ -53,15 +54,19 @@ period after arriving stops a demon from instantly pouncing on you.
 
 | Tile | Char | Walkable? |
 | ---- | ---- | --------- |
-| Grass | `.` (or space) | ✅ the only walkable ground |
+| Grass | `.` (or space) | ✅ walkable base ground |
+| Grass patch | `G` | ✅ walkable — draws grass over the base |
 | Tree | `T` | ⛔ solid — units path around it |
 | Rock | `R` | ⛔ solid |
 | Water | `~` | ⛔ solid |
 | Barricade | `#` | ⛔ solid |
 
-Grass is the base layer drawn under everything; trees and rocks are drawn as
-props sitting on top of it. Anything that isn't grass blocks movement, so screens
-are shaped by their walls of trees, scattered rocks, ponds, and barricades.
+Each level sets its own **base ground** (grassy Greenwood, stony Stone Pass and
+Traveller's End, dark-tiled Demon Fortress), drawn under everything; trees, rocks,
+water and barricades are props on top of it that block movement. A **grass patch**
+(`G`) is the exception that goes the other way — a *walkable* tuft of greenery
+drawn over the base, which is how Traveller's End dots its bare stone with patches
+of grass without re-theming the whole floor.
 
 ## Roaming enemies
 
@@ -74,9 +79,11 @@ near home until you come within their **aggro radius**, then **chase** you. Touc
 one and its encounter starts a **[battle](battles.md)** — the dragon's fight even
 swaps in its own boss theme.
 
-- You're **faster than they are** (gargoyles especially are a crawl), so you can
-  outrun or juke them — clearing a level doesn't *require* fighting every one along
-  the way, but a level is only marked cleared once they're all defeated.
+- You're **faster than they are** (gargoyles and crabs especially are a crawl), so
+  you can outrun or juke them — clearing a level doesn't *require* fighting every one
+  along the way, but a level is only marked cleared once they're all defeated. The
+  mounted **[dark knights](entities/dark_knight.md)** of Traveller's End are the
+  exception that nearly keeps pace, so there's little room to dawdle around them.
 - **Win** a battle and that enemy is gone from the map for good — and that progress
   is [saved](gameplay.md#saving), so it stays beaten even if you leave and return.
 - **Lose** and the enemies in that screen retreat to their starting spots, giving

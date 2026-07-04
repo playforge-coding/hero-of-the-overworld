@@ -70,10 +70,18 @@ The bundled skills:
 | FROST | Magical | 12 | All enemies | Chills every enemy at once |
 | CLAW | Physical | 0 | One enemy | The demon's free claw swipe |
 | FIREBALL | Magical | 6 | One enemy | The demon's spell — inflicts **BURN** (see below) |
+| REAP | Physical | 0 | One enemy | A [skeleton's](entities/skeleton.md) rusted blade |
+| LANCE CHARGE | Physical | 6 | One enemy | A [dark knight's](entities/dark_knight.md) couched-lance charge |
+| TRAMPLE | Physical | 8 | All enemies | A dark knight's warhorse tramples the party |
+| FLAME BREATH | Magical | 10 | All enemies | The [dragon's](entities/dragon.md) gout of fire — inflicts **BURN** |
+| TAIL SWIPE | Physical | 0 | One enemy | The dragon's crushing tail sweep |
 
 (POWER STRIKE / WHIRLWIND / MEND are Roland's; FIREBOLT / FROST / MEND are Elara's;
-CLAW and FIREBALL belong to the [demon](entities/demon.md). Slimes and gargoyles have
-no skills — they only ever use a basic attack.)
+CLAW and FIREBALL belong to the [demon](entities/demon.md); REAP to the
+[skeleton](entities/skeleton.md); LANCE CHARGE and TRAMPLE to the mounted
+[dark knight](entities/dark_knight.md); and FLAME BREATH and TAIL SWIPE to the
+[dragon](entities/dragon.md). Slimes, crabs and gargoyles have no skills — they only
+ever use a basic attack.)
 
 ## Status effects
 

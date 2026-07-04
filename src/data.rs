@@ -24,6 +24,38 @@ pub struct Stats {
     pub speed: i32,
 }
 
+/// Percentage of its base stats (and rewards) that each **party level above 1**
+/// adds to a roaming enemy. Enemies are scaled to the party's level when a battle
+/// begins so they keep pace with the heroes' growth — otherwise a base-stat foe
+/// like a mountain crab is one-shot by the time you reach the later regions.
+pub const ENEMY_SCALE_PCT: i32 = 12;
+
+/// The scale percentage (always ≥ 100) applied to an enemy's stats and rewards at
+/// a given `party_level`. Level 1 is the identity (100%), so the opening region
+/// fights foes at exactly their authored strength.
+pub fn enemy_scale(party_level: i32) -> i32 {
+    100 + ENEMY_SCALE_PCT * (party_level - 1).max(0)
+}
+
+impl Stats {
+    /// These base stats scaled up to `party_level` for dynamic enemy scaling
+    /// (see [`enemy_scale`]). **Speed is deliberately left untouched** so the
+    /// designed turn order survives — lumbering gargoyles still act last and
+    /// mounted dark knights still act first, no matter the party's level.
+    pub fn scaled_to(&self, party_level: i32) -> Stats {
+        let pct = enemy_scale(party_level);
+        let s = |v: i32| v * pct / 100;
+        Stats {
+            max_hp: s(self.max_hp),
+            max_mp: s(self.max_mp),
+            attack: s(self.attack),
+            defense: s(self.defense),
+            magic: s(self.magic),
+            speed: self.speed,
+        }
+    }
+}
+
 /// A sprite-sheet slice: one animation row played as frames.
 #[derive(Clone, Debug, Deserialize)]
 pub struct AnimClip {
@@ -570,6 +602,11 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "slime" => include_bytes!("../assets/textures/entities/monsters/slime.png"),
         "gargoyle" => include_bytes!("../assets/textures/entities/monsters/gargoyle.png"),
         "dragon" => include_bytes!("../assets/textures/entities/monsters/dragon.png"),
+        // TRAVELLER'S END denizens: scuttling crabs, undead skeletons, and the
+        // mounted dark knights that patrol the high passes.
+        "mountain_crab" => include_bytes!("../assets/textures/entities/monsters/mountain_crab.png"),
+        "skeleton" => include_bytes!("../assets/textures/entities/monsters/skeleton.png"),
+        "dark_knight" => include_bytes!("../assets/textures/entities/monsters/dark_knight.png"),
         "starter_sword" => include_bytes!("../assets/textures/items/starter_sword.png"),
         "starter_gear" => include_bytes!("../assets/textures/items/starter_gear.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),

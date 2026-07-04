@@ -449,6 +449,39 @@ fn xp_grants_levels_and_growth() {
     );
 }
 
+/// Roaming enemies scale to the party's level: identity at level 1, and stats
+/// (but never speed) grow with the party so late-game foes aren't one-shot.
+#[test]
+fn enemies_scale_to_party_level() {
+    use hero_of_the_overworld::data::enemy_scale;
+
+    let reg = registry();
+    let crab = reg.enemy("mountain_crab").expect("mountain_crab defined");
+
+    // Level 1 is the identity — the opening region fights foes as authored.
+    assert_eq!(enemy_scale(1), 100);
+    let base = crab.stats.scaled_to(1);
+    assert_eq!(base.max_hp, crab.stats.max_hp);
+    assert_eq!(base.attack, crab.stats.attack);
+
+    // At a higher party level the enemy is meaningfully tougher...
+    let scaled = crab.stats.scaled_to(9);
+    assert!(scaled.max_hp > crab.stats.max_hp, "HP should scale up");
+    assert!(scaled.attack > crab.stats.attack, "attack should scale up");
+    assert!(
+        scaled.defense > crab.stats.defense,
+        "defense should scale up"
+    );
+    // ...but its speed (turn order) is preserved exactly.
+    assert_eq!(scaled.speed, crab.stats.speed, "speed must not scale");
+
+    // The party's level is the highest member's level.
+    let mut party = Party::from_registry(&reg);
+    assert_eq!(party.level(), 1);
+    party.grant_xp(1000);
+    assert!(party.level() > 1, "party level tracks the leader's growth");
+}
+
 /// Equipment referenced by characters/enemies resolves, every item icon is
 /// embedded, and every item and skill carries a (non-empty) description.
 #[test]

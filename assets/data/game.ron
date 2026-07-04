@@ -194,6 +194,101 @@ GameData(
             // Prowls its lair at a steady, menacing pace.
             overworld_speed: Some(26.0),
         ),
+        // ------ TRAVELLER'S END denizens ------------------------------------
+        // Mountain crabs: skittering shell-backed fodder of the low slopes. Weak
+        // and slow, but their hard shells (high defense) make them a chore to
+        // crack. mountain_crab.png is a tiny 3x1 sheet: one front-facing row, so
+        // the "attack" clip just replays the idle row a touch faster (a pinch).
+        EnemyDef(
+            id: "mountain_crab",
+            name: "MOUNTAIN CRAB",
+            stats: Stats(max_hp: 30, max_mp: 0, attack: 11, defense: 13, magic: 0, speed: 5),
+            sprite: BattlerSprite(
+                texture: "mountain_crab",
+                frame_w: 16, frame_h: 16,
+                draw_w: 38.0, draw_h: 38.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 3, fps: 3.0),
+                attack: AnimClip(row: 0, first_col: 0, frames: 3, fps: 8.0),
+            ),
+            // One-row sheet: every facing reads the same scuttle row.
+            overworld: Some(OverworldWalk(
+                texture: "mountain_crab",
+                frame_w: 16, frame_h: 16,
+                draw_w: 18.0, draw_h: 18.0,
+                row_down: 0, row_up: 0, row_right: 0, row_left: 0,
+                frames: 3, fps: 6.0,
+            )),
+            skills: [],
+            ai: Basic,
+            xp: 6,
+            gold: 5,
+            // Slow scuttle — easy to sidestep on the map.
+            overworld_speed: Some(26.0),
+        ),
+        // Skeletons: restless undead of the high boneyards. Middling all-round
+        // fighters that swing a REAP with their Random AI. skeleton.png shares
+        // the swordsman's 5x12 layout exactly: rows 0-3 walk down/up/right/left,
+        // rows 4-7 attack down/up/right/left — so, like ROLAND, the walk-right
+        // row reads as idle and the attack-right row (6) is the battle swing.
+        EnemyDef(
+            id: "skeleton",
+            name: "SKELETON",
+            stats: Stats(max_hp: 46, max_mp: 8, attack: 17, defense: 7, magic: 2, speed: 12),
+            sprite: BattlerSprite(
+                texture: "skeleton",
+                frame_w: 16, frame_h: 16,
+                draw_w: 46.0, draw_h: 46.0,
+                faces_left: false,
+                idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+                attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 12.0),
+            ),
+            overworld: Some(OverworldWalk(
+                texture: "skeleton",
+                frame_w: 16, frame_h: 16,
+                draw_w: 20.0, draw_h: 20.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 4, fps: 8.0,
+            )),
+            skills: ["reap"],
+            ai: Random,
+            xp: 15,
+            gold: 11,
+        ),
+        // Dark knights: the mounted lords of the pass and the elite threat of
+        // TRAVELLER'S END. Fast (a charging warhorse acts early), heavily armed
+        // with a CAVALRY LANCE, and able to LANCE CHARGE one hero or TRAMPLE the
+        // whole party. dark_knight.png is a 4x12 sheet of 32x32 frames, three
+        // rows per facing (walk, walk, attack): down 0-2, right 3-5, left 6-8,
+        // up 9-11. The right-facing walk/attack rows serve as the battle idle/
+        // swing (flipped to face the party, as with every enemy).
+        EnemyDef(
+            id: "dark_knight",
+            name: "DARK KNIGHT",
+            stats: Stats(max_hp: 100, max_mp: 16, attack: 22, defense: 16, magic: 4, speed: 15),
+            sprite: BattlerSprite(
+                texture: "dark_knight",
+                frame_w: 32, frame_h: 32,
+                draw_w: 78.0, draw_h: 78.0,
+                faces_left: false,
+                idle:   AnimClip(row: 3, first_col: 0, frames: 4, fps: 5.0),
+                attack: AnimClip(row: 5, first_col: 0, frames: 4, fps: 10.0),
+            ),
+            overworld: Some(OverworldWalk(
+                texture: "dark_knight",
+                frame_w: 32, frame_h: 32,
+                draw_w: 28.0, draw_h: 28.0,
+                row_down: 0, row_up: 9, row_right: 3, row_left: 6,
+                frames: 4, fps: 6.0,
+            )),
+            skills: ["lance_charge", "trample"],
+            weapon: Some("cavalry_lance"),
+            ai: Random,
+            xp: 34,
+            gold: 28,
+            // Mounted and swift — nearly runs the player down; keep moving.
+            overworld_speed: Some(48.0),
+        ),
     ],
 
     skills: [
@@ -243,6 +338,22 @@ GameData(
             id: "tail_swipe", name: "TAIL SWIPE",
             description: "A crushing sweep of the dragon's tail.",
             mp_cost: 0, power: 160, kind: Physical, target: OneEnemy,
+        ),
+        // TRAVELLER'S END foes.
+        SkillDef(
+            id: "reap", name: "REAP",
+            description: "A skeleton's rusted blade drags across one foe.",
+            mp_cost: 0, power: 135, kind: Physical, target: OneEnemy,
+        ),
+        SkillDef(
+            id: "lance_charge", name: "LANCE CHARGE",
+            description: "A thundering couched-lance charge at one hero.",
+            mp_cost: 6, power: 185, kind: Physical, target: OneEnemy,
+        ),
+        SkillDef(
+            id: "trample", name: "TRAMPLE",
+            description: "The warhorse tramples the whole party underhoof.",
+            mp_cost: 8, power: 90, kind: Physical, target: AllEnemies,
         ),
     ],
 
@@ -300,6 +411,13 @@ GameData(
             slot: Weapon, icon: "starter_sword",
             mods: StatMods(attack: 18), crit: 12, accuracy: -34,
         ),
+        // A dark knight's warlance: long reach, a keen point that finds the gap.
+        EquipmentDef(
+            id: "cavalry_lance", name: "CAVALRY LANCE",
+            description: "A mounted knight's warlance; long and deadly.",
+            slot: Weapon, icon: "starter_sword",
+            mods: StatMods(attack: 10), crit: 8, accuracy: 6,
+        ),
     ],
 
     // ------------------------------------------------------------------------
@@ -337,6 +455,18 @@ GameData(
         // The DRAGON boss at the heart of the DEMON FORTRESS. Flagged `boss` so
         // the fight plays the boss theme instead of the usual battle track.
         EncounterDef(id: "dragon_boss", enemies: ["dragon"], boss: true),
+        // TRAVELLER'S END — a long climb of escalating packs. Crabs and skeletons
+        // on the low slopes; gargoyle patrols on the shelves; dark knights and
+        // stray demons holding the summit.
+        EncounterDef(id: "crab_pair",         enemies: ["mountain_crab", "mountain_crab"]),
+        EncounterDef(id: "crab_trio",         enemies: ["mountain_crab", "mountain_crab", "mountain_crab"]),
+        EncounterDef(id: "skeleton_duo",      enemies: ["skeleton", "skeleton"]),
+        EncounterDef(id: "skeleton_trio",     enemies: ["skeleton", "skeleton", "skeleton"]),
+        EncounterDef(id: "knight_solo",       enemies: ["dark_knight"]),
+        EncounterDef(id: "knight_duo",        enemies: ["dark_knight", "dark_knight"]),
+        EncounterDef(id: "knight_skeletons",  enemies: ["dark_knight", "skeleton", "skeleton"]),
+        EncounterDef(id: "knight_demon",      enemies: ["dark_knight", "demon"]),
+        EncounterDef(id: "knight_guard",      enemies: ["dark_knight", "dark_knight", "skeleton"]),
     ],
 
     // ------------------------------------------------------------------------
@@ -352,7 +482,7 @@ GameData(
         // flowing east then bending north into the deep wood.
         LevelDef(
             id: "greenwood", name: "GREENWOOD",
-            node: (1, 2),
+            node: (0, 2),
             start_screen: 0, start: (2, 5),
             intro_cutscene: Some("greenwood_intro"),
             clear_cutscene: Some("mage_joins"),
@@ -468,7 +598,7 @@ GameData(
         // MAZE at the end (screens 3-4) you must wind through to the depths.
         LevelDef(
             id: "stonepass", name: "STONE PASS",
-            node: (3, 1),
+            node: (2, 0),
             start_screen: 0, start: (10, 2),
             ground: Some("stone"),
             screens: [
@@ -577,12 +707,280 @@ GameData(
                 ),
             ],
         ),
+        // TRAVELLER'S END — the longest trek in the game: a switchbacking climb
+        // up a stony mountain range (12 screens), grass and pines giving way to
+        // bare scree and boneyards. Crabs and slimes at the foot, skeletons and
+        // gargoyles on the shelves, and the mounted DARK KNIGHTS (with stray
+        // demons up from the fortress below) holding the storm-lashed summit.
+        // Sits between STONE PASS and the DEMON FORTRESS in the climb.
+        LevelDef(
+            id: "travellersend", name: "TRAVELLER'S END",
+            node: (3, 2),
+            start_screen: 0, start: (2, 5),
+            ground: Some("stone"),
+            intro_cutscene: Some("travellersend_intro"),
+            screens: [
+                // The trailhead: grassy slopes at the foot of the range.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRRRRRRRRRRRRR",
+                        "R..................R",
+                        "R...GGG......TT....R",
+                        "R..GGG.......T.....R",
+                        "R...................",
+                        "R........RR.........",
+                        "R...................",
+                        "R....GG........R...R",
+                        "R..R.G.........R...R",
+                        "R..................R",
+                        "RRRRRRRRRRRRRRRRRRRR",
+                    ],
+                    east: Some(1),
+                    spawns: [
+                        SpawnDef(col: 7, row: 5, encounter: "crab_pair"),
+                        SpawnDef(col: 12, row: 8, encounter: "crab_trio"),
+                    ],
+                ),
+                // The path bends up into the rocks.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRR...RRRRRRRR",
+                        "R..................R",
+                        "R.............TT...R",
+                        "R..R..........T....R",
+                        "........RR.........R",
+                        "...................R",
+                        "...............RR..R",
+                        "R...GG.............R",
+                        "R...GG.....RR......R",
+                        "R..................R",
+                        "RRRRRRRRRRRRRRRRRRRR",
+                    ],
+                    north: Some(2), west: Some(0),
+                    spawns: [
+                        SpawnDef(col: 10, row: 5, encounter: "crab_trio"),
+                        SpawnDef(col: 7, row: 6, encounter: "slime_trio"),
+                    ],
+                ),
+                // A boulder-strewn shelf; the first skeletons stir here.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRRRRRRRRRRRRR",
+                        "R..................R",
+                        "R..RR..............R",
+                        "R..R....RRR.....RR.R",
+                        "R...................",
+                        "R.....G.............",
+                        "R.....G.............",
+                        "R.......RRR..TT....R",
+                        "R............T.....R",
+                        "R..................R",
+                        "RRRRRRRRR...RRRRRRRR",
+                    ],
+                    south: Some(1), east: Some(3),
+                    spawns: [
+                        SpawnDef(col: 10, row: 5, encounter: "skeleton_duo"),
+                        SpawnDef(col: 14, row: 5, encounter: "crab_pair"),
+                    ],
+                ),
+                // A switchback climb guarded by a lone gargoyle.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRR...RRRRRRRR",
+                        "R..................R",
+                        "R...RRR............R",
+                        "R...R........RRR...R",
+                        ".............R.....R",
+                        "...................R",
+                        ".......RRRRR.......R",
+                        "R...............T..R",
+                        "R..GG...........T..R",
+                        "R..................R",
+                        "RRRRRRRRRRRRRRRRRRRR",
+                    ],
+                    north: Some(4), west: Some(2),
+                    spawns: [
+                        SpawnDef(col: 10, row: 4, encounter: "skeleton_duo"),
+                        SpawnDef(col: 14, row: 5, encounter: "gargoyle_solo"),
+                    ],
+                ),
+                // A windswept ledge lined with hardy pines.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRRRRRRRRRRRRR",
+                        "R..................R",
+                        "R...TT.......TT....R",
+                        "R...TT.......TT....R",
+                        "R...................",
+                        "R........RR.........",
+                        "R...................",
+                        "R.....RR....RR.....R",
+                        "R........GG........R",
+                        "R..................R",
+                        "RRRRRRRRR...RRRRRRRR",
+                    ],
+                    south: Some(3), east: Some(5),
+                    spawns: [
+                        SpawnDef(col: 9, row: 4, encounter: "skeleton_trio"),
+                        SpawnDef(col: 16, row: 6, encounter: "crab_trio"),
+                    ],
+                ),
+                // A narrow gap between two ribs of stone.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRR...RRRRRRRR",
+                        "R..................R",
+                        "R.....R..GG.....T..R",
+                        "R.....R.........T..R",
+                        "......R......R.....R",
+                        "......R......R.....R",
+                        "......R......R.....R",
+                        "R............R.....R",
+                        "R..TT........R.....R",
+                        "R..................R",
+                        "RRRRRRRRRRRRRRRRRRRR",
+                    ],
+                    north: Some(6), west: Some(4),
+                    spawns: [
+                        SpawnDef(col: 10, row: 7, encounter: "skeleton_duo"),
+                        SpawnDef(col: 16, row: 5, encounter: "gargoyle_duo"),
+                    ],
+                ),
+                // The high scree, where the dark knights first patrol.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRRRRRRRRRRRRR",
+                        "R..................R",
+                        "R..R.R........RR...R",
+                        "R...R...........R..R",
+                        "R...................",
+                        "R.......RRRR........",
+                        "R...................",
+                        "R...RR.....G....T..R",
+                        "R.....R....GG...T..R",
+                        "R..................R",
+                        "RRRRRRRRR...RRRRRRRR",
+                    ],
+                    south: Some(5), east: Some(7),
+                    spawns: [
+                        SpawnDef(col: 9, row: 4, encounter: "knight_solo"),
+                        SpawnDef(col: 5, row: 6, encounter: "skeleton_trio"),
+                    ],
+                ),
+                // The knights' watch - an open bowl ringed with rock.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRR...RRRRRRRR",
+                        "R..................R",
+                        "R...RR.........RR..R",
+                        "R..................R",
+                        ".........RR........R",
+                        "...G.............G.R",
+                        ".........RR........R",
+                        "R..................R",
+                        "R...RR.........RR..R",
+                        "R..................R",
+                        "RRRRRRRRRRRRRRRRRRRR",
+                    ],
+                    north: Some(8), west: Some(6),
+                    spawns: [
+                        SpawnDef(col: 9, row: 5, encounter: "knight_solo"),
+                        SpawnDef(col: 14, row: 3, encounter: "gargoyle_duo"),
+                    ],
+                ),
+                // A bleak boneyard; a demon has wandered up from below.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRRRRRRRRRRRRR",
+                        "R..................R",
+                        "R......TT..........R",
+                        "R..RR...........RR.R",
+                        "R..R............R...",
+                        "R...................",
+                        "R.......RRRRR.......",
+                        "R..................R",
+                        "R..........GG......R",
+                        "R..................R",
+                        "RRRRRRRRR...RRRRRRRR",
+                    ],
+                    south: Some(7), east: Some(9),
+                    spawns: [
+                        SpawnDef(col: 10, row: 5, encounter: "knight_skeletons"),
+                        SpawnDef(col: 7, row: 7, encounter: "demon_solo"),
+                    ],
+                ),
+                // The last climb before the summit saddle.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRR...RRRRRRRR",
+                        "R..................R",
+                        "R...............T..R",
+                        "R....RRR........T..R",
+                        ".....R.............R",
+                        "...................R",
+                        "............RRR....R",
+                        "R.............R....R",
+                        "R..T.....GG........R",
+                        "R..................R",
+                        "RRRRRRRRRRRRRRRRRRRR",
+                    ],
+                    north: Some(10), west: Some(8),
+                    spawns: [
+                        SpawnDef(col: 10, row: 5, encounter: "knight_duo"),
+                        SpawnDef(col: 7, row: 4, encounter: "demon_duo"),
+                    ],
+                ),
+                // The storm-lashed saddle, held by knight and demon.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRRRRRRRRRRRRR",
+                        "R..................R",
+                        "R...RRR......RRR...R",
+                        "R..................R",
+                        "R...................",
+                        "R........RR.........",
+                        "R...................",
+                        "R..................R",
+                        "R...RRR......RRR...R",
+                        "R..................R",
+                        "RRRRRRRRR...RRRRRRRR",
+                    ],
+                    south: Some(9), east: Some(11),
+                    spawns: [
+                        SpawnDef(col: 10, row: 4, encounter: "knight_demon"),
+                        SpawnDef(col: 7, row: 6, encounter: "demon_duo"),
+                    ],
+                ),
+                // TRAVELLER'S END: the far summit, and its grim last guard.
+                ScreenDef(
+                    map: [
+                        "RRRRRRRRRRRRRRRRRRRR",
+                        "R..................R",
+                        "R...RRR..TT...RRR..R",
+                        "R...R....GG.....R..R",
+                        "...................R",
+                        "...................R",
+                        "...................R",
+                        "R...R....GG.....R..R",
+                        "R...RRR.......RRR..R",
+                        "R..................R",
+                        "RRRRRRRRRRRRRRRRRRRR",
+                    ],
+                    west: Some(10),
+                    spawns: [
+                        SpawnDef(col: 10, row: 5, encounter: "knight_guard"),
+                        SpawnDef(col: 7, row: 4, encounter: "knight_solo"),
+                        SpawnDef(col: 13, row: 6, encounter: "demon_duo"),
+                    ],
+                ),
+            ],
+        ),
         // DEMON FORTRESS — a very mazelike warren of dark-brick corridors: a
         // gatehouse into a crossing that branches to a dead-end cell block or
         // deeper east through twisting galleries to the dragon's lair.
         LevelDef(
             id: "demonfortress", name: "DEMON FORTRESS",
-            node: (5, 2),
+            node: (5, 1),
             start_screen: 0, start: (2, 5),
             ground: Some("dark_floor"),
             wall: Some("dark_wall"),
@@ -742,6 +1140,17 @@ GameData(
                 Recruit(character: "mage"),
                 Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
                     text: "GLAD TO HAVE YOUR FIRE AT MY BACK, ELARA."),
+            ],
+        ),
+        CutsceneDef(
+            id: "travellersend_intro",
+            steps: [
+                Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+                    text: "TRAVELLER'S END - THE LAST MOUNTAIN PASS BEFORE THE DEMON FORTRESS."),
+                Say(speaker: Some("ELARA"), portrait: Some("mage"),
+                    text: "CRABS AND SKELETONS ARE THE LEAST OF IT. THE DARK KNIGHTS RIDE THESE HEIGHTS."),
+                Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+                    text: "THEN WE CLIMB - AND WE DO NOT STOP UNTIL WE REACH THE SUMMIT."),
             ],
         ),
     ],

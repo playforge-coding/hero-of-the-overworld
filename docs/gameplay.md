@@ -50,9 +50,28 @@ own.
 ## Levelling up
 
 Winning a battle awards XP to every living hero. Enough XP raises a hero's
-**level**, which bumps their max HP and MP, attack, defense, magic, and speed,
-and tops them back up to full. Fallen heroes earn no XP from that fight, so
+**level**, which bumps their max HP and MP, attack, defense, and magic, and
+tops them back up to full. Speed is deliberately left alone — enemies don't gain
+speed with level either, so raising it would skew turn order. Fallen heroes earn
+no XP from that fight, so
 keeping everyone alive pays off.
+
+### Enemies scale with you
+
+So the world doesn't fall behind your growth, **roaming enemies scale to your
+party's level** when a battle begins — their HP, attack, defense and magic (and
+their XP/gold rewards) grow with you, so a foe that was a threat early on stays a
+fair fight later instead of becoming a one-hit pushover. Two things are held
+fixed by design:
+
+- **Speed never scales**, so the turn order you learned to exploit still holds —
+  lumbering [gargoyles](entities/gargoyle.md) act last, mounted
+  [dark knights](entities/dark_knight.md) act first.
+- At **party level 1** the scaling is the identity: the opening region fights
+  every foe at exactly its authored strength.
+
+The stat blocks in the [Bestiary](entities/index.md) list those **base** (level-1)
+numbers.
 
 ## If the party falls
 

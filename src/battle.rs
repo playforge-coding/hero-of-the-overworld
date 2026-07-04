@@ -316,28 +316,33 @@ impl Battle {
             });
         }
 
-        // Enemies on the right, from the encounter.
+        // Enemies on the right, from the encounter. Each is scaled to the party's
+        // level so foes keep pace with the heroes' growth instead of becoming
+        // one-shot fodder in the later regions (identity at party level 1).
         let enc = reg
             .encounter(encounter_id)
             .unwrap_or_else(|| panic!("unknown encounter '{encounter_id}'"));
         let name = encounter_id.to_string();
+        let party_level = party.level();
+        let scale = crate::data::enemy_scale(party_level);
         for (slot, eid) in enc.enemies.iter().enumerate() {
             let def = reg
                 .enemy(eid)
                 .unwrap_or_else(|| panic!("unknown enemy '{eid}'"));
             let texture = cache.get(renderer, &def.sprite.texture);
             let home = enemy_home(slot);
-            let eq = reg.equipped(&def.stats, def.weapon.as_deref(), def.armor.as_deref());
+            let stats = def.stats.scaled_to(party_level);
+            let eq = reg.equipped(&stats, def.weapon.as_deref(), def.armor.as_deref());
             load_item_icons(renderer, cache, reg, &mut icons, [&def.weapon, &def.armor]);
             battlers.push(Battler {
                 name: def.name.clone(),
                 side: Side::Enemy,
                 party_index: None,
                 stats: eq.stats,
-                hp: def.stats.max_hp,
-                max_hp: def.stats.max_hp,
-                mp: def.stats.max_mp,
-                max_mp: def.stats.max_mp,
+                hp: stats.max_hp,
+                max_hp: stats.max_hp,
+                mp: stats.max_mp,
+                max_mp: stats.max_mp,
                 skills: def.skills.clone(),
                 weapon: def.weapon.clone(),
                 armor: def.armor.clone(),
@@ -351,8 +356,10 @@ impl Battle {
                 defending: false,
                 statuses: Vec::new(),
                 ai: def.ai(),
-                xp: def.xp,
-                gold: def.gold,
+                // Rewards scale with the same factor, so tougher scaled foes are
+                // worth proportionally more XP and gold.
+                xp: def.xp * scale / 100,
+                gold: def.gold * scale / 100,
                 home,
                 offset: Vec2::ZERO,
                 flash: 0.0,

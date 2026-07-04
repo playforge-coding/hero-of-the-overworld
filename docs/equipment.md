@@ -32,12 +32,15 @@ and crit are rolled.
 | **LEATHER ARMOR** | Armor | +5 DEF, +4% evasion | [Roland](entities/roland.md) | Boiled leather; turns a glance. |
 | **TRAVELER'S ROBE** | Armor | +3 DEF, +2 MAG, +8% evasion | [Elara](entities/elara.md) | Light, enchanted travel cloth. |
 | **STONE FISTS** | Weapon | +18 ATK, +12% crit, **−34% accuracy** | [Gargoyle](entities/gargoyle.md) | Crushing stone knuckles; heavy and clumsy. |
+| **CAVALRY LANCE** | Weapon | +10 ATK, +8% crit, +6% accuracy | [Dark Knight](entities/dark_knight.md) | A mounted knight's warlance; long and deadly. |
 
 Fitting the story, ROLAND marches out in the plain starter kit of a first-month
 conscript, while ELARA's robe leans on evasion and a touch of magic rather than
 heavy protection. Equipment isn't hero-only: the **[gargoyle](entities/gargoyle.md)**
 swings the brutal but wildly inaccurate **STONE FISTS**, which is exactly why it
-hits like a truck yet misses so often — the accuracy penalty is a real stat.
+hits like a truck yet misses so often — the accuracy penalty is a real stat, and
+the **[dark knights](entities/dark_knight.md)** of Traveller's End ride into battle
+behind a keen, reliable **CAVALRY LANCE**.
 
 ## Getting new gear
 

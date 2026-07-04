@@ -23,6 +23,11 @@ combat attributes — **crit**, **accuracy**, and **evasion** — that drive hit
 misses, and critical strikes. See **[Battles](../battles.md#hit-miss-and-crit)** for
 how everything combines into damage.
 
+Enemy numbers here are their **base (party-level-1)** stats. In play, roaming
+enemies are **[scaled to your party's level](../gameplay.md#enemies-scale-with-you)**
+so they keep pace as you grow — every stat except **speed**, which stays fixed to
+preserve the turn order.
+
 ## Heroes
 
 | Hero | HP | MP | ATK | DEF | MAG | SPD | Joins |
@@ -34,14 +39,19 @@ how everything combines into damage.
 
 | Enemy | HP | MP | ATK | DEF | MAG | SPD | Rewards | Found in |
 | ----- | -- | -- | --- | --- | --- | --- | ------- | -------- |
-| [Slime](slime.md) | 22 | 0 | 8 | 4 | 0 | 8 | 4 XP · 3 gold | Greenwood, Stone Pass |
-| [Gargoyle](gargoyle.md) | 64 | 0 | 20 | 14 | 0 | 3 | 18 XP · 14 gold | Stone Pass |
-| [Demon](demon.md) | 68 | 30 | 18 | 9 | 16 | 10 | 16 XP · 12 gold | Greenwood (guardian), Demon Fortress |
+| [Slime](slime.md) | 22 | 0 | 8 | 4 | 0 | 8 | 4 XP · 3 gold | Greenwood, Stone Pass, Traveller's End |
+| [Mountain Crab](mountain_crab.md) | 30 | 0 | 11 | 13 | 0 | 5 | 6 XP · 5 gold | Traveller's End |
+| [Skeleton](skeleton.md) | 46 | 8 | 17 | 7 | 2 | 12 | 15 XP · 11 gold | Traveller's End |
+| [Gargoyle](gargoyle.md) | 64 | 0 | 20 | 14 | 0 | 3 | 18 XP · 14 gold | Stone Pass, Traveller's End |
+| [Demon](demon.md) | 68 | 30 | 18 | 9 | 16 | 10 | 16 XP · 12 gold | Greenwood (guardian), Traveller's End, Demon Fortress |
+| [Dark Knight](dark_knight.md) | 100 | 16 | 22 | 16 | 4 | 15 | 34 XP · 28 gold | Traveller's End |
 | [Dragon](dragon.md) | 340 | 80 | 26 | 17 | 24 | 11 | 150 XP · 120 gold | Demon Fortress (boss) |
 
 Each level fields its own foes: **slimes** swarm the Greenwood (with a lone demon
-guarding its end), **gargoyles** hold the Stone Pass, and **demon** packs fill the
-Demon Fortress — where a lone **[dragon](dragon.md)** boss waits in the depths.
-Enemies are placed as roaming overworld sprites that chase you and start a battle
-on contact — see [The Overworld](../world.md#roaming-enemies). The dragon's fight
-plays a dedicated **boss theme** in place of the usual battle music.
+guarding its end), **gargoyles** hold the Stone Pass, the long climb of **Traveller's
+End** throws **crabs**, **skeletons** and mounted **[dark knights](dark_knight.md)**
+at you (with stray demons up from below), and **demon** packs fill the Demon Fortress
+— where a lone **[dragon](dragon.md)** boss waits in the depths. Enemies are placed as
+roaming overworld sprites that chase you and start a battle on contact — see [The
+Overworld](../world.md#roaming-enemies). The dragon's fight plays a dedicated **boss
+theme** in place of the usual battle music.

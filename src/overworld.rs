@@ -38,6 +38,10 @@ const EDGE: f32 = 1.0;
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum Tile {
     Grass,
+    /// A walkable patch of greenery that draws the grass texture *on top of* the
+    /// level's base ground. On a stony region (`ground: "stone"`) this is how you
+    /// dot the mountains with visible tufts of grass without re-theming the floor.
+    GrassPatch,
     Water,
     Tree,
     Rock,
@@ -51,13 +55,14 @@ impl Tile {
             'R' => Tile::Rock,
             '~' => Tile::Water,
             '#' => Tile::Barricade,
+            'G' => Tile::GrassPatch,
             _ => Tile::Grass, // '.' / space / anything unknown = walkable grass
         }
     }
 
-    /// Grass is the only walkable tile; everything else blocks movement.
+    /// Grass (bare ground and grass patches) is walkable; everything else blocks.
     fn solid(self) -> bool {
-        !matches!(self, Tile::Grass)
+        !matches!(self, Tile::Grass | Tile::GrassPatch)
     }
 }
 
@@ -191,6 +196,8 @@ struct TileTex {
     ground: TextureHandle,
     /// Texture for solid `#` wall tiles (per-level: barricade/dark_wall).
     wall: TextureHandle,
+    /// Grass, drawn over the ground for `G` grass-patch tiles.
+    grass: TextureHandle,
     water: TextureHandle,
     tree: TextureHandle,
     rock: TextureHandle,
@@ -233,6 +240,7 @@ impl Overworld {
         let tex = TileTex {
             ground: cache.get(r, level.ground.as_deref().unwrap_or("grass")),
             wall: cache.get(r, level.wall.as_deref().unwrap_or("barricade")),
+            grass: cache.get(r, "grass"),
             water: cache.get(r, "water"),
             tree: cache.get(r, "tree"),
             rock: cache.get(r, "rock"),
@@ -616,6 +624,9 @@ impl Overworld {
                 r.draw_texture(self.tex.ground, x, y, TILE, TILE, color::WHITE);
                 match t {
                     Tile::Grass => {}
+                    Tile::GrassPatch => {
+                        r.draw_texture(self.tex.grass, x, y, TILE, TILE, color::WHITE)
+                    }
                     Tile::Water => r.draw_texture(self.tex.water, x, y, TILE, TILE, color::WHITE),
                     Tile::Barricade => {
                         r.draw_texture(self.tex.wall, x, y, TILE, TILE, color::WHITE)

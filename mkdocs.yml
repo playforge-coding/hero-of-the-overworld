@@ -72,8 +72,11 @@ nav:
       - Roland: entities/roland.md
       - Elara: entities/elara.md
       - Slime: entities/slime.md
+      - Mountain Crab: entities/mountain_crab.md
+      - Skeleton: entities/skeleton.md
       - Gargoyle: entities/gargoyle.md
       - Demon: entities/demon.md
+      - Dark Knight: entities/dark_knight.md
       - Dragon: entities/dragon.md
   - Extending the Game: modding.md
   - Credits: credits.md

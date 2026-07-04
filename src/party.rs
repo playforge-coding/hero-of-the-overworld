@@ -84,6 +84,14 @@ impl Party {
         self.members.iter().any(|m| m.is_alive())
     }
 
+    /// The party's overall level: the highest level any member has reached.
+    /// Used to scale roaming enemies (see [`crate::data::Stats::scaled_to`]) so
+    /// they keep pace with the party. The max (rather than the average) keeps the
+    /// yardstick stable when a fresh, low-level character is recruited mid-game.
+    pub fn level(&self) -> i32 {
+        self.members.iter().map(|m| m.level).max().unwrap_or(1)
+    }
+
     /// Restore everyone to full (e.g. after resting / on a new run).
     pub fn full_heal(&mut self) {
         for m in &mut self.members {
@@ -111,7 +119,8 @@ impl Party {
                 m.stats.attack += 2;
                 m.stats.defense += 1;
                 m.stats.magic += 1;
-                m.stats.speed += 1;
+                // Speed is intentionally left unchanged: enemies don't gain
+                // speed with level either, so leveling it would skew turn order.
                 m.hp = m.stats.max_hp;
                 m.mp = m.stats.max_mp;
                 leveled.push(i);
