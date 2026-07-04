@@ -94,9 +94,13 @@ cutscene, capturing:
 - your **party** — members, levels, XP, live HP/MP, equipped gear, and gold;
 - which **levels are cleared** (and therefore which are unlocked);
 - your **in-level progress** — the specific demons you've already beaten, so
-  quitting halfway through a level doesn't undo the fights you've won.
+  quitting halfway through a level doesn't undo the fights you've won;
+- your **exact position** — the level, screen, and spot you were standing on, so
+  a save taken mid-level puts you right back there rather than on the world map.
+  (Leaving a level to the map clears this, so you resume on the map instead.)
 
-Next launch, the title offers **CONTINUE** and drops you back into that state.
+Next launch, the title offers **CONTINUE** and drops you back into that state —
+straight into the level and spot where you saved, if you were in one.
 The save lives in a small custom binary file: on desktop under your OS data
 directory (e.g. `~/.local/share/hero-of-the-overworld/save.bin` on Linux,
 `%APPDATA%` on Windows), and in the browser's **IndexedDB** for the

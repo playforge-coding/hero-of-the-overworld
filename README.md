@@ -60,8 +60,8 @@ everyone acts in speed order. Hits can **miss** or land a **critical** for extra
 and each hero's **weapon and armor** tilt those odds. Walk up to a **shopkeeper** on the
 map to step into a store and spend battle winnings on new gear. Clear every demon in a
 level to mark it done on the map and **unlock the next** — progression is linear. Your
-party, clears, and per-level progress are **saved automatically** and resume on the next
-launch.
+party, clears, per-level progress, and your **exact position in a level** are **saved
+automatically** and resume on the next launch.
 
 ---
 

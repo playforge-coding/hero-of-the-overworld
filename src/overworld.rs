@@ -380,6 +380,25 @@ impl Overworld {
             .collect()
     }
 
+    /// The player's feet-center position in world pixels, for saving.
+    pub fn player_pos(&self) -> (f32, f32) {
+        (self.player.pos.x, self.player.pos.y)
+    }
+
+    /// Index of the screen the player is currently standing on, for saving.
+    pub fn current_screen(&self) -> usize {
+        self.current
+    }
+
+    /// Restore a saved position: drop the player onto `screen` at pixel `(x, y)`
+    /// and recenter the camera. Used when resuming a save into a level rather
+    /// than starting it fresh at `level.start`.
+    pub fn set_position(&mut self, screen: usize, x: f32, y: f32) {
+        self.current = screen.min(self.screens.len().saturating_sub(1));
+        self.player.pos = Vec2::new(x, y);
+        self.center_camera();
+    }
+
     fn tile(&self, col: i32, row: i32) -> Tile {
         let s = self.cur();
         if col < 0 || row < 0 || col as usize >= s.w || row as usize >= s.h {

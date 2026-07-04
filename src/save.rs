@@ -19,7 +19,7 @@
 const MAGIC: [u8; 4] = *b"HOTO";
 /// Bump when the layout below changes incompatibly; [`from_bytes`] refuses other
 /// versions rather than misreading them.
-const VERSION: u16 = 1;
+const VERSION: u16 = 2;
 
 /// One party member's mutable, save-worthy state. The immutable bits (name,
 /// sprite, known skills) are rebuilt from the registry via `def_id` on load, so
@@ -50,8 +50,22 @@ pub struct SavedLevel {
     pub screens: Vec<Vec<bool>>,
 }
 
+/// Where the player was standing when they last saved, so a resumed session
+/// drops them back at the exact spot rather than on the world map. `None` when
+/// the save was taken from the map screen (not inside a level).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SavedLocation {
+    /// Level `id` the player was in (survives level reordering).
+    pub level_id: String,
+    /// Which screen within the level.
+    pub screen: usize,
+    /// Player feet-center position in world pixels.
+    pub x: f32,
+    pub y: f32,
+}
+
 /// The complete persisted game state.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct SaveData {
     pub gold: i32,
     pub members: Vec<SavedMember>,
@@ -59,6 +73,8 @@ pub struct SaveData {
     pub cleared: Vec<bool>,
     pub played_cutscenes: Vec<String>,
     pub levels: Vec<SavedLevel>,
+    /// The player's in-level position, if they saved while walking a level.
+    pub location: Option<SavedLocation>,
 }
 
 // ---- Encoding ---------------------------------------------------------------
@@ -72,6 +88,10 @@ fn put_u32(out: &mut Vec<u8>, v: u32) {
 }
 
 fn put_i32(out: &mut Vec<u8>, v: i32) {
+    out.extend_from_slice(&v.to_le_bytes());
+}
+
+fn put_f32(out: &mut Vec<u8>, v: f32) {
     out.extend_from_slice(&v.to_le_bytes());
 }
 
@@ -136,6 +156,17 @@ pub fn to_bytes(data: &SaveData) -> Vec<u8> {
         }
     }
 
+    match &data.location {
+        Some(loc) => {
+            put_bool(&mut out, true);
+            put_str(&mut out, &loc.level_id);
+            put_u32(&mut out, loc.screen as u32);
+            put_f32(&mut out, loc.x);
+            put_f32(&mut out, loc.y);
+        }
+        None => put_bool(&mut out, false),
+    }
+
     out
 }
 
@@ -171,6 +202,10 @@ impl<'a> Reader<'a> {
 
     fn i32(&mut self) -> Option<i32> {
         Some(i32::from_le_bytes(self.take(4)?.try_into().ok()?))
+    }
+
+    fn f32(&mut self) -> Option<f32> {
+        Some(f32::from_le_bytes(self.take(4)?.try_into().ok()?))
     }
 
     fn bool(&mut self) -> Option<bool> {
@@ -268,12 +303,28 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
         levels.push(SavedLevel { id, screens });
     }
 
+    let location = if r.bool()? {
+        let level_id = r.string()?;
+        let screen = r.u32()? as usize;
+        let x = r.f32()?;
+        let y = r.f32()?;
+        Some(SavedLocation {
+            level_id,
+            screen,
+            x,
+            y,
+        })
+    } else {
+        None
+    };
+
     Some(SaveData {
         gold,
         members,
         cleared,
         played_cutscenes,
         levels,
+        location,
     })
 }
 
@@ -421,6 +472,12 @@ mod tests {
                     screens: vec![vec![]],
                 },
             ],
+            location: Some(SavedLocation {
+                level_id: "greenwood".into(),
+                screen: 1,
+                x: 123.5,
+                y: 48.0,
+            }),
         }
     }
 

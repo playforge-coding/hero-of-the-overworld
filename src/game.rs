@@ -16,7 +16,7 @@ use crate::input::{Button, Controllers, Input};
 use crate::overworld::{Event, Overworld, Trigger};
 use crate::party::{Party, PartyMember};
 use crate::renderer::{color, Renderer, VIRTUAL_H, VIRTUAL_W};
-use crate::save::{self, SaveData, SavedLevel, SavedMember};
+use crate::save::{self, SaveData, SavedLevel, SavedLocation, SavedMember};
 use crate::shop::{Shop, ShopEvent};
 use crate::util::{Rng, TextureCache};
 
@@ -67,7 +67,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(_renderer: &mut Renderer, audio: Audio) -> Self {
+    pub fn new(renderer: &mut Renderer, audio: Audio) -> Self {
         let reg = Registry::load();
         let party = Party::from_registry(&reg);
         let cleared = vec![false; reg.data.levels.len()];
@@ -91,7 +91,7 @@ impl Game {
         };
         // Resume a prior session if one is on disk / in the browser.
         if let Some(data) = save::load() {
-            game.apply_save(data);
+            game.apply_save(data, renderer);
             game.has_save = true;
         }
         game
@@ -100,7 +100,7 @@ impl Game {
     /// Overwrite live state from a decoded save. Immutable member data (name,
     /// sprite, skills) is rebuilt from the registry via `def_id`; unknown members
     /// or level ids are skipped so an old save still loads against edited content.
-    fn apply_save(&mut self, data: SaveData) {
+    fn apply_save(&mut self, data: SaveData, renderer: &mut Renderer) {
         self.party.gold = data.gold;
         self.party.members.clear();
         for sm in &data.members {
@@ -134,6 +134,44 @@ impl Game {
         }
         self.played_cutscenes = data.played_cutscenes.into_iter().collect();
         self.level_progress = data.levels.into_iter().map(|l| (l.id, l.screens)).collect();
+
+        // If the save was taken inside a level, rebuild that level and drop the
+        // player back at their exact screen/position. A `None` location (saved on
+        // the world map), or a level id no longer in the registry, resumes on the
+        // map instead. The title's CONTINUE prompt then leads straight into the
+        // restored level (see `Scene::Title`).
+        if let Some(loc) = data.location {
+            if let Some(idx) = self
+                .reg
+                .data
+                .levels
+                .iter()
+                .position(|l| l.id == loc.level_id)
+            {
+                self.current_level = idx;
+                self.map_cursor = idx;
+                let defeated = self
+                    .level_progress
+                    .get(&loc.level_id)
+                    .cloned()
+                    .unwrap_or_default();
+                let mut level = Overworld::new(
+                    renderer,
+                    &mut self.cache,
+                    &self.reg,
+                    &self.party,
+                    idx,
+                    &defeated,
+                );
+                level.set_position(loc.screen, loc.x, loc.y);
+                self.level = Some(level);
+            } else {
+                log::warn!(
+                    "save references unknown level '{}'; resuming on the map",
+                    loc.level_id
+                );
+            }
+        }
     }
 
     /// Snapshot the whole game into a [`SaveData`] and persist it. Called after
@@ -169,12 +207,24 @@ impl Game {
                 screens: screens.clone(),
             })
             .collect();
+        // Record where the player is standing so a resumed session lands back in
+        // the level. `None` while on the map, so continuing then starts on the map.
+        let location = self.level.as_ref().map(|level| {
+            let (x, y) = level.player_pos();
+            SavedLocation {
+                level_id: self.reg.data.levels[self.current_level].id.clone(),
+                screen: level.current_screen(),
+                x,
+                y,
+            }
+        });
         let data = SaveData {
             gold: self.party.gold,
             members,
             cleared: self.cleared.clone(),
             played_cutscenes: self.played_cutscenes.iter().cloned().collect(),
             levels,
+            location,
         };
         save::store(&data);
         self.has_save = true;
@@ -210,7 +260,12 @@ impl Game {
         self.scene = match scene {
             Scene::Title => {
                 if input.pressed(Button::Confirm) {
-                    Scene::Map
+                    // Resume straight into the level if the save restored one.
+                    if self.level.is_some() {
+                        Scene::Level
+                    } else {
+                        Scene::Map
+                    }
                 } else {
                     Scene::Title
                 }
@@ -318,10 +373,12 @@ impl Game {
             None => Scene::Level,
             Some(Event::ExitToMap) => {
                 self.cleared[self.current_level] |= level.all_cleared();
-                // Persist progress (beaten demons, clear state) before we drop
-                // the live level, then forget it.
-                self.save();
+                // Fold in beaten-demon progress while the level is still live,
+                // then drop it *before* saving so the save records "on the map"
+                // (no location) — resuming won't teleport back into the level.
+                self.capture_level_progress();
                 self.level = None;
+                self.save();
                 Scene::Map
             }
             Some(Event::EnterShop(id)) => {
