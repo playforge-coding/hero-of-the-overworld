@@ -1,0 +1,7 @@
+# Pin the toolchain so local builds and CI use the exact same rustc. This keeps
+# the wasm link deterministic and stops Swatinem/rust-cache from mixing object
+# files across silent `@stable` upgrades (which surfaced as spurious
+# "undefined symbol: console_log/glBindTexture/..." link errors on the web build).
+[toolchain]
+channel = "1.95.0"
+targets = ["wasm32-unknown-unknown"]

@@ -37,7 +37,8 @@ jobs:
           lfs: true
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        # Pinned to match rust-toolchain.toml so native + web builds stay in sync.
+        uses: dtolnay/rust-toolchain@1.95.0
         with:
           targets: ${{ matrix.target }}
 

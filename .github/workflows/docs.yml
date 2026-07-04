@@ -57,12 +57,16 @@ jobs:
         run: zensical build --strict
 
       - name: Install Rust toolchain (wasm)
-        uses: dtolnay/rust-toolchain@stable
+        # Pinned to match rust-toolchain.toml; keeps the wasm link deterministic.
+        uses: dtolnay/rust-toolchain@1.95.0
         with:
           targets: wasm32-unknown-unknown
 
       - name: Cache cargo build
         uses: Swatinem/rust-cache@v2
+        with:
+          # Bump this to invalidate stale caches (e.g. after a toolchain change).
+          prefix-key: "v2-wasm"
 
       - name: Build web (wasm)
         # macroquad compiles the `hero` bin to hero.wasm (no wasm-bindgen/Trunk).
