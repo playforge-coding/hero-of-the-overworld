@@ -1234,8 +1234,8 @@ impl Battle {
 
         match &cmd.stage {
             Stage::Root { cursor } => {
+                menu_box(r, 6.0, 16.0, 90.0, &ROOT_ITEMS, *cursor);
                 self.draw_gear_panel(r, reg, hero);
-                menu_box(r, 160.0, 118.0, 90.0, &ROOT_ITEMS, *cursor);
             }
             Stage::Skill { cursor } => {
                 let mut items: Vec<String> = self.battlers[hero]
@@ -1279,7 +1279,18 @@ impl Battle {
     /// descriptions — shown while choosing a command.
     fn draw_gear_panel(&self, r: &mut Renderer, reg: &Registry, hero: usize) {
         let b = &self.battlers[hero];
-        let (x, y, w, h) = (6.0, 16.0, 196.0, 52.0);
+        // Swapped down from the top: the panel now sits at the bottom-left, just
+        // above the party panel (whose height tracks the party size).
+        let party_h = 8.0
+            + self
+                .battlers
+                .iter()
+                .filter(|bt| bt.side == Side::Hero)
+                .count() as f32
+                * 16.0;
+        let (w, h) = (196.0, 52.0);
+        let x = 6.0;
+        let y = VIRTUAL_H - party_h - h - 2.0;
         r.draw_rect(x, y, w, h, color::rgba(12, 14, 28, 232));
         r.draw_rect_outline(x, y, w, h, 1.0, color::rgba(80, 90, 140, 255));
         r.draw_text(
