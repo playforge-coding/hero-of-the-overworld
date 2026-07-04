@@ -41,6 +41,10 @@ You start as a single hero, **ROLAND** the swordsman. Party members carry their
 fight persists into the next until you heal (with the MEND skill, or by being
 revived — see below).
 
+A hero **knocked out** in battle isn't lost. They sit out the rest of that fight,
+but at the start of the **next** battle they rejoin the party back on their feet
+with **5 HP** — enough to fight on, though you'll want to heal them up quickly.
+
 New heroes join through the story. After you clear the **Greenwood**, a cutscene
 introduces **ELARA**, a mage, who joins your party for good. The battle system
 simply iterates whoever is in the party, so a second (or third) hero fights

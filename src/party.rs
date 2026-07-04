@@ -92,6 +92,17 @@ impl Party {
         self.members.iter().map(|m| m.level).max().unwrap_or(1)
     }
 
+    /// Bring downed members back on their feet with a sliver of health. Called
+    /// at the start of each battle so a KO'd hero rejoins the next fight rather
+    /// than being lost for good.
+    pub fn revive_downed(&mut self, hp: i32) {
+        for m in &mut self.members {
+            if !m.is_alive() {
+                m.hp = hp.min(m.stats.max_hp);
+            }
+        }
+    }
+
     /// Restore everyone to full (e.g. after resting / on a new run).
     pub fn full_heal(&mut self) {
         for m in &mut self.members {

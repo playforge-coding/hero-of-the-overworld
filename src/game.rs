@@ -390,6 +390,9 @@ impl Game {
                 Scene::Shop(shop)
             }
             Some(Event::Battle(trigger)) => {
+                // Members who fell in a previous fight rejoin this one with a
+                // sliver of health instead of staying gone.
+                self.party.revive_downed(5);
                 let battle = Battle::new(
                     renderer,
                     &mut self.cache,
