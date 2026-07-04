@@ -455,7 +455,7 @@ impl Battle {
                 None
             }
             State::Command(cmd) => {
-                let next = self.update_command(cmd, controllers, reg);
+                let next = self.update_command(cmd, controllers, rng, reg);
                 match next {
                     CommandResult::Stay => {
                         self.state = State::Command(std::mem::replace(cmd, dummy_command()));
@@ -531,11 +531,12 @@ impl Battle {
         &mut self,
         cmd: &mut Command,
         controllers: &Controllers,
+        rng: &mut Rng,
         reg: &Registry,
     ) -> CommandResult {
         if cmd.current >= cmd.order.len() {
             // All heroes have chosen: add enemy actions and build the queue.
-            return CommandResult::Execute(self.build_execution(cmd, reg));
+            return CommandResult::Execute(self.build_execution(cmd, rng, reg));
         }
         let hero = cmd.order[cmd.current];
         // Each hero is commanded by the gamepad assigned to their party slot;
@@ -650,12 +651,12 @@ impl Battle {
         }
     }
 
-    fn build_execution(&mut self, cmd: &mut Command, reg: &Registry) -> Execute {
+    fn build_execution(&mut self, cmd: &mut Command, rng: &mut Rng, reg: &Registry) -> Execute {
         let mut queue = std::mem::take(&mut cmd.planned);
 
         // Enemy AI plans.
         for &e in &self.living(Side::Enemy) {
-            let action = self.plan_enemy(e, reg);
+            let action = self.plan_enemy(e, rng, reg);
             queue.push(action);
         }
 
@@ -673,7 +674,7 @@ impl Battle {
         }
     }
 
-    fn plan_enemy(&self, enemy: usize, reg: &Registry) -> Action {
+    fn plan_enemy(&self, enemy: usize, rng: &mut Rng, reg: &Registry) -> Action {
         let b = &self.battlers[enemy];
         // Random AI may use a skill; Basic always attacks.
         let use_skill = matches!(b.ai, EnemyAi::Random) && !b.skills.is_empty();
@@ -689,7 +690,7 @@ impl Battle {
                     continue;
                 };
                 if b.mp >= def.mp_cost {
-                    let targets = self.pick_targets(enemy, def.target);
+                    let targets = self.pick_targets(enemy, def.target, rng);
                     if !targets.is_empty() {
                         return Action {
                             actor: enemy,
@@ -700,7 +701,7 @@ impl Battle {
                 }
             }
         }
-        let targets = self.pick_targets(enemy, TargetKind::OneEnemy);
+        let targets = self.pick_targets(enemy, TargetKind::OneEnemy, rng);
         Action {
             actor: enemy,
             kind: ActionKind::Attack,
@@ -708,12 +709,17 @@ impl Battle {
         }
     }
 
-    fn pick_targets(&self, actor: usize, target: TargetKind) -> Vec<usize> {
+    fn pick_targets(&self, actor: usize, target: TargetKind, rng: &mut Rng) -> Vec<usize> {
         let cands = self.candidates(actor, target);
         match target {
             TargetKind::AllEnemies | TargetKind::AllAllies => cands,
             TargetKind::SelfOnly => vec![actor],
-            _ => cands.into_iter().take(1).collect(),
+            // Single target: pick a random living candidate so foes spread their
+            // attacks around instead of always focusing the frontmost hero.
+            _ => match cands.len() {
+                0 => vec![],
+                n => vec![cands[rng.range(0, n as i32 - 1) as usize]],
+            },
         }
     }
 
