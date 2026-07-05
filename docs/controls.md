@@ -4,9 +4,9 @@ comments: true
 
 # Controls
 
-The game plays on the keyboard **or a gamepad** — there is no mouse input. The
-same handful of logical buttons drive every screen; only what they *do* changes
-with context.
+The game plays on the keyboard, **a gamepad**, or **on-screen touch controls** —
+there is no mouse input. The same handful of logical buttons drive every screen;
+only what they *do* changes with context.
 
 ## Buttons
 
@@ -24,7 +24,27 @@ by holding two directions at once (a diagonal on the stick counts too).
 
 Plug in a controller and it just works — anywhere the keyboard does, a gamepad
 does too, and you can use both at once. Gamepad support is native-only; the
-[web build](getting-started.md) stays keyboard-only.
+[web build](getting-started.md) uses the keyboard or the touch controls below.
+
+## Touch controls
+
+On a touchscreen — a phone, a tablet, or the [web build](getting-started.md) —
+the game shows on-screen controls: a directional control in the bottom-left,
+**Confirm** (A) and **Cancel** (B) in the bottom-right, and **Menu** (☰) in the
+top-right. The overlay stays hidden until the first touch, so a desktop keyboard
+or gamepad session never sees it. Like the keyboard, the touch controls command
+party member 1. They sit in the letterbox margins around the 320×180 game area,
+and the layout tracks the screen as you rotate or resize it.
+
+The directional control fits what you're doing:
+
+- **Overworld** — a floating **joystick**. Press anywhere in the lower-left and
+  the stick anchors under your thumb, then follows that finger (even past the
+  ring) until you lift it, so walking never cuts out mid-drag. Push in any
+  direction, diagonals included.
+- **Menus** (title, world map, shop, dialogue) — a plain **d-pad**.
+- **Battle** — just **up/down**, since the command menu is a vertical list.
+  Left/right and Menu are hidden there; A confirms and B backs out.
 
 ### One controller per party member
 

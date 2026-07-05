@@ -15,10 +15,10 @@
 //! [`set_clear_color`](Renderer::set_clear_color) work as before.
 
 use macroquad::prelude::{
-    clear_background, draw_rectangle, draw_text_ex, draw_texture_ex, load_ttf_font_from_bytes,
-    measure_text, screen_height, screen_width, set_camera, set_default_camera, vec2, Camera2D,
-    Color as MqColor, DrawTextureParams, FilterMode, Font, Rect as MqRect, TextParams, Texture2D,
-    BLACK,
+    clear_background, draw_circle, draw_circle_lines, draw_rectangle, draw_text_ex,
+    draw_texture_ex, load_ttf_font_from_bytes, measure_text, screen_dpi_scale, screen_height,
+    screen_width, set_camera, set_default_camera, vec2, Camera2D, Color as MqColor,
+    DrawTextureParams, FilterMode, Font, Rect as MqRect, TextParams, Texture2D, BLACK,
 };
 
 /// Virtual canvas width in pixels. Game coordinates are in this space.
@@ -91,11 +91,45 @@ enum Cmd {
     },
 }
 
+/// A screen-space overlay draw, replayed after the letterboxed scene in raw
+/// window pixels (used for the on-screen touch controls, which live in the
+/// letterbox margins rather than the virtual canvas).
+enum OverlayCmd {
+    Rect {
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        color: MqColor,
+    },
+    Circle {
+        x: f32,
+        y: f32,
+        r: f32,
+        color: MqColor,
+    },
+    CircleOutline {
+        x: f32,
+        y: f32,
+        r: f32,
+        t: f32,
+        color: MqColor,
+    },
+    Text {
+        text: String,
+        cx: f32,
+        cy: f32,
+        px: f32,
+        color: MqColor,
+    },
+}
+
 pub struct Renderer {
     textures: Vec<Texture2D>,
     font: Font,
     clear_color: MqColor,
     queue: Vec<Cmd>,
+    overlay: Vec<OverlayCmd>,
 }
 
 impl Renderer {
@@ -111,7 +145,14 @@ impl Renderer {
             font,
             clear_color: MqColor::new(0.02, 0.02, 0.04, 1.0),
             queue: Vec::new(),
+            overlay: Vec::new(),
         }
+    }
+
+    /// Current window size in logical pixels — the coordinate space the overlay
+    /// draw calls (and the touch controls) work in.
+    pub fn screen_size(&self) -> (f32, f32) {
+        (screen_width(), screen_height())
     }
 
     // ---- Texture creation -----------------------------------------------------
@@ -224,10 +265,83 @@ impl Renderer {
         self.draw_text(text, cx - w / 2.0, y, scale, color);
     }
 
+    // ---- Screen-space overlay -------------------------------------------------
+
+    /// Queue a filled rectangle in raw window pixels, drawn on top of the scene.
+    pub fn draw_overlay_rect(&mut self, x: f32, y: f32, w: f32, h: f32, color: Color) {
+        self.overlay.push(OverlayCmd::Rect {
+            x,
+            y,
+            w,
+            h,
+            color: mq(color),
+        });
+    }
+
+    /// Queue a `t`-thick outline rectangle in raw window pixels.
+    pub fn draw_overlay_rect_outline(
+        &mut self,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        t: f32,
+        color: Color,
+    ) {
+        self.draw_overlay_rect(x, y, w, t, color);
+        self.draw_overlay_rect(x, y + h - t, w, t, color);
+        self.draw_overlay_rect(x, y, t, h, color);
+        self.draw_overlay_rect(x + w - t, y, t, h, color);
+    }
+
+    /// Queue a filled circle centered on `(x, y)` in raw window pixels.
+    pub fn draw_overlay_circle(&mut self, x: f32, y: f32, r: f32, color: Color) {
+        self.overlay.push(OverlayCmd::Circle {
+            x,
+            y,
+            r,
+            color: mq(color),
+        });
+    }
+
+    /// Queue a `t`-thick circle outline centered on `(x, y)` in raw window pixels.
+    pub fn draw_overlay_circle_outline(&mut self, x: f32, y: f32, r: f32, t: f32, color: Color) {
+        self.overlay.push(OverlayCmd::CircleOutline {
+            x,
+            y,
+            r,
+            t,
+            color: mq(color),
+        });
+    }
+
+    /// Queue text centered on `(cx, cy)` in raw window pixels at `px` pixels tall.
+    pub fn draw_overlay_text_centered(
+        &mut self,
+        text: &str,
+        cx: f32,
+        cy: f32,
+        px: f32,
+        color: Color,
+    ) {
+        self.overlay.push(OverlayCmd::Text {
+            text: text.to_string(),
+            cx,
+            cy,
+            px,
+            color: mq(color),
+        });
+    }
+
     // ---- Presentation ---------------------------------------------------------
 
-    /// Letterboxed viewport (x, y, w, h) in real pixels that preserves the
-    /// virtual aspect ratio, centered in the window.
+    /// Letterboxed viewport (x, y, w, h) that preserves the virtual aspect
+    /// ratio, centered in the window. In **logical** pixels — the space
+    /// `screen_width()`, the default camera, and the text/overlay draws all work
+    /// in. `Camera2D::viewport` needs *physical* framebuffer pixels, so multiply
+    /// by [`screen_dpi_scale`] before handing this rect to a camera (see
+    /// [`Self::render`]); otherwise the scene fills only the top-left `1/dpr` of
+    /// the framebuffer on any HiDPI/mobile display.
     fn viewport(&self) -> (f32, f32, f32, f32) {
         let sw = screen_width();
         let sh = screen_height();
@@ -252,11 +366,20 @@ impl Renderer {
 
         let (vx, vy, vw, vh) = self.viewport();
         // Camera: virtual (0,0)-(VW,VH) -> the viewport rect, top-left origin,
-        // y-down (matching game coordinates).
+        // y-down (matching game coordinates). `Camera2D::viewport` is fed
+        // straight to `glViewport`, which works in physical framebuffer pixels,
+        // so scale the logical rect by the DPI (a no-op at dpr 1, but the whole
+        // scene otherwise shrinks into the top-left corner on retina/mobile).
+        let d = screen_dpi_scale();
         let cam = Camera2D {
             target: vec2(VIRTUAL_W / 2.0, VIRTUAL_H / 2.0),
             zoom: vec2(2.0 / VIRTUAL_W, 2.0 / VIRTUAL_H),
-            viewport: Some((vx as i32, vy as i32, vw as i32, vh as i32)),
+            viewport: Some((
+                (vx * d) as i32,
+                (vy * d) as i32,
+                (vw * d) as i32,
+                (vh * d) as i32,
+            )),
             ..Default::default()
         };
         set_camera(&cam);
@@ -324,6 +447,44 @@ impl Renderer {
             }
         }
 
+        // On-screen overlay (touch controls) last, in raw window pixels so it
+        // sits in the letterbox margins, unclipped by the virtual viewport.
+        for cmd in &self.overlay {
+            match cmd {
+                OverlayCmd::Rect { x, y, w, h, color } => {
+                    draw_rectangle(*x, *y, *w, *h, *color);
+                }
+                OverlayCmd::Circle { x, y, r, color } => {
+                    draw_circle(*x, *y, *r, *color);
+                }
+                OverlayCmd::CircleOutline { x, y, r, t, color } => {
+                    draw_circle_lines(*x, *y, *r, *t, *color);
+                }
+                OverlayCmd::Text {
+                    text,
+                    cx,
+                    cy,
+                    px,
+                    color,
+                } => {
+                    let fs = px.round().max(1.0) as u16;
+                    let dims = measure_text(text, Some(&self.font), fs, 1.0);
+                    draw_text_ex(
+                        text,
+                        cx - dims.width / 2.0,
+                        cy + dims.height / 2.0,
+                        TextParams {
+                            font: Some(&self.font),
+                            font_size: fs,
+                            color: *color,
+                            ..Default::default()
+                        },
+                    );
+                }
+            }
+        }
+
         self.queue.clear();
+        self.overlay.clear();
     }
 }

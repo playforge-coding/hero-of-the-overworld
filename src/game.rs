@@ -12,7 +12,7 @@ use crate::audio::{Audio, Track};
 use crate::battle::{Battle, BattleOutcome};
 use crate::cutscene::{Cutscene, CutsceneOutcome};
 use crate::data::Registry;
-use crate::input::{Button, Controllers, Input};
+use crate::input::{Button, Controllers, Input, TouchScheme};
 use crate::overworld::{Event, Overworld, Trigger};
 use crate::party::{Party, PartyMember};
 use crate::renderer::{color, Renderer, VIRTUAL_H, VIRTUAL_W};
@@ -247,6 +247,18 @@ impl Game {
         let steps = self.reg.cutscene(id)?.steps.clone();
         self.played_cutscenes.insert(id.to_string());
         Some(Cutscene::new(renderer, &mut self.cache, &self.reg, steps))
+    }
+
+    /// Which on-screen touch scheme fits the current scene: an analog joystick
+    /// while walking the overworld, up/down only in the vertical battle menu, and
+    /// a plain d-pad everywhere else (title, map, shop, dialogue). Read by the
+    /// main loop before polling input.
+    pub fn touch_scheme(&self) -> TouchScheme {
+        match self.scene {
+            Scene::Level => TouchScheme::Joystick,
+            Scene::Battle(_) => TouchScheme::UpDown,
+            _ => TouchScheme::Dpad,
+        }
     }
 
     pub fn update(&mut self, controllers: &Controllers, renderer: &mut Renderer, dt: f32) {

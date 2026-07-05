@@ -50,7 +50,10 @@ cargo build --release --target wasm32-unknown-unknown --bin hero
 Controls: **arrows / WASD** move, **Enter / Z / Space** confirm, **Esc / X / Backspace**
 cancel or back out, **Shift / C** open the menu (leave a level). A **gamepad**
 works too (native builds) — D-pad/stick to move, A confirm, B cancel; plug in
-several and each controls a party member in battle. See [`docs/controls.md`](docs/controls.md).
+several and each controls a party member in battle. On a **touchscreen** (phones,
+the web build) on-screen controls appear after the first touch — a floating
+joystick in the overworld, a d-pad in menus, up/down in battle. See
+[`docs/controls.md`](docs/controls.md).
 
 Press Enter on the title to reach the **world map**, pick a level, and enter it. You walk
 the tiled overworld freely; roaming enemies chase you inside an aggro radius and start a
@@ -82,7 +85,7 @@ that is letterboxed into the real window, so game code never deals with real pix
 | [`src/audio.rs`](src/audio.rs) | background music via `macroquad::audio` (native + web) |
 | [`src/save.rs`](src/save.rs) | custom binary save format + storage (native file via `dirs`, web IndexedDB) |
 | [`src/game.rs`](src/game.rs) | scene state machine (title → map → level → cutscene → battle → shop → report) |
-| [`src/input.rs`](src/input.rs) | logical buttons polled from the keyboard and gamepads (`gilrs`) each frame |
+| [`src/input.rs`](src/input.rs) | logical buttons polled from the keyboard, gamepads (`gilrs`), and on-screen touch controls each frame |
 | [`src/app.rs`](src/app.rs) | the macroquad main loop + window config |
 
 The `Renderer` keeps the same small API the game modules were written against (a queue of
