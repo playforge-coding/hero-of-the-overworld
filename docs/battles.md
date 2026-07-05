@@ -139,6 +139,30 @@ timing is a real skill — no meter to watch, just the swing. A well-timed block
 stacks on top of **DEFEND**, and the bonuses ride along with crits and everything
 else in the [damage formula](#how-damage-works).
 
+!!! tip "Some heroes are easier to time"
+    The timing window isn't the same for everyone. Most heroes share the default,
+    tight window, but a character can be given a **more forgiving one** — the
+    scout **[Gareth](entities/gareth.md)**, with his quick reflexes, lands GOOD and
+    PERFECT much more easily than Roland does, on **both his attacks and his
+    blocks**. It's a per-character setting (`timing` on a `CharacterDef`), so your
+    own heroes can tune it too — see **[Extending the Game](modding.md)**.
+
+### Taunting a foe
+
+There's a **second** tap woven into a hero's basic **ATTACK**. After your blow
+lands — as the hero pulls back out of the lunge — a brief window opens for a
+follow-up tap on **Confirm**. Land it and you **taunt** the foe you just struck: it
+will **prefer to attack that hero on its next turn** instead of picking a target at
+random, and a pink **TAUNT!** flashes over it to confirm.
+
+It's the same read-the-animation skill as the damage tap, just later in the swing:
+tap once on the connect for extra damage, then again on the recovery to taunt. An
+early panic-tap misses, and the taunt window sits well clear of the damage one, so
+the two never collide. Use it to **pull a dangerous enemy onto your sturdiest
+hero** — bait a hit onto whoever can best soak or [block](#action-timing-strikes-and-blocks)
+it. A taunt lasts until the enemy takes that next turn, then wears off. (Only the
+basic ATTACK taunts — skills don't.)
+
 ### Unblockable attacks
 
 Some enemy attacks are **unblockable** — no block window appears and you take the

@@ -32,6 +32,13 @@ attack, cheap darting skills, and enough HP to hold the line, but low magic and 
 middling defense. Open a round with him to soften or pick off a foe before it can
 move, then let Roland tank and Elara nuke.
 
+His scout's reflexes also give him a **far more forgiving
+[timing window](../battles.md#action-timing-strikes-and-blocks)** than the rest of
+the party — landing **GOOD** and **PERFECT** taps is much easier with Gareth, on
+**both his strikes** (for +50% / +100% damage) **and his blocks** (to shrug off
+incoming hits). His already-quick blade hits even harder, and he braces more
+reliably, in practised hands.
+
 Because a mid-game recruit [joins at the party's current level](../gameplay.md#your-party),
 Gareth arrives already levelled up to match Roland — he's a ready front-liner, not a
 level-1 straggler you have to grind back up.

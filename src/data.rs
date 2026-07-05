@@ -250,6 +250,23 @@ pub struct OverworldWalk {
     pub fps: f32,
 }
 
+/// How forgiving a character's **timed-hit window** is — the SMRPG-style tap woven
+/// into a strike that earns the GOOD / PERFECT bonus (see [`crate::battle`]). The
+/// *same* window governs both this hero's **own attacks** (tapping to add damage)
+/// and their **blocks** (tapping to subtract an incoming blow): it models the
+/// fighter's reflexes, not one specific move. Both fields are half-widths in
+/// animation-time seconds around the moment the blow connects: `perfect` is the
+/// tolerance for the full bonus, `good` the (wider) tolerance for the lesser one.
+/// **Larger = more generous.** This is the per-character extension point for
+/// timed-hit feel — a nimble fighter reads the swing more easily — and it's a pure
+/// data tweak: set [`CharacterDef::timing`] and no engine code changes. Omit it and
+/// the character uses the game's global default window.
+#[derive(Clone, Copy, Debug, Deserialize)]
+pub struct TimingWindow {
+    pub perfect: f32,
+    pub good: f32,
+}
+
 /// A playable party character definition.
 #[derive(Clone, Debug, Deserialize)]
 pub struct CharacterDef {
@@ -257,6 +274,11 @@ pub struct CharacterDef {
     pub name: String,
     pub stats: Stats,
     pub sprite: BattlerSprite,
+    /// Optional override of this character's timed-hit window (attacks *and*
+    /// blocks). When absent, the global default window applies; widen it for a
+    /// more forgiving fighter (see [`TimingWindow`]).
+    #[serde(default)]
+    pub timing: Option<TimingWindow>,
     /// Skill ids this character knows (in addition to the basic Attack).
     #[serde(default)]
     pub skills: Vec<String>,

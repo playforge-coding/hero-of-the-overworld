@@ -112,11 +112,23 @@ struct Battler {
     crit: i32,
     accuracy: i32,
     evasion: i32,
+    /// This battler's timed-hit window half-widths (PERFECT / GOOD), in animation
+    /// seconds, used for both their own attacks and their blocks. Resolved once at
+    /// build time from the character's [`crate::data::TimingWindow`] override, or
+    /// the global default. Only heroes take timed taps, so this is left at the
+    /// default for enemies.
+    timing_perfect: f32,
+    timing_good: f32,
     sprite: BattlerSprite,
     texture: TextureHandle,
     idle: Anim,
     anim: Anim,
     defending: bool,
+    /// If this (enemy) battler has been **taunted**, the hero (battler index) it
+    /// will prefer to strike on its next turn. Set by a hero's well-timed taunt
+    /// follow-up (see [`TauntTry`]) and consumed — cleared — when the enemy plans
+    /// its action. Heroes leave this `None`.
+    taunted_by: Option<usize>,
     /// Status conditions currently in effect (burn, slow, …). Drives per-round
     /// ticks and effective-stat adjustments.
     statuses: Vec<ActiveStatus>,
@@ -194,6 +206,11 @@ struct Popup {
 // within `STRIKE_GOOD` is a hair early/late → the lesser bonus, and anything
 // further out (or no tap) misses. Tapping *before* the animation gets you nothing
 // — an early panic tap simply whiffs.
+//
+// `STRIKE_PERFECT` / `STRIKE_GOOD` are the *default* window half-widths. A
+// character can widen their own window (for both attacks and blocks) via
+// `CharacterDef::timing` (see [`crate::data::TimingWindow`]); each [`TimedHit`]
+// carries the resolved half-widths so the scoring is per-action, not global.
 const STRIKE_CONNECT: f32 = 0.2;
 const STRIKE_PERFECT: f32 = 0.05;
 const STRIKE_GOOD: f32 = 0.13;
@@ -236,6 +253,11 @@ struct TimedHit {
     /// eligible: zero is a plain miss, and two or more is button-mashing, which
     /// forfeits the bonus.
     presses: u32,
+    /// Window half-widths (animation seconds) for this action's PERFECT / GOOD
+    /// tiers. Default to [`STRIKE_PERFECT`] / [`STRIKE_GOOD`], but a character can
+    /// widen their own window (see [`crate::data::TimingWindow`]).
+    perfect: f32,
+    good: f32,
 }
 
 impl TimedHit {
@@ -245,7 +267,16 @@ impl TimedHit {
             presser,
             press_t: None,
             presses: 0,
+            perfect: STRIKE_PERFECT,
+            good: STRIKE_GOOD,
         }
+    }
+
+    /// Override the timing window half-widths (a more/less forgiving fighter).
+    fn with_window(mut self, perfect: f32, good: f32) -> Self {
+        self.perfect = perfect;
+        self.good = good;
+        self
     }
 
     /// How well the tap landed, from its distance to the connect moment. Anything
@@ -255,9 +286,9 @@ impl TimedHit {
             return TimingResult::Miss;
         }
         let off = (self.press_t.unwrap_or(f32::INFINITY) - STRIKE_CONNECT).abs();
-        if off <= STRIKE_PERFECT {
+        if off <= self.perfect {
             TimingResult::Perfect
-        } else if off <= STRIKE_GOOD {
+        } else if off <= self.good {
             TimingResult::Good
         } else {
             TimingResult::Miss
@@ -323,6 +354,49 @@ impl HitMod {
     };
 }
 
+// ---- Taunt follow-up --------------------------------------------------------
+
+// After a hero's basic attack lands, a *second* timed tap on the recovery lets
+// them **taunt** the foe they just struck, making it prefer to target that hero on
+// its next turn. Like the damage timed-hit there's no prompt: read the swing and
+// tap Confirm on the pull-back. The window sits safely after the damage window
+// shuts (even for a wide-window fighter) and before the swing ends, so the two
+// taps never collide. The first post-hit tap is the attempt — an early panic tap
+// misses, so it's a genuine bit of timing, not a mash.
+const TAUNT_CONNECT: f32 = 0.62;
+const TAUNT_WINDOW: f32 = 0.12;
+
+// Invariants (checked at compile time): the taunt window must open only after the
+// damage window has fully shut — even for the most forgiving fighter (a `good` of
+// 0.20, Gareth's) — and close before the swing ends at 0.9, so the two taps can
+// never be confused for one another.
+const _: () = assert!(TAUNT_CONNECT - TAUNT_WINDOW > STRIKE_CONNECT + 0.20);
+const _: () = assert!(TAUNT_CONNECT + TAUNT_WINDOW < 0.9);
+
+/// A hero's taunt attempt on their basic attack: the follow-up tap that, if
+/// well-timed, marks the struck foe to prefer this hero next turn.
+struct TauntTry {
+    /// Hero (battler index) whose controller drives the follow-up tap.
+    presser: usize,
+    /// The enemy (battler index) taunted on success.
+    target: usize,
+    /// Animation time of the first tap *after* the blow landed (`None` until then).
+    /// An early tap (before the window) is recorded and scored a miss.
+    press_t: Option<f32>,
+    /// Set once the attempt has been scored, so it resolves exactly once.
+    resolved: bool,
+}
+
+impl TauntTry {
+    /// Whether the recorded tap fell inside the taunt window.
+    fn landed(&self) -> bool {
+        match self.press_t {
+            Some(t) => (t - TAUNT_CONNECT).abs() <= TAUNT_WINDOW,
+            None => false,
+        }
+    }
+}
+
 // ---- Battle state -----------------------------------------------------------
 
 pub enum BattleOutcome {
@@ -378,6 +452,9 @@ struct Execute {
     timed: Option<TimedHit>,
     /// Damage modifier banked from `timed`, applied when the blow lands.
     hit_mod: HitMod,
+    /// The taunt follow-up for this action, if it warrants one (a hero's basic
+    /// attack on a living foe). Tracks the post-hit tap; `None` otherwise.
+    taunt: Option<TauntTry>,
     /// True for the tail-of-round bookkeeping step (an empty-queue execute) that
     /// resolves status ticks (burn damage, etc.) once before the next round.
     end_of_round: bool,
@@ -432,6 +509,12 @@ impl Battle {
             // Fold equipment into the battler's stats and combat attributes.
             let eq = reg.equipped(&m.stats, m.weapon.as_deref(), m.armor.as_deref());
             load_item_icons(renderer, cache, reg, &mut icons, [&m.weapon, &m.armor]);
+            // Resolve this hero's timed-hit window (attacks and blocks): a
+            // per-character override (e.g. Gareth's generous window) or the default.
+            let (timing_perfect, timing_good) = reg
+                .character(&m.def_id)
+                .and_then(|c| c.timing)
+                .map_or((STRIKE_PERFECT, STRIKE_GOOD), |t| (t.perfect, t.good));
             battlers.push(Battler {
                 name: m.name.clone(),
                 side: Side::Hero,
@@ -447,11 +530,14 @@ impl Battle {
                 crit: eq.crit,
                 accuracy: eq.accuracy,
                 evasion: eq.evasion,
+                timing_perfect,
+                timing_good,
                 idle: Anim::from_clip(&m.sprite.idle, true),
                 anim: Anim::from_clip(&m.sprite.idle, true),
                 sprite: m.sprite.clone(),
                 texture,
                 defending: false,
+                taunted_by: None,
                 statuses: Vec::new(),
                 ai: EnemyAi::Basic,
                 xp: 0,
@@ -496,11 +582,15 @@ impl Battle {
                 crit: eq.crit,
                 accuracy: eq.accuracy,
                 evasion: eq.evasion,
+                // Enemies never take a timed tap; keep the default window.
+                timing_perfect: STRIKE_PERFECT,
+                timing_good: STRIKE_GOOD,
                 idle: Anim::from_clip(&def.sprite.idle, true),
                 anim: Anim::from_clip(&def.sprite.idle, true),
                 sprite: def.sprite.clone(),
                 texture,
                 defending: false,
+                taunted_by: None,
                 statuses: Vec::new(),
                 ai: def.ai(),
                 // Rewards scale with the same factor, so tougher scaled foes are
@@ -758,6 +848,9 @@ impl Battle {
                 }),
                 Side::Enemy => {
                     let action = self.plan_enemy(actor, rng, reg);
+                    // A taunt biases only this planned turn; consume it now so the
+                    // enemy goes back to picking freely afterward.
+                    self.battlers[actor].taunted_by = None;
                     State::Execute(self.action_exec(action))
                 }
             };
@@ -775,6 +868,7 @@ impl Battle {
             started: false,
             timed: None,
             hit_mod: HitMod::NEUTRAL,
+            taunt: None,
             end_of_round: false,
             statuses_ticked: false,
             banner: String::new(),
@@ -792,6 +886,7 @@ impl Battle {
             started: false,
             timed: None,
             hit_mod: HitMod::NEUTRAL,
+            taunt: None,
             end_of_round: true,
             statuses_ticked: false,
             banner: String::new(),
@@ -949,12 +1044,21 @@ impl Battle {
         match target {
             TargetKind::AllEnemies | TargetKind::AllAllies => cands,
             TargetKind::SelfOnly => vec![actor],
-            // Single target: pick a random living candidate so foes spread their
-            // attacks around instead of always focusing the frontmost hero.
-            _ => match cands.len() {
-                0 => vec![],
-                n => vec![cands[rng.range(0, n as i32 - 1) as usize]],
-            },
+            // Single target: a taunt overrides the choice — the enemy prefers the
+            // hero who taunted it, as long as that hero is still a living target.
+            // Otherwise pick a random living candidate so foes spread their attacks
+            // around instead of always focusing the frontmost hero.
+            _ => {
+                if let Some(h) = self.battlers[actor].taunted_by {
+                    if cands.contains(&h) {
+                        return vec![h];
+                    }
+                }
+                match cands.len() {
+                    0 => vec![],
+                    n => vec![cands[rng.range(0, n as i32 - 1) as usize]],
+                }
+            }
         }
     }
 
@@ -1000,6 +1104,7 @@ impl Battle {
             exec.started = true;
             exec.banner = self.action_banner(&action, reg);
             exec.timed = self.make_timed(&action, reg);
+            exec.taunt = self.make_taunt(&action);
             exec.hit_mod = HitMod::NEUTRAL;
         }
 
@@ -1016,12 +1121,16 @@ impl Battle {
 
         // Tally the presser's taps as they happen in the swing: the first fixes
         // the timing, and any beyond it mark this as mashing (which forfeits the
-        // bonus in `TimedHit::result`).
-        if let Some(th) = &mut exec.timed {
-            let pi = self.battlers[th.presser].party_index.unwrap_or(0);
-            if controllers.player(pi).pressed(Button::Confirm) {
-                th.press_t.get_or_insert(t);
-                th.presses += 1;
+        // bonus in `TimedHit::result`). Only taps *before* the blow lands count —
+        // once damage is locked in, a later tap belongs to the taunt follow-up
+        // below, not to mashing.
+        if !exec.applied {
+            if let Some(th) = &mut exec.timed {
+                let pi = self.battlers[th.presser].party_index.unwrap_or(0);
+                if controllers.player(pi).pressed(Button::Confirm) {
+                    th.press_t.get_or_insert(t);
+                    th.presses += 1;
+                }
             }
         }
 
@@ -1037,7 +1146,15 @@ impl Battle {
             0.0
         };
 
-        if t >= STRIKE_APPLY && !exec.applied {
+        // The blow lands once this action's timing window has fully shut. A
+        // character with a wider window (Gareth) keeps taking taps a little
+        // longer, so the late edge isn't clipped; the lunge holds until 0.55, so
+        // there's slack for it. Actions with no timed hit use the default apply.
+        let apply_t = exec
+            .timed
+            .as_ref()
+            .map_or(STRIKE_APPLY, |th| STRIKE_CONNECT + th.good);
+        if t >= apply_t && !exec.applied {
             exec.applied = true;
             // The timing window has closed: lock in the tap's modifier and float
             // its label as after-the-fact feedback (a miss shows nothing).
@@ -1062,6 +1179,36 @@ impl Battle {
             self.apply_action(&action, exec.hit_mod, rng, reg, &mut exec.popups);
         }
 
+        // Taunt follow-up: once the blow has landed, the hero's first tap on the
+        // recovery is their taunt attempt. Land it in the window and the struck
+        // foe is marked to prefer this hero next turn; an early tap misses.
+        if exec.applied {
+            if let Some(tt) = &mut exec.taunt {
+                if !tt.resolved {
+                    let pi = self.battlers[tt.presser].party_index.unwrap_or(0);
+                    if tt.press_t.is_none() && controllers.player(pi).pressed(Button::Confirm) {
+                        tt.press_t = Some(t);
+                    }
+                    // Resolve as soon as the outcome is known: a recorded tap, or
+                    // the window closing with none.
+                    if tt.press_t.is_some() || t > TAUNT_CONNECT + TAUNT_WINDOW {
+                        tt.resolved = true;
+                        let (target, presser, landed) = (tt.target, tt.presser, tt.landed());
+                        if landed && self.battlers[target].alive() {
+                            self.battlers[target].taunted_by = Some(presser);
+                            let pos = self.battlers[target].pos() + Vec2::new(0.0, -20.0);
+                            exec.popups.push(Popup {
+                                text: "TAUNT!".to_string(),
+                                pos,
+                                t: 0.0,
+                                color: color::rgb(255, 120, 200),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         if t >= 0.9 {
             // Restore idle and move to the next action.
             let idle = self.battlers[actor].idle.clone();
@@ -1081,6 +1228,7 @@ impl Battle {
         exec.started = false;
         exec.timed = None;
         exec.hit_mod = HitMod::NEUTRAL;
+        exec.taunt = None;
     }
 
     /// Arm the timed hit for an action, if it warrants one. A hero's damaging
@@ -1103,18 +1251,53 @@ impl Battle {
         }
 
         match self.battlers[action.actor].side {
-            // Hero striking foes: time the swing for bonus damage.
-            Side::Hero => Some(TimedHit::new(TimingKind::Attack, action.actor)),
-            // Enemy striking heroes: brace to block, unless the blow is unblockable.
+            // Hero striking foes: time the swing for bonus damage, using this
+            // hero's own window (a nimble fighter's is more forgiving).
+            Side::Hero => {
+                let b = &self.battlers[action.actor];
+                Some(
+                    TimedHit::new(TimingKind::Attack, action.actor)
+                        .with_window(b.timing_perfect, b.timing_good),
+                )
+            }
+            // Enemy striking heroes: brace to block, unless the blow is
+            // unblockable. The bracing hero uses their own window too, so a
+            // quick-reflexed defender (Gareth) blocks as forgivingly as they strike.
             Side::Enemy if !unblockable => {
                 let defender =
                     action.targets.iter().copied().find(|&t| {
                         self.battlers[t].alive() && self.battlers[t].side == Side::Hero
                     })?;
-                Some(TimedHit::new(TimingKind::Block, defender))
+                let d = &self.battlers[defender];
+                Some(
+                    TimedHit::new(TimingKind::Block, defender)
+                        .with_window(d.timing_perfect, d.timing_good),
+                )
             }
             Side::Enemy => None,
         }
+    }
+
+    /// Arm the taunt follow-up for a **hero's basic attack** on a single living
+    /// foe: the post-hit tap that, if well-timed, taunts that foe. Skills, defends,
+    /// and enemy turns get none.
+    fn make_taunt(&self, action: &Action) -> Option<TauntTry> {
+        if !matches!(action.kind, ActionKind::Attack)
+            || self.battlers[action.actor].side != Side::Hero
+        {
+            return None;
+        }
+        let target = action
+            .targets
+            .iter()
+            .copied()
+            .find(|&t| self.battlers[t].side == Side::Enemy && self.battlers[t].alive())?;
+        Some(TauntTry {
+            presser: action.actor,
+            target,
+            press_t: None,
+            resolved: false,
+        })
     }
 
     fn action_banner(&self, action: &Action, reg: &Registry) -> String {
@@ -1758,6 +1941,7 @@ fn dummy_execute() -> Execute {
         started: false,
         timed: None,
         hit_mod: HitMod::NEUTRAL,
+        taunt: None,
         end_of_round: false,
         statuses_ticked: false,
         banner: String::new(),
@@ -1975,6 +2159,36 @@ mod tests {
         t.result()
     }
 
+    /// A taunt attempt whose (only) post-hit tap lands at animation time `t`.
+    fn taunt_tap(t: f32) -> TauntTry {
+        TauntTry {
+            presser: 0,
+            target: 1,
+            press_t: Some(t),
+            resolved: false,
+        }
+    }
+
+    #[test]
+    fn taunt_needs_a_well_timed_tap() {
+        // A tap right on the taunt connect lands it.
+        assert!(taunt_tap(TAUNT_CONNECT).landed());
+        // Just inside the window either side still lands.
+        assert!(taunt_tap(TAUNT_CONNECT + TAUNT_WINDOW - 0.01).landed());
+        assert!(taunt_tap(TAUNT_CONNECT - TAUNT_WINDOW + 0.01).landed());
+        // An early panic tap (before the window opens) misses...
+        assert!(!taunt_tap(TAUNT_CONNECT - TAUNT_WINDOW - 0.05).landed());
+        // ...as does a tap after it shuts, or no tap at all.
+        assert!(!taunt_tap(TAUNT_CONNECT + TAUNT_WINDOW + 0.05).landed());
+        let no_tap = TauntTry {
+            presser: 0,
+            target: 1,
+            press_t: None,
+            resolved: false,
+        };
+        assert!(!no_tap.landed());
+    }
+
     #[test]
     fn attack_timing_scales_damage_by_lateness() {
         // Dead on the connect → perfect, double damage.
@@ -1995,6 +2209,37 @@ mod tests {
         assert_eq!(m(TimingResult::Perfect), 2.0);
         assert_eq!(m(TimingResult::Good), 1.5);
         assert_eq!(m(TimingResult::Miss), 1.0);
+    }
+
+    #[test]
+    fn a_wider_window_is_more_forgiving() {
+        // A tap this late is a MISS on the default window (outside GOOD)...
+        let off = STRIKE_GOOD + 0.05;
+        assert_eq!(tap_at(TimingKind::Attack, off), TimingResult::Miss);
+
+        // ...but a character with a widened window (e.g. Gareth) still scores it.
+        let mut wide = TimedHit::new(TimingKind::Attack, 0).with_window(0.09, 0.20);
+        wide.press_t = Some(STRIKE_CONNECT + off);
+        wide.presses = 1;
+        assert_eq!(wide.result(), TimingResult::Good);
+
+        // And a tap just outside the default PERFECT lands PERFECT on the wider one.
+        let mut wide_perfect = TimedHit::new(TimingKind::Attack, 0).with_window(0.09, 0.20);
+        wide_perfect.press_t = Some(STRIKE_CONNECT + STRIKE_PERFECT + 0.02);
+        wide_perfect.presses = 1;
+        assert_eq!(wide_perfect.result(), TimingResult::Perfect);
+
+        // The same widened window helps blocks, not just attacks: a late brace that
+        // would miss on the default window still lands a GOOD block.
+        let mut wide_block = TimedHit::new(TimingKind::Block, 0).with_window(0.09, 0.20);
+        wide_block.press_t = Some(STRIKE_CONNECT + off);
+        wide_block.presses = 1;
+        assert_eq!(wide_block.result(), TimingResult::Good);
+        assert_eq!(wide_block.hit_mod().block_reduce, 0.5);
+
+        // Mashing still forfeits the bonus, wide window or not.
+        wide.presses = 3;
+        assert_eq!(wide.result(), TimingResult::Miss);
     }
 
     #[test]

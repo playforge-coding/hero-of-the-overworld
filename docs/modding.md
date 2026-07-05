@@ -72,6 +72,7 @@ CharacterDef(
     ),
     skills: ["firebolt", "frost", "mend"],
     // armor: Some("travelers_robe"),   // optional starting gear (see below)
+    // timing: Some(TimingWindow(perfect: 0.09, good: 0.20)),  // optional
 ),
 ```
 
@@ -79,6 +80,14 @@ Then either list its `id` in `starting_party` so it begins in the party, or add
 it via a cutscene `Recruit` step (below). The battle scene iterates the whole
 party, so a second or third hero fights with **no engine changes**. A character
 can also start with a `weapon` and/or `armor` — see [Add equipment](#add-equipment).
+
+The optional **`timing`** widens (or tightens) that hero's
+[timed-hit window](battles.md#action-timing-strikes-and-blocks) — the *same* window
+applies to both their **attacks** and their **blocks**. The two values are
+half-widths, in animation seconds, of the **PERFECT** and **GOOD** windows around
+the moment the blow connects — bigger is more forgiving. Omit it and the hero uses
+the game's default (`perfect: 0.05`, `good: 0.13`); Gareth's generous `0.09 / 0.20`
+is why his bonuses are so much easier to land.
 
 ## Add a skill
 

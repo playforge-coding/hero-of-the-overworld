@@ -97,7 +97,10 @@ Touching a roaming enemy starts a [battle](battles.md).
 
 - **Move** — move the highlight through the command menu, or through the list of
   targets when you're choosing who to hit or heal.
-- **Confirm** — choose the highlighted command / skill / target.
+- **Confirm** — choose the highlighted command / skill / target. It's also the
+  **timed-hit** tap: press it as a blow connects to add damage (or, when bracing,
+  to block), and again on an attack's recovery to [taunt](battles.md#taunting-a-foe)
+  the foe you just struck.
 - **Cancel** — back up one step (out of the skill or target menu, or back to the
   previous hero's turn to re-plan it).
 
