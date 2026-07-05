@@ -35,8 +35,11 @@ the game shows on-screen controls: a directional control in the bottom-left,
 **Confirm** (A) and **Cancel** (B) in the bottom-right, and **Menu** (☰) in the
 top-right. The overlay stays hidden until the first touch, so a desktop keyboard
 or gamepad session never sees it. Like the keyboard, the touch controls command
-party member 1. They sit in the letterbox margins around the 320×180 game area,
-and the layout tracks the screen as you rotate or resize it.
+party member 1. They anchor the screen corners — inset from the very edge so
+they sit within a resting thumb's reach — and the layout tracks the screen as you
+rotate or resize it. On a phone held in landscape the play area widens to fill
+the screen (no black side bars), so the controls overlay the corners of the
+game itself.
 
 The directional control fits what you're doing:
 

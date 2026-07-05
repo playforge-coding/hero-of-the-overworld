@@ -17,7 +17,7 @@ use crate::input_config::{InputConfig, InputConfigEvent};
 use crate::inventory::{Inventory, InventoryEvent};
 use crate::overworld::{Event, Overworld, Trigger};
 use crate::party::{Party, PartyMember};
-use crate::renderer::{color, Renderer, VIRTUAL_H, VIRTUAL_W};
+use crate::renderer::{color, virtual_w, Renderer, VIRTUAL_H};
 use crate::save::{self, SaveData, SavedLevel, SavedLocation, SavedMember};
 use crate::shop::{Shop, ShopEvent};
 use crate::util::{Rng, TextureCache};
@@ -604,19 +604,19 @@ impl Game {
 
     fn draw_title(party: &Party, time: f32, has_save: bool, r: &mut Renderer) {
         r.set_clear_color(color::rgb(10, 10, 20));
-        r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgb(14, 12, 26));
-        r.draw_rect(0.0, 40.0, VIRTUAL_W, 40.0, color::rgba(40, 30, 70, 255));
+        r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(14, 12, 26));
+        r.draw_rect(0.0, 40.0, virtual_w(), 40.0, color::rgba(40, 30, 70, 255));
 
         r.draw_text_centered(
             "HERO OF THE OVERWORLD",
-            VIRTUAL_W / 2.0,
+            virtual_w() / 2.0,
             30.0,
             1.6,
             color::rgb(255, 226, 120),
         );
         r.draw_text_centered(
             "a tiny extensible JRPG",
-            VIRTUAL_W / 2.0,
+            virtual_w() / 2.0,
             52.0,
             1.0,
             color::rgb(180, 180, 210),
@@ -624,7 +624,7 @@ impl Game {
 
         r.draw_text_centered(
             "TRAVEL THE MAP. CLEAR EACH LEVEL OF DEMONS.",
-            VIRTUAL_W / 2.0,
+            virtual_w() / 2.0,
             96.0,
             1.0,
             color::rgb(200, 220, 200),
@@ -653,7 +653,7 @@ impl Game {
             };
             r.draw_text_centered(
                 prompt,
-                VIRTUAL_W / 2.0,
+                virtual_w() / 2.0,
                 160.0,
                 1.0,
                 color::rgb(150, 150, 180),
@@ -663,7 +663,7 @@ impl Game {
         // Always-on hint for the input/controls config (Menu key).
         r.draw_text_centered(
             "PRESS MENU (SHIFT / START) FOR CONTROLS",
-            VIRTUAL_W / 2.0,
+            virtual_w() / 2.0,
             171.0,
             1.0,
             color::rgb(110, 110, 140),
@@ -672,15 +672,15 @@ impl Game {
 
     fn draw_map(&self, r: &mut Renderer) {
         r.set_clear_color(color::rgb(16, 22, 30));
-        r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgb(20, 28, 36));
-        r.draw_rect(0.0, 0.0, VIRTUAL_W, 16.0, color::rgba(10, 14, 22, 220));
+        r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(20, 28, 36));
+        r.draw_rect(0.0, 0.0, virtual_w(), 16.0, color::rgba(10, 14, 22, 220));
         r.draw_text("WORLD MAP", 6.0, 3.0, 1.0, color::rgb(220, 225, 200));
         let cleared_count = self.cleared.iter().filter(|&&c| c).count();
         let prog = format!("CLEARED {}/{}", cleared_count, self.reg.data.levels.len());
         let pw = r.text_width(&prog, 1.0);
         r.draw_text(
             &prog,
-            VIRTUAL_W - pw - 6.0,
+            virtual_w() - pw - 6.0,
             3.0,
             1.0,
             color::rgb(150, 210, 160),
@@ -762,7 +762,7 @@ impl Game {
         if !self.unlocked(self.map_cursor) {
             r.draw_text_centered(
                 "LOCKED - CLEAR THE PREVIOUS LEVEL FIRST",
-                VIRTUAL_W / 2.0,
+                virtual_w() / 2.0,
                 VIRTUAL_H - 10.0,
                 1.0,
                 color::rgb(210, 170, 120),
@@ -770,7 +770,7 @@ impl Game {
         } else if (self.time * 2.0) as i32 % 2 == 0 {
             r.draw_text_centered(
                 "ARROWS: SELECT   ENTER: PLAY   ESC: TITLE",
-                VIRTUAL_W / 2.0,
+                virtual_w() / 2.0,
                 VIRTUAL_H - 10.0,
                 1.0,
                 color::rgb(160, 170, 190),
@@ -780,17 +780,17 @@ impl Game {
 
     fn draw_report(win: bool, lines: &[String], r: &mut Renderer) {
         r.set_clear_color(color::rgb(8, 8, 16));
-        r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgb(12, 10, 22));
+        r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(12, 10, 22));
         let (title, col) = if win {
             ("VICTORY", color::rgb(255, 230, 120))
         } else {
             ("DEFEAT", color::rgb(230, 120, 120))
         };
-        r.draw_text_centered(title, VIRTUAL_W / 2.0, 50.0, 2.0, col);
+        r.draw_text_centered(title, virtual_w() / 2.0, 50.0, 2.0, col);
         for (i, line) in lines.iter().enumerate() {
             r.draw_text_centered(
                 line,
-                VIRTUAL_W / 2.0,
+                virtual_w() / 2.0,
                 84.0 + i as f32 * 12.0,
                 1.0,
                 color::WHITE,
@@ -798,7 +798,7 @@ impl Game {
         }
         r.draw_text_centered(
             "PRESS ENTER TO CONTINUE",
-            VIRTUAL_W / 2.0,
+            virtual_w() / 2.0,
             150.0,
             1.0,
             color::rgb(160, 160, 190),

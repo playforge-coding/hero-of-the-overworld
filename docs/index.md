@@ -44,7 +44,7 @@ browser (WebAssembly / WebGL).
 | --------------- | ------------------------------------------------------------------- |
 | **Genre**       | Single-player, turn-based JRPG                                       |
 | **Engine**      | macroquad (OpenGL on native, WebGL in the browser)                  |
-| **Canvas**      | Fixed 320×180 virtual resolution, letterboxed into the window        |
+| **Canvas**      | 180px-tall virtual resolution; width (320–480px) tracks the window's aspect |
 | **You control** | The party leader on the map; each hero's action in battle           |
 | **Overworld**   | A world map of levels, each a set of connected tile screens          |
 | **Enemies**     | Slimes, gargoyles, and demons that roam levels and chase you into battle |

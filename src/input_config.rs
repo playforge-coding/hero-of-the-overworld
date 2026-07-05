@@ -9,7 +9,7 @@
 //! [`crate::input::InputAssignment`]).
 
 use crate::input::{Button, Input, InputAssignment};
-use crate::renderer::{color, Renderer, VIRTUAL_H, VIRTUAL_W};
+use crate::renderer::{color, virtual_w, Renderer, VIRTUAL_H};
 
 /// What an [`InputConfig::update`] wants the game to do next.
 pub enum InputConfigEvent {
@@ -105,17 +105,17 @@ impl InputConfig {
     }
 
     pub fn draw(&self, r: &mut Renderer) {
-        r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgb(14, 14, 26));
+        r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(14, 14, 26));
         r.draw_text_centered(
             "CONTROLS",
-            VIRTUAL_W / 2.0,
+            virtual_w() / 2.0,
             14.0,
             1.6,
             color::rgb(255, 226, 120),
         );
         r.draw_text_centered(
             "ASSIGN EACH INPUT TO A PLAYER",
-            VIRTUAL_W / 2.0,
+            virtual_w() / 2.0,
             34.0,
             1.0,
             color::rgb(170, 180, 210),
@@ -148,7 +148,7 @@ impl InputConfig {
         };
         r.draw_text_centered(
             hint,
-            VIRTUAL_W / 2.0,
+            virtual_w() / 2.0,
             VIRTUAL_H - 12.0,
             1.0,
             color::rgb(150, 150, 170),

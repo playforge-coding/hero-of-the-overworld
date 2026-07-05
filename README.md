@@ -72,12 +72,14 @@ automatically** and resume on the next launch.
 
 ## Architecture
 
-Everything is drawn into a fixed **320×180 virtual canvas** (a macroquad render target)
-that is letterboxed into the real window, so game code never deals with real pixels or DPI.
+Everything is drawn in a **virtual canvas** — a fixed 180px tall, with a width that
+tracks the window's aspect ratio (320–480px) so wide screens (a phone in landscape)
+reveal more of the world instead of black side bars. A `Camera2D` maps it straight to
+the window, so game code never deals with real pixels or DPI.
 
 | Module | Responsibility |
 | --- | --- |
-| [`src/renderer.rs`](src/renderer.rs) | thin macroquad wrapper: a virtual-resolution sprite/rect/text draw queue, letterboxed |
+| [`src/renderer.rs`](src/renderer.rs) | thin macroquad wrapper: a virtual-resolution sprite/rect/text draw queue, aspect-adaptive width, letterboxed |
 | [`src/data.rs`](src/data.rs) | the RON file format + indexed registries (the content DB) |
 | [`src/party.rs`](src/party.rs) | the persistent, extensible party (HP/MP/XP carried between battles) + the shared owned-item bag |
 | [`src/inventory.rs`](src/inventory.rs) | the party inventory / equipment screen (equip & unequip from the bag) |

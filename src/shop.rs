@@ -18,7 +18,7 @@ use crate::data::{EquipSlot, Registry, ShopDef, ShopFacing};
 use crate::input::{Button, Input};
 use crate::overworld::{leader_walk, walk_src, Facing, TILE};
 use crate::party::Party;
-use crate::renderer::{color, Renderer, TextureHandle, VIRTUAL_H, VIRTUAL_W};
+use crate::renderer::{color, virtual_w, Renderer, TextureHandle, VIRTUAL_H};
 use crate::util::TextureCache;
 
 /// Interior size in tiles. 20x11 at 16px is 320x176 — the whole virtual screen,
@@ -31,6 +31,14 @@ const PLAYER_SPEED: f32 = 62.0;
 const HALF: Vec2 = Vec2::new(5.0, 4.0);
 /// How close (px) the player must stand to the counter to open the menu.
 const COUNTER_REACH: f32 = 30.0;
+
+/// Horizontal offset that centres the fixed-width room in the (possibly wider)
+/// virtual canvas, so on landscape phones the shop stays centred instead of
+/// hugging the left edge. Zero at the classic 16:9 width. Purely presentational
+/// — collision and the doorway stay in the room's local coordinates.
+fn room_dx() -> f32 {
+    ((virtual_w() - W as f32 * TILE) / 2.0).max(0.0)
+}
 
 /// What a [`Shop::update`] wants the game to do next.
 pub enum ShopEvent {
@@ -294,15 +302,31 @@ impl Shop {
             } else {
                 14.0
             };
-            r.draw_rect(0.0, y - 2.0, VIRTUAL_W, 12.0, color::rgba(10, 8, 16, 200));
-            r.draw_text_centered(text, VIRTUAL_W / 2.0, y, 1.0, color::rgb(255, 230, 140));
+            r.draw_rect(0.0, y - 2.0, virtual_w(), 12.0, color::rgba(10, 8, 16, 200));
+            r.draw_text_centered(text, virtual_w() / 2.0, y, 1.0, color::rgb(255, 230, 140));
         }
     }
 
     fn draw_room(&self, r: &mut Renderer) {
+        let dx = room_dx();
+        // On a wide screen the fixed-width room is centred, leaving side margins.
+        // Tile wall across the whole canvas underneath first, so those margins
+        // read as more stone wall (matching the room's own wall border) rather
+        // than an empty gap. A no-op at the classic 16:9 width.
+        if dx > 0.0 {
+            let cols = (virtual_w() / TILE).ceil() as usize;
+            let rows = (VIRTUAL_H / TILE).ceil() as usize;
+            for row in 0..rows {
+                for col in 0..cols {
+                    let x = col as f32 * TILE;
+                    let y = row as f32 * TILE;
+                    r.draw_texture(self.wall_tex, x, y, TILE, TILE, color::WHITE);
+                }
+            }
+        }
         for row in 0..H {
             for col in 0..W {
-                let x = col as f32 * TILE;
+                let x = col as f32 * TILE + dx;
                 let y = row as f32 * TILE;
                 if self.walls[row * W + col] {
                     r.draw_texture(self.wall_tex, x, y, TILE, TILE, color::WHITE);
@@ -328,16 +352,17 @@ impl Shop {
         let (tw, th) = r.texture_size(self.keeper_tex);
         let dw = tw as f32 * 2.0;
         let dh = th as f32 * 2.0;
+        let dx = room_dx();
         // A wooden counter slab in front of the keeper.
         r.draw_rect(
-            self.keeper_pos.x - 18.0,
+            self.keeper_pos.x + dx - 18.0,
             self.keeper_pos.y - 1.0,
             36.0,
             6.0,
             color::rgb(96, 62, 34),
         );
         r.draw_rect(
-            self.keeper_pos.x - 20.0,
+            self.keeper_pos.x + dx - 20.0,
             self.keeper_pos.y - 2.0,
             36.0,
             3.0,
@@ -345,7 +370,7 @@ impl Shop {
         );
         r.draw_texture(
             self.keeper_tex,
-            self.keeper_pos.x - dw / 2.0,
+            self.keeper_pos.x + dx - dw / 2.0,
             self.keeper_pos.y + HALF.y - dh - 4.0,
             dw,
             dh,
@@ -358,7 +383,7 @@ impl Shop {
         {
             r.draw_text_centered(
                 "PRESS Z",
-                self.keeper_pos.x,
+                self.keeper_pos.x + dx,
                 self.keeper_pos.y - dh - 8.0,
                 1.0,
                 color::rgb(220, 240, 210),
@@ -370,15 +395,16 @@ impl Shop {
         let src = walk_src(&self.walk, self.player_facing, self.walk_t);
         let dw = self.walk.draw_w;
         let dh = self.walk.draw_h;
+        let dx = room_dx();
         r.draw_rect(
-            self.player.x - dw * 0.28,
+            self.player.x + dx - dw * 0.28,
             self.player.y - 1.0,
             dw * 0.56,
             4.0,
             color::rgba(0, 0, 0, 80),
         );
         let dest = [
-            self.player.x - dw / 2.0,
+            self.player.x + dx - dw / 2.0,
             self.player.y + HALF.y - dh,
             dw,
             dh,
@@ -387,13 +413,13 @@ impl Shop {
     }
 
     fn draw_hud(&self, r: &mut Renderer, gold: i32) {
-        r.draw_rect(0.0, 0.0, VIRTUAL_W, 12.0, color::rgba(10, 8, 16, 200));
+        r.draw_rect(0.0, 0.0, virtual_w(), 12.0, color::rgba(10, 8, 16, 200));
         r.draw_text(&self.name, 5.0, 2.0, 1.0, color::rgb(255, 226, 160));
         let g = format!("GOLD {gold}");
         let gw = r.text_width(&g, 1.0);
         r.draw_text(
             &g,
-            VIRTUAL_W - gw - 5.0,
+            virtual_w() - gw - 5.0,
             2.0,
             1.0,
             color::rgb(255, 220, 120),
@@ -401,7 +427,7 @@ impl Shop {
         if (self.time * 2.0) as i32 % 2 == 0 {
             r.draw_text_centered(
                 "WALK TO THE COUNTER - OR OUT THE DOOR TO LEAVE",
-                VIRTUAL_W / 2.0,
+                virtual_w() / 2.0,
                 VIRTUAL_H - 10.0,
                 1.0,
                 color::rgba(210, 200, 180, 220),
@@ -413,8 +439,8 @@ impl Shop {
     /// the member being outfitted on the right.
     fn draw_menu(&self, r: &mut Renderer, reg: &Registry, party: &Party) {
         // Dim the room and frame a panel.
-        r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgba(6, 5, 12, 210));
-        let (px, py, pw, ph) = (8.0, 8.0, VIRTUAL_W - 16.0, VIRTUAL_H - 16.0);
+        r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgba(6, 5, 12, 210));
+        let (px, py, pw, ph) = (8.0, 8.0, virtual_w() - 16.0, VIRTUAL_H - 16.0);
         r.draw_rect(px, py, pw, ph, color::rgba(18, 16, 30, 244));
         r.draw_rect_outline(px, py, pw, ph, 1.0, color::rgba(150, 120, 70, 255));
 
@@ -511,7 +537,13 @@ impl Shop {
         );
         if let Some(m) = party.members.get(self.member_cursor) {
             let who = format!("< OUTFIT {} >", m.name);
-            r.draw_text_centered(&who, VIRTUAL_W / 2.0, row_y, 1.0, color::rgb(255, 236, 180));
+            r.draw_text_centered(
+                &who,
+                virtual_w() / 2.0,
+                row_y,
+                1.0,
+                color::rgb(255, 236, 180),
+            );
             let cur_id = match selected_slot {
                 Some(EquipSlot::Weapon) | None => m.weapon.as_deref(),
                 Some(EquipSlot::Armor) => m.armor.as_deref(),
@@ -522,7 +554,7 @@ impl Shop {
                 .unwrap_or_else(|| "(NONE)".to_string());
             r.draw_text_centered(
                 &format!("NOW: {cur}"),
-                VIRTUAL_W / 2.0,
+                virtual_w() / 2.0,
                 row_y + 11.0,
                 1.0,
                 color::rgba(190, 200, 210, 255),
@@ -531,7 +563,7 @@ impl Shop {
 
         r.draw_text_centered(
             "UP/DOWN ITEM   LEFT/RIGHT WHO   Z BUY   X BACK",
-            VIRTUAL_W / 2.0,
+            virtual_w() / 2.0,
             py + ph - 10.0,
             1.0,
             color::rgba(180, 185, 205, 235),

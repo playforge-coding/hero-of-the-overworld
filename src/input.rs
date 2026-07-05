@@ -226,7 +226,11 @@ pub fn touch_layout(
     sh: f32,
 ) -> (Vec<TouchButton>, Option<TouchStick>) {
     let u = (sw.min(sh) * 0.16).clamp(36.0, 96.0);
-    let m = u * 0.4; // edge margin
+    // Inset from the screen edge. Kept generous so the controls sit within a
+    // resting thumb's arc instead of jammed into the very corner (which is
+    // awkward to press), but capped in absolute pixels so they don't drift too
+    // far inward on a large tablet where `u` has hit its clamp.
+    let m = u.min(sw.min(sh) * 0.12);
 
     // Directional cluster: centred on (pcx, pcy) in the bottom-left corner. The
     // d-pad plus and the joystick base share this footprint (radius 1.5·u).

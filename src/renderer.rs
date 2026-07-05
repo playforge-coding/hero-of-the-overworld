@@ -1,9 +1,10 @@
 //! macroquad-based 2D renderer.
 //!
-//! The whole game is drawn in a fixed *virtual* resolution (see
-//! [`VIRTUAL_W`]/[`VIRTUAL_H`]). A `Camera2D` maps that virtual space into a
-//! letterboxed viewport in the real window, so game logic never thinks about
-//! real pixels or DPI. Sprites are drawn straight to the window through that
+//! The whole game is drawn in a *virtual* resolution: a fixed [`VIRTUAL_H`] tall
+//! and a width ([`virtual_w`]) that tracks the window's aspect ratio, so wide
+//! screens see more of the world instead of black pillarbox bars. A `Camera2D`
+//! maps that virtual space into a letterboxed viewport in the real window, so
+//! game logic never thinks about real pixels or DPI. Sprites are drawn through it
 //! camera — a single nearest-neighbour resample from source art to final size —
 //! which keeps pixel art crisp and undistorted (an intermediate low-res render
 //! target would resample twice and warp scaled sprites).
@@ -21,10 +22,30 @@ use macroquad::prelude::{
     DrawTextureParams, FilterMode, Font, Rect as MqRect, TextParams, Texture2D, BLACK,
 };
 
-/// Virtual canvas width in pixels. Game coordinates are in this space.
-pub const VIRTUAL_W: f32 = 320.0;
-/// Virtual canvas height in pixels.
+/// Virtual canvas height in pixels. Fixed — the game is designed around a
+/// 180px-tall play field.
 pub const VIRTUAL_H: f32 = 180.0;
+
+/// Narrowest virtual canvas width (the classic 16:9 framing). The width never
+/// shrinks below this, so on tall/portrait windows the scene letterboxes with
+/// top/bottom bars rather than zooming in.
+pub const VIRTUAL_W_MIN: f32 = 320.0;
+/// Widest virtual canvas width (~2.67:1). Covers every phone up to ~21:9 with no
+/// bars; guards ultra-wide desktops from revealing an absurd slice of the world.
+pub const VIRTUAL_W_MAX: f32 = 480.0;
+
+/// Current virtual canvas width, in game-coordinate pixels. Unlike the fixed
+/// [`VIRTUAL_H`], the width tracks the window's aspect ratio so wide screens
+/// (a phone held in landscape) reveal *more of the world* instead of black
+/// pillarbox bars — keeping pixels square and crisp, never stretched. Clamped to
+/// [`VIRTUAL_W_MIN`]..=[`VIRTUAL_W_MAX`]; outside that range the scene
+/// letterboxes as before. Recomputed from the live window each call, so it
+/// tracks rotation and resizes for free.
+pub fn virtual_w() -> f32 {
+    let sw = screen_width();
+    let sh = screen_height().max(1.0);
+    (VIRTUAL_H * sw / sh).clamp(VIRTUAL_W_MIN, VIRTUAL_W_MAX)
+}
 
 /// On-screen text height (px, virtual space) at `scale == 1.0`. Other scales
 /// derive from this; tuned to match the old UI layout.
@@ -345,7 +366,7 @@ impl Renderer {
     fn viewport(&self) -> (f32, f32, f32, f32) {
         let sw = screen_width();
         let sh = screen_height();
-        let aspect = VIRTUAL_W / VIRTUAL_H;
+        let aspect = virtual_w() / VIRTUAL_H;
         let (vw, vh) = if sw / sh > aspect {
             (sh * aspect, sh)
         } else {
@@ -371,9 +392,10 @@ impl Renderer {
         // so scale the logical rect by the DPI (a no-op at dpr 1, but the whole
         // scene otherwise shrinks into the top-left corner on retina/mobile).
         let d = screen_dpi_scale();
+        let vwv = virtual_w();
         let cam = Camera2D {
-            target: vec2(VIRTUAL_W / 2.0, VIRTUAL_H / 2.0),
-            zoom: vec2(2.0 / VIRTUAL_W, 2.0 / VIRTUAL_H),
+            target: vec2(vwv / 2.0, VIRTUAL_H / 2.0),
+            zoom: vec2(2.0 / vwv, 2.0 / VIRTUAL_H),
             viewport: Some((
                 (vx * d) as i32,
                 (vy * d) as i32,
@@ -385,7 +407,7 @@ impl Renderer {
         set_camera(&cam);
 
         // Scene background fills only the viewport (the camera clips to it).
-        draw_rectangle(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, self.clear_color);
+        draw_rectangle(0.0, 0.0, vwv, VIRTUAL_H, self.clear_color);
 
         for cmd in &self.queue {
             match cmd {
@@ -421,7 +443,7 @@ impl Renderer {
 
         // Text on top, rasterised at the real on-screen size (crisp).
         set_default_camera();
-        let s = vw / VIRTUAL_W; // virtual -> screen scale
+        let s = vw / virtual_w(); // virtual -> screen scale (uniform)
         for cmd in &self.queue {
             if let Cmd::Text {
                 text,

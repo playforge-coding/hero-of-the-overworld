@@ -18,7 +18,7 @@ use glam::Vec2;
 use crate::data::{BattlerSprite, OverworldWalk, Registry};
 use crate::input::{Button, Input};
 use crate::party::Party;
-use crate::renderer::{color, Color, Renderer, TextureHandle, VIRTUAL_H, VIRTUAL_W};
+use crate::renderer::{color, virtual_w, Color, Renderer, TextureHandle, VIRTUAL_H};
 use crate::util::TextureCache;
 
 /// Tile edge length in virtual pixels (matches the 16x16 tile art).
@@ -607,12 +607,12 @@ impl Overworld {
     }
 
     fn center_camera(&mut self) {
-        self.cam = self.clamp_cam(self.player.pos - Vec2::new(VIRTUAL_W, VIRTUAL_H) * 0.5);
+        self.cam = self.clamp_cam(self.player.pos - Vec2::new(virtual_w(), VIRTUAL_H) * 0.5);
     }
 
     fn update_camera(&mut self) {
         // Ease toward the player-centered target for a soft follow.
-        let target = self.clamp_cam(self.player.pos - Vec2::new(VIRTUAL_W, VIRTUAL_H) * 0.5);
+        let target = self.clamp_cam(self.player.pos - Vec2::new(virtual_w(), VIRTUAL_H) * 0.5);
         self.cam += (target - self.cam) * 0.18;
     }
 
@@ -627,7 +627,7 @@ impl Overworld {
             }
         };
         Vec2::new(
-            clamp_axis(c.x, VIRTUAL_W, map.x),
+            clamp_axis(c.x, virtual_w(), map.x),
             clamp_axis(c.y, VIRTUAL_H, map.y),
         )
     }
@@ -647,7 +647,7 @@ impl Overworld {
         // Only iterate the tiles overlapping the viewport.
         let c0 = (cam.x / TILE).floor().max(0.0) as usize;
         let r0 = (cam.y / TILE).floor().max(0.0) as usize;
-        let c1 = (((cam.x + VIRTUAL_W) / TILE).ceil() as usize).min(s.w);
+        let c1 = (((cam.x + virtual_w()) / TILE).ceil() as usize).min(s.w);
         let r1 = (((cam.y + VIRTUAL_H) / TILE).ceil() as usize).min(s.h);
 
         for row in r0..r1 {
@@ -789,13 +789,13 @@ impl Overworld {
     fn draw_hud(&self, r: &mut Renderer) {
         let remaining = self.cur().enemies.iter().filter(|e| !e.defeated).count();
         // Top bar: level name + which area of the level we're in.
-        r.draw_rect(0.0, 0.0, VIRTUAL_W, 12.0, color::rgba(10, 12, 22, 200));
+        r.draw_rect(0.0, 0.0, virtual_w(), 12.0, color::rgba(10, 12, 22, 200));
         r.draw_text(&self.name, 5.0, 2.0, 1.0, color::rgb(200, 220, 200));
         let area = format!("AREA {}/{}", self.current + 1, self.screens.len());
         let aw = r.text_width(&area, 1.0);
         r.draw_text(
             &area,
-            VIRTUAL_W - aw - 5.0,
+            virtual_w() - aw - 5.0,
             2.0,
             1.0,
             color::rgb(180, 200, 240),
@@ -804,14 +804,14 @@ impl Overworld {
         if self.all_cleared() {
             r.draw_text_centered(
                 "LEVEL CLEARED!",
-                VIRTUAL_W / 2.0,
+                virtual_w() / 2.0,
                 VIRTUAL_H / 2.0 - 4.0,
                 1.4,
                 color::rgb(255, 230, 120),
             );
             r.draw_text_centered(
                 "PRESS ESC TO RETURN TO THE MAP",
-                VIRTUAL_W / 2.0,
+                virtual_w() / 2.0,
                 VIRTUAL_H / 2.0 + 12.0,
                 1.0,
                 color::rgb(210, 210, 180),
@@ -820,7 +820,7 @@ impl Overworld {
             let hint = format!("ARROWS: MOVE   ESC: MAP   FOES HERE: {remaining}");
             r.draw_text_centered(
                 &hint,
-                VIRTUAL_W / 2.0,
+                virtual_w() / 2.0,
                 VIRTUAL_H - 10.0,
                 1.0,
                 color::rgba(180, 190, 170, 220),

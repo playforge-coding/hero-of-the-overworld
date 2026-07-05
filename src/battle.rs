@@ -21,7 +21,7 @@ use crate::data::{
 };
 use crate::input::{Button, Controllers, Input};
 use crate::party::Party;
-use crate::renderer::{color, Color, Renderer, TextureHandle, VIRTUAL_H, VIRTUAL_W};
+use crate::renderer::{color, virtual_w, Color, Renderer, TextureHandle, VIRTUAL_H};
 use crate::util::{Rng, TextureCache};
 
 // ---- Runtime animation ------------------------------------------------------
@@ -506,7 +506,7 @@ impl Battle {
         for (slot, &pi) in living.iter().enumerate() {
             let m = &party.members[pi];
             let texture = cache.get(renderer, &m.sprite.texture);
-            let home = hero_home(slot);
+            let home = hero_home(slot, virtual_w());
             // Fold equipment into the battler's stats and combat attributes.
             let eq = reg.equipped(&m.stats, m.weapon.as_deref(), m.armor.as_deref());
             // Resolve this hero's timed-hit window (attacks and blocks): a
@@ -561,7 +561,7 @@ impl Battle {
                 .enemy(eid)
                 .unwrap_or_else(|| panic!("unknown enemy '{eid}'"));
             let texture = cache.get(renderer, &def.sprite.texture);
-            let home = enemy_home(slot);
+            let home = enemy_home(slot, virtual_w());
             let stats = def.stats.scaled_to(party_level);
             let eq = reg.equipped(&stats, def.weapon.as_deref(), def.armor.as_deref());
             battlers.push(Battler {
@@ -1634,7 +1634,7 @@ impl Battle {
                 draw_banner(r, msg);
                 r.draw_text_centered(
                     "PRESS ENTER",
-                    VIRTUAL_W / 2.0,
+                    virtual_w() / 2.0,
                     VIRTUAL_H / 2.0 + 12.0,
                     1.0,
                     col,
@@ -1643,7 +1643,7 @@ impl Battle {
             State::Intro(_) => {
                 r.draw_text_centered(
                     &format!("{} APPEARS!", self.encounter_name.to_uppercase()),
-                    VIRTUAL_W / 2.0,
+                    virtual_w() / 2.0,
                     24.0,
                     1.0,
                     color::WHITE,
@@ -1914,32 +1914,34 @@ fn wrap_text(text: &str, max: usize) -> Vec<String> {
 /// *field* scales: menus, bars, and banners keep their normal size.
 const FIELD_SCALE: f32 = 0.75;
 
-/// The point the battlefield zoom pulls toward — horizontally centred and set high
-/// enough that the lowest hero clears the party panel along the bottom.
-fn field_focus() -> Vec2 {
-    Vec2::new(VIRTUAL_W / 2.0, 70.0)
+/// The point the battlefield zoom pulls toward — horizontally centred (hence the
+/// `w` = virtual canvas width) and set high enough that the lowest hero clears
+/// the party panel along the bottom. Takes `w` explicitly so the geometry stays
+/// context-free and unit-testable (no live macroquad window needed).
+fn field_focus(w: f32) -> Vec2 {
+    Vec2::new(w / 2.0, 70.0)
 }
 
 /// Pull a full-size battlefield position in toward [`field_focus`] by
 /// [`FIELD_SCALE`] — the camera "zooming out" about that point.
-fn zoom_field(p: Vec2) -> Vec2 {
-    let f = field_focus();
+fn zoom_field(p: Vec2, w: f32) -> Vec2 {
+    let f = field_focus(w);
     f + (p - f) * FIELD_SCALE
 }
 
-fn hero_home(slot: usize) -> Vec2 {
+fn hero_home(slot: usize, w: f32) -> Vec2 {
     // Diagonal column on the left, facing right.
-    zoom_field(Vec2::new(
-        70.0 - slot as f32 * 8.0,
-        92.0 + slot as f32 * 24.0,
-    ))
+    zoom_field(
+        Vec2::new(70.0 - slot as f32 * 8.0, 92.0 + slot as f32 * 24.0),
+        w,
+    )
 }
 
-fn enemy_home(slot: usize) -> Vec2 {
-    zoom_field(Vec2::new(
-        228.0 + (slot % 2) as f32 * 20.0,
-        74.0 + slot as f32 * 26.0,
-    ))
+fn enemy_home(slot: usize, w: f32) -> Vec2 {
+    zoom_field(
+        Vec2::new(228.0 + (slot % 2) as f32 * 20.0, 74.0 + slot as f32 * 26.0),
+        w,
+    )
 }
 
 fn bar(r: &mut Renderer, rect: [f32; 4], value: i32, max: i32, fill: Color) {
@@ -1976,30 +1978,31 @@ fn menu_box(r: &mut Renderer, x: f32, y: f32, w: f32, items: &[&str], cursor: us
 
 fn draw_banner(r: &mut Renderer, text: &str) {
     let w = r.text_width(text, 1.0) + 16.0;
-    let x = (VIRTUAL_W - w) / 2.0;
+    let x = (virtual_w() - w) / 2.0;
     r.draw_rect(x, 10.0, w, 16.0, color::rgba(10, 12, 26, 230));
     r.draw_rect_outline(x, 10.0, w, 16.0, 1.0, color::rgba(90, 110, 170, 255));
-    r.draw_text_centered(text, VIRTUAL_W / 2.0, 14.0, 1.0, color::WHITE);
+    r.draw_text_centered(text, virtual_w() / 2.0, 14.0, 1.0, color::WHITE);
 }
 
 fn draw_background(r: &mut Renderer) {
     // Simple two-tone sky over ground.
-    r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgb(28, 24, 48));
-    r.draw_rect(0.0, 60.0, VIRTUAL_W, 60.0, color::rgb(40, 34, 66));
+    r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(28, 24, 48));
+    r.draw_rect(0.0, 60.0, virtual_w(), 60.0, color::rgb(40, 34, 66));
     r.draw_rect(
         0.0,
         118.0,
-        VIRTUAL_W,
+        virtual_w(),
         VIRTUAL_H - 118.0,
         color::rgb(46, 40, 40),
     );
     // A faint horizon band.
-    r.draw_rect(0.0, 116.0, VIRTUAL_W, 3.0, color::rgba(90, 70, 100, 160));
+    r.draw_rect(0.0, 116.0, virtual_w(), 3.0, color::rgba(90, 70, 100, 160));
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::renderer::{VIRTUAL_W_MAX, VIRTUAL_W_MIN};
 
     #[test]
     fn hit_chance_baseline_and_clamps() {
@@ -2048,21 +2051,25 @@ mod tests {
         let panel_top = VIRTUAL_H - (8.0 + 3.0 * 16.0);
         // The lowest hero's feet (its home y) must sit above that panel so a full
         // party doesn't render into it — this is what the zoom-out buys us.
+        // (y is independent of canvas width; use the classic width.)
         assert!(
-            hero_home(2).y <= panel_top,
+            hero_home(2, VIRTUAL_W_MIN).y <= panel_top,
             "the third hero ({}) overlaps the party panel (top {panel_top})",
-            hero_home(2).y
+            hero_home(2, VIRTUAL_W_MIN).y
         );
 
-        // Everyone stays on screen, heroes on the left, foes on the right.
-        for slot in 0..3 {
-            let h = hero_home(slot);
-            let e = enemy_home(slot);
-            for p in [h, e] {
-                assert!(p.x > 0.0 && p.x < VIRTUAL_W, "battler off-screen: {p:?}");
-                assert!(p.y > 0.0 && p.y < VIRTUAL_H, "battler off-screen: {p:?}");
+        // Everyone stays on screen, heroes on the left, foes on the right — at
+        // both the narrowest and widest virtual canvas (a landscape phone).
+        for w in [VIRTUAL_W_MIN, VIRTUAL_W_MAX] {
+            for slot in 0..3 {
+                let h = hero_home(slot, w);
+                let e = enemy_home(slot, w);
+                for p in [h, e] {
+                    assert!(p.x > 0.0 && p.x < w, "battler off-screen at w={w}: {p:?}");
+                    assert!(p.y > 0.0 && p.y < VIRTUAL_H, "battler off-screen: {p:?}");
+                }
+                assert!(h.x < e.x, "hero should sit left of the enemy in its row");
             }
-            assert!(h.x < e.x, "hero should sit left of the enemy in its row");
         }
     }
 

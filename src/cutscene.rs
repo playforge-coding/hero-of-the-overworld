@@ -9,7 +9,7 @@
 use crate::data::{CutsceneStep, Registry};
 use crate::input::{Button, Input};
 use crate::party::Party;
-use crate::renderer::{color, Color, Renderer, TextureHandle, VIRTUAL_H, VIRTUAL_W};
+use crate::renderer::{color, virtual_w, Color, Renderer, TextureHandle, VIRTUAL_H};
 use crate::util::TextureCache;
 
 /// Characters revealed per second by the typewriter effect.
@@ -129,7 +129,7 @@ impl Cutscene {
 
     pub fn draw(&self, r: &mut Renderer) {
         r.set_clear_color(color::rgb(6, 6, 12));
-        r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgb(10, 10, 18));
+        r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(10, 10, 18));
 
         if !self.on_say() {
             return;
@@ -143,7 +143,7 @@ impl Cutscene {
         // Dialogue panel across the lower third.
         let box_x = 8.0;
         let box_y = VIRTUAL_H - 66.0;
-        let box_w = VIRTUAL_W - 16.0;
+        let box_w = virtual_w() - 16.0;
         let box_h = 58.0;
         r.draw_rect(box_x, box_y, box_w, box_h, color::rgba(12, 14, 30, 236));
         r.draw_rect_outline(
@@ -199,7 +199,7 @@ impl Cutscene {
         if self.reveal >= full && (self.time * 2.0) as i32 % 2 == 0 {
             r.draw_text_centered(
                 "ENTER",
-                VIRTUAL_W - 26.0,
+                virtual_w() - 26.0,
                 box_y + box_h - 10.0,
                 1.0,
                 color::rgb(180, 190, 220),

@@ -74,5 +74,44 @@
       // produces hero.wasm.
       load("./hero.wasm");
     </script>
+    <script>
+      // Robust canvas resizing for mobile. miniquad's bundle only re-measures the
+      // canvas on `window.onresize`, which on phones is unreliable: rotating the
+      // device often fires no `resize`, or fires it before the layout has settled,
+      // so the drawing buffer keeps its old (portrait) size. The game then renders
+      // letterboxed for the wrong orientation and hit-tests the on-screen touch
+      // controls against stale dimensions — so in landscape the canvas looks too
+      // narrow and taps don't register.
+      //
+      // Re-dispatching a `resize` event re-triggers miniquad's own handler, which
+      // reads the *current* CSS box (`clientWidth`/`clientHeight`) — so we just
+      // need to nudge it whenever the box actually changes.
+      (function () {
+        const nudge = () => window.dispatchEvent(new Event("resize"));
+        // Fire once now, then again after layout settles. Mobile browsers report
+        // the pre-rotation size for a beat after `orientationchange`, so a couple
+        // of delayed re-dispatches catch the final dimensions.
+        const nudgeSettled = () => {
+          nudge();
+          setTimeout(nudge, 100);
+          setTimeout(nudge, 300);
+          setTimeout(nudge, 600);
+        };
+        window.addEventListener("orientationchange", nudgeSettled);
+        // A ResizeObserver on the canvas catches every layout-box change — the
+        // address bar sliding away, split-screen, foldables — including the ones
+        // that never emit a `window` resize. It observes the CSS box, not the
+        // drawing buffer miniquad mutates, so this can't loop.
+        const canvas = document.querySelector("#glcanvas");
+        if (canvas && "ResizeObserver" in window) {
+          new ResizeObserver(nudge).observe(canvas);
+        }
+        // The visual viewport tracks pinch-zoom and the mobile URL bar, neither of
+        // which fire a normal `resize`.
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("resize", nudge);
+        }
+      })();
+    </script>
   </body>
 </html>

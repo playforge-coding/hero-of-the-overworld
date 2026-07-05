@@ -12,7 +12,7 @@
 use crate::data::{EquipSlot, Registry};
 use crate::input::{Button, Input};
 use crate::party::Party;
-use crate::renderer::{color, Renderer, VIRTUAL_H, VIRTUAL_W};
+use crate::renderer::{color, virtual_w, Renderer, VIRTUAL_H};
 use crate::shop::summarize;
 
 /// What an [`Inventory::update`] wants the game to do next.
@@ -123,7 +123,7 @@ impl Inventory {
     }
 
     pub fn draw(&self, r: &mut Renderer, party: &Party, reg: &Registry) {
-        r.draw_rect(0.0, 0.0, VIRTUAL_W, VIRTUAL_H, color::rgb(14, 14, 26));
+        r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(14, 14, 26));
 
         // Header.
         r.draw_text("EQUIPMENT", 8.0, 6.0, 1.2, color::rgb(255, 226, 120));
@@ -131,7 +131,7 @@ impl Inventory {
         let gw = r.text_width(&gold, 1.0);
         r.draw_text(
             &gold,
-            VIRTUAL_W - gw - 8.0,
+            virtual_w() - gw - 8.0,
             7.0,
             1.0,
             color::rgb(240, 220, 130),
@@ -299,7 +299,7 @@ impl Inventory {
         };
         r.draw_text_centered(
             hint,
-            VIRTUAL_W / 2.0,
+            virtual_w() / 2.0,
             VIRTUAL_H - 12.0,
             1.0,
             color::rgb(150, 150, 170),
