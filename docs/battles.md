@@ -144,9 +144,10 @@ else in the [damage formula](#how-damage-works).
 Some enemy attacks are **unblockable** — no block window appears and you take the
 hit (you can still **DEFEND** to soften it the ordinary way). Piercing and magical
 blows declare themselves unblockable: **FIREBALL**, **FLAME BREATH**, **FROST**,
-**FIREBOLT**, **LANCE CHARGE**, and **TRAMPLE**. A plain melee swing, **CLAW**,
-**REAP**, or **TAIL SWIPE** can all be blocked. A skill opts in with a single
-`unblockable: true` data flag — see **[Extending the Game](modding.md)**.
+**FIREBOLT**, and the piercing **LANCE CHARGE**. A plain melee swing, **CLAW**,
+**REAP**, **TAIL SWIPE**, or the warhorse's **TRAMPLE** can all be blocked — brace
+for the stomp as it lands. A skill opts in with a single `unblockable: true` data
+flag — see **[Extending the Game](modding.md)**.
 
 ## How damage works
 

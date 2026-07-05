@@ -350,14 +350,16 @@ GameData(
         SkillDef(
             id: "lance_charge", name: "LANCE CHARGE",
             description: "A thundering couched-lance charge at one hero.",
-            mp_cost: 6, power: 185, kind: Physical, target: OneEnemy,
+            mp_cost: 6, power: 145, kind: Physical, target: OneEnemy,
             unblockable: true,
         ),
+        // The warhorse's stomp is a heavy but telegraphed blow — you can brace and
+        // block it, unlike the piercing LANCE CHARGE. That gives the party timing
+        // counterplay against a knight pack (whose other threats are unblockable).
         SkillDef(
             id: "trample", name: "TRAMPLE",
             description: "The warhorse tramples the whole party underhoof.",
             mp_cost: 8, power: 90, kind: Physical, target: AllEnemies,
-            unblockable: true,
         ),
     ],
 

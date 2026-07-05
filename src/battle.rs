@@ -2043,7 +2043,6 @@ mod tests {
             "fireball",
             "flame_breath",
             "lance_charge",
-            "trample",
             "firebolt",
             "frost",
         ] {
@@ -2052,7 +2051,9 @@ mod tests {
                 "{id} should be unblockable"
             );
         }
-        for id in ["claw", "tail_swipe", "reap"] {
+        // TRAMPLE is a heavy but brace-able stomp — blockable, unlike the piercing
+        // LANCE CHARGE — so the party keeps timing counterplay against a knight pack.
+        for id in ["claw", "tail_swipe", "reap", "trample"] {
             assert!(
                 !reg.skill(id).expect(id).is_unblockable(),
                 "{id} should be blockable"

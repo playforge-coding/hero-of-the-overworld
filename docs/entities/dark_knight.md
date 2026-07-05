@@ -29,6 +29,13 @@ whole line at once. Between its bulk (100 HP) and its defense it also takes a wh
 to bring down — treat a pair of them, or a knight-and-demon, as a real fight, not a
 speed bump.
 
+Its piercing **LANCE CHARGE** is **unblockable** — you can only soften it with
+**DEFEND** — so it's the hit to respect. Its **TRAMPLE**, though, is a heavy stomp
+you can **block**: time the brace as it lands and a whole-party wipe becomes a
+scratch. Against a knight pack — the `knight_guard` on the summit especially —
+blocking every TRAMPLE and basic swing is what keeps you standing long enough to
+whittle the knights down.
+
 On the overworld it is **mounted and swift** — its roaming speed is close to yours,
 so it nearly runs you down. You can still just outpace it, but there's little room
 to dawdle.
@@ -37,8 +44,8 @@ to dawdle.
 
 | Skill | Kind | MP | Target | Notes |
 | ----- | ---- | -- | ------ | ----- |
-| **LANCE CHARGE** | Physical | 6 | One enemy | A thundering couched-lance charge (power 185) |
-| **TRAMPLE** | Physical | 8 | All enemies | The warhorse tramples the whole party (power 90) |
+| **LANCE CHARGE** | Physical | 6 | One enemy | A thundering couched-lance charge (power 145) — **unblockable** |
+| **TRAMPLE** | Physical | 8 | All enemies | The warhorse tramples the whole party (power 90) — **blockable**: brace and time it |
 
 ## Encounters
 
