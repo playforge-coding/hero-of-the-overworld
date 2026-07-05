@@ -82,6 +82,8 @@ jobs:
           # Save-file JS glue (IndexedDB backend + byte marshalling).
           cp sapp_jsutils.js site/play/sapp_jsutils.js
           cp hoto_storage.js site/play/hoto_storage.js
+          # Web gamepad support (browser Gamepad API -> wasm input module).
+          cp hoto_gamepads.js site/play/hoto_gamepads.js
           curl -sSfL https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js \
             -o site/play/mq_js_bundle.js
 
