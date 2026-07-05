@@ -8,19 +8,23 @@
 //!   - [`Controllers::shared`] — the keyboard OR'd with *all* gamepads. This is
 //!     what drives every single-player screen (title, world map, overworld,
 //!     menus, dialogue), so any controller — or the keyboard — works everywhere.
-//!   - [`Controllers::player`] — the input for one *party member*. Gamepad 0 (plus
-//!     the keyboard) drives member 0, gamepad 1 drives member 1, and so on. When
-//!     fewer gamepads are plugged in than there are members, the extra members
-//!     fall back to the shared input, so a single player still commands the whole
-//!     party exactly as before.
+//!   - [`Controllers::player`] — the input for one *party member*. Each gamepad
+//!     (plus the keyboard, on slot 0) is a player, and members are dealt to
+//!     players **round-robin**: gamepad 0 drives member 0, gamepad 1 member 1, and
+//!     with fewer pads than members it wraps, so two pads split three heroes
+//!     cleanly (player 1 → members 0 & 2, player 2 → member 1). One input source
+//!     (a lone pad, or just the keyboard) maps every member to it, so a single
+//!     player still commands the whole party.
 //!
 //! macroquad reports both the held state and the press *edge* for a key (and
 //! latches a press even if the key is released within the same frame, as
 //! automation tools do), so keyboard `pressed` stays frame-accurate. Gamepad
 //! press edges are derived here by diffing against the previous frame.
 //!
-//! Gamepad support uses `gilrs`, which is native-only; on the web build the
-//! gamepad code compiles out and only the keyboard remains.
+//! Gamepad support is cross-platform: the native build uses `gilrs`, and the web
+//! build reads the browser Gamepad API through the `hoto_gamepads` JS plugin (see
+//! `hoto_gamepads.js`). Both feed the same per-pad logical snapshots, so pads work
+//! identically — including local co-op — on desktop and in the browser.
 //!
 //! Touchscreens have neither a keyboard nor a gamepad, so [`Controllers`] also
 //! folds in on-screen controls: a directional control plus action buttons laid
@@ -471,6 +475,36 @@ fn read_pad(gp: &gilrs::Gamepad) -> [bool; N] {
     ]
 }
 
+/// Web gamepad bridge. macroquad/miniquad has no gamepad support, so on the web
+/// build we read the browser Gamepad API through the `hoto_gamepads` JS plugin
+/// (see `hoto_gamepads.js`), which maps each pad to our [`N`] logical buttons and
+/// hands back a flat buffer of `count * N` 0/1 flags — the same button layout
+/// [`read_pad`] produces natively.
+#[cfg(target_arch = "wasm32")]
+mod web_pads {
+    use super::N;
+    use sapp_jsutils::JsObject;
+
+    extern "C" {
+        fn hoto_gamepads_poll() -> JsObject;
+    }
+
+    /// This frame's pad flags: `count * N` bytes, one 0/1 per logical button per
+    /// pad (order Up, Down, Left, Right, Confirm, Cancel, Menu). Truncated to a
+    /// whole number of pads so a short/garbled buffer can't misalign.
+    pub fn poll_raw() -> Vec<u8> {
+        let obj = unsafe { hoto_gamepads_poll() };
+        if obj.is_nil() || obj.is_undefined() {
+            return Vec::new();
+        }
+        let mut buf = Vec::new();
+        obj.to_byte_buffer(&mut buf);
+        let usable = buf.len() - (buf.len() % N);
+        buf.truncate(usable);
+        buf
+    }
+}
+
 /// Owns every input device and produces per-frame logical snapshots. Created
 /// once and [`poll`](Controllers::poll)ed at the top of each frame.
 pub struct Controllers {
@@ -498,6 +532,78 @@ pub struct Controllers {
     /// Previous-frame held state per connected pad, keyed by id, for press edges.
     #[cfg(not(target_arch = "wasm32"))]
     prev_pad_down: Vec<(GamepadId, [bool; N])>,
+    /// Web equivalent: previous-frame held state per pad, by index (the browser
+    /// Gamepad API's stable slot), for deriving press edges.
+    #[cfg(target_arch = "wasm32")]
+    prev_pad_down_web: Vec<[bool; N]>,
+}
+
+/// Which player-input slot commands party `member`, given `player_count` input
+/// sources (connected pads, or 1 for keyboard-only). Round-robin, so P players
+/// cover N members with none left unowned; returns 0 when there are no sources.
+fn member_slot(member: usize, player_count: usize) -> usize {
+    if player_count == 0 {
+        0
+    } else {
+        member % player_count
+    }
+}
+
+/// Who controls whom: the **player number** each input source is bound to. This is
+/// the in-game-configurable mapping — assign the keyboard to player 1 and a pad to
+/// player 2 and the two share the party; leave the keyboard and first pad on the
+/// same player and one person drives both. Missing gamepad entries default to the
+/// pad's own index (so pad 0 shares player 0 with the keyboard, pad 1 is player 1,
+/// …), which reproduces the original "each pad is the next player" behaviour.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct InputAssignment {
+    /// Player number (0-based) the keyboard belongs to.
+    pub keyboard: usize,
+    /// Player number for each connected gamepad, by connection order.
+    pub gamepads: Vec<usize>,
+}
+
+impl InputAssignment {
+    /// Player number bound to gamepad `i` — the stored value, or `i` by default.
+    pub fn gamepad_player(&self, i: usize) -> usize {
+        self.gamepads.get(i).copied().unwrap_or(i)
+    }
+
+    /// Grow `gamepads` to cover `count` pads, filling new slots with their default
+    /// (the pad's own index). Called when the config screen opens so every
+    /// connected pad has an editable entry.
+    pub fn ensure_gamepads(&mut self, count: usize) {
+        for i in self.gamepads.len()..count {
+            self.gamepads.push(i);
+        }
+    }
+}
+
+/// One resolved player: which sources feed it. Ordered by player number, with
+/// empty player numbers dropped, so members map onto real (non-empty) players.
+struct PlayerGroup {
+    keyboard: bool,
+    pads: Vec<usize>,
+}
+
+/// Collapse a source→player-number assignment into the ordered list of *effective*
+/// players (those with at least one source). Player numbers with no source are
+/// skipped, so a gappy assignment (keyboard→P2, pad→P3) still yields two usable
+/// players rather than empty, uncontrollable slots.
+fn group_players(keyboard_player: usize, pad_players: &[usize]) -> Vec<PlayerGroup> {
+    let mut nums: Vec<usize> = std::iter::once(keyboard_player)
+        .chain(pad_players.iter().copied())
+        .collect();
+    nums.sort_unstable();
+    nums.dedup();
+    nums.into_iter()
+        .map(|p| PlayerGroup {
+            keyboard: keyboard_player == p,
+            pads: (0..pad_players.len())
+                .filter(|&i| pad_players[i] == p)
+                .collect(),
+        })
+        .collect()
 }
 
 impl Default for Controllers {
@@ -531,19 +637,24 @@ impl Controllers {
             gilrs,
             #[cfg(not(target_arch = "wasm32"))]
             prev_pad_down: Vec::new(),
+            #[cfg(target_arch = "wasm32")]
+            prev_pad_down_web: Vec::new(),
         }
     }
 
     /// Refresh keyboard and gamepad state. Call once per frame before the game
     /// reads input. `scheme` (from the current scene) selects which on-screen
-    /// directional control to show and read.
-    pub fn poll(&mut self, scheme: TouchScheme) {
+    /// directional control to show and read. `assign` maps each input source
+    /// (keyboard, each pad) to a player number, so the party can be split between
+    /// people (see [`InputAssignment`]).
+    pub fn poll(&mut self, scheme: TouchScheme, assign: &InputAssignment) {
         let keyboard = read_keyboard();
 
         // Collect each connected gamepad's (held, press-edge) state, in a stable
         // order so pad → party-member assignment doesn't shuffle between frames.
-        // Only the gamepad path (native) pushes to this; on web it stays empty.
-        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
+        // Native reads pads via gilrs; web reads the browser Gamepad API through
+        // the `hoto_gamepads` JS plugin. Either way, press edges are derived here
+        // by diffing this frame's held state against the previous frame's.
         let mut pads: Vec<Input> = Vec::new();
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(gilrs) = &mut self.gilrs {
@@ -569,6 +680,31 @@ impl Controllers {
                 next_prev.push((id, down));
             }
             self.prev_pad_down = next_prev;
+        }
+
+        // Web: the JS plugin already maps each pad to our N logical buttons, so it
+        // hands back `count * N` 0/1 flags. Diff against last frame (by pad index,
+        // which is stable per connection) for press edges.
+        #[cfg(target_arch = "wasm32")]
+        {
+            let raw = web_pads::poll_raw();
+            let count = raw.len() / N;
+            let mut next_prev: Vec<[bool; N]> = Vec::with_capacity(count);
+            for p in 0..count {
+                let mut down = [false; N];
+                for (i, d) in down.iter_mut().enumerate() {
+                    *d = raw[p * N + i] != 0;
+                }
+                let prev = self.prev_pad_down_web.get(p).copied().unwrap_or([false; N]);
+                let mut inp = Input::default();
+                for i in 0..N {
+                    inp.down[i] = down[i];
+                    inp.pressed[i] = down[i] && !prev[i];
+                }
+                pads.push(inp);
+                next_prev.push(down);
+            }
+            self.prev_pad_down_web = next_prev;
         }
 
         self.pad_count = pads.len();
@@ -602,20 +738,20 @@ impl Controllers {
         shared.merge(&touch);
         self.shared = shared;
 
-        // One player per gamepad (at least one). Slot 0 also gets the keyboard.
-        let mut players = Vec::with_capacity(pads.len().max(1));
-        for i in 0..pads.len().max(1) {
-            let mut inp = if i == 0 {
-                keyboard.clone()
-            } else {
-                Input::default()
-            };
-            if let Some(pad) = pads.get(i) {
-                inp.merge(pad);
-            }
-            // The touchscreen, like the keyboard, commands member 0.
-            if i == 0 {
+        // Build one merged Input per *effective* player from the assignment: each
+        // player is the OR of the sources bound to it. The keyboard (and the touch
+        // overlay, which mirrors it) rides on the keyboard's player. Members are
+        // dealt across these players round-robin by `player()` / `member_slot`.
+        let pad_players: Vec<usize> = (0..pads.len()).map(|i| assign.gamepad_player(i)).collect();
+        let mut players = Vec::new();
+        for group in group_players(assign.keyboard, &pad_players) {
+            let mut inp = Input::default();
+            if group.keyboard {
+                inp.merge(&keyboard);
                 inp.merge(&touch);
+            }
+            for i in group.pads {
+                inp.merge(&pads[i]);
             }
             players.push(inp);
         }
@@ -627,11 +763,19 @@ impl Controllers {
         &self.shared
     }
 
-    /// The input controlling party member `i`. Gamepad `i` (keyboard too, for
-    /// member 0) if one is plugged in for that slot; otherwise the shared input,
-    /// so a lone player still commands every member.
+    /// The input controlling party member `i`. Each connected gamepad (plus the
+    /// keyboard, on slot 0) is one player; members are handed to players
+    /// **round-robin**, so when there are fewer players than members every member
+    /// still has exactly one clear owner. Two pads with three heroes therefore
+    /// split cleanly — player 1 drives members 0 & 2, player 2 drives member 1 —
+    /// rather than the extra hero becoming a both-pads free-for-all. With a single
+    /// input source (one pad, or just the keyboard) every member maps to it, so a
+    /// lone player still commands the whole party.
     pub fn player(&self, i: usize) -> &Input {
-        self.players.get(i).unwrap_or(&self.shared)
+        if self.players.is_empty() {
+            return &self.shared;
+        }
+        &self.players[member_slot(i, self.players.len())]
     }
 
     /// Number of gamepads currently connected.
@@ -690,6 +834,60 @@ mod tests {
             phase: TouchPhase::Started,
             position: macroquad::prelude::vec2(x, y),
         }
+    }
+
+    /// Compact description of a grouping for assertions: for each effective
+    /// player, `(has_keyboard, pad_indices)`.
+    fn groups(kb: usize, pads: &[usize]) -> Vec<(bool, Vec<usize>)> {
+        group_players(kb, pads)
+            .into_iter()
+            .map(|g| (g.keyboard, g.pads))
+            .collect()
+    }
+
+    #[test]
+    fn default_assignment_merges_keyboard_with_the_first_pad() {
+        // Default: keyboard→P0, pad0→P0, pad1→P1. So one couch player uses the
+        // keyboard and pad 0 together, and a second pad is its own player.
+        assert_eq!(groups(0, &[0, 1]), vec![(true, vec![0]), (false, vec![1])]);
+    }
+
+    #[test]
+    fn keyboard_and_pad_can_be_separate_players() {
+        // The headline case: assign the keyboard to P0 and the one pad to P1 and
+        // they become two distinct players — one on keys, one on the controller.
+        assert_eq!(groups(0, &[1]), vec![(true, vec![]), (false, vec![0])]);
+    }
+
+    #[test]
+    fn gappy_assignment_compacts_to_real_players() {
+        // Keyboard→P1, pad→P2 (nobody on P0): still two usable players, no empty
+        // slot that would leave a member uncontrollable.
+        assert_eq!(groups(1, &[2]), vec![(true, vec![]), (false, vec![0])]);
+    }
+
+    #[test]
+    fn everyone_on_one_player_is_solo() {
+        // Keyboard + two pads all on P0 → a single player driving the whole party.
+        assert_eq!(groups(0, &[0, 0]), vec![(true, vec![0, 1])]);
+        // Keyboard alone is also one player.
+        assert_eq!(groups(0, &[]), vec![(true, vec![])]);
+    }
+
+    #[test]
+    fn members_are_dealt_to_players_round_robin() {
+        // Two players, three heroes: player 1 owns members 0 & 2, player 2 owns 1.
+        assert_eq!(member_slot(0, 2), 0);
+        assert_eq!(member_slot(1, 2), 1);
+        assert_eq!(member_slot(2, 2), 0);
+        // One input source (lone pad / keyboard): every member maps to it.
+        for m in 0..4 {
+            assert_eq!(member_slot(m, 1), 0);
+        }
+        // Three players, three heroes: one each.
+        assert_eq!(member_slot(2, 3), 2);
+        // No sources: defaults to slot 0 rather than dividing by zero.
+        assert_eq!(member_slot(5, 0), 0);
     }
 
     #[test]

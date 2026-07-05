@@ -46,7 +46,7 @@ pub async fn run() {
 
         // Poll before update, so the touch overlay matches the scene the player
         // is currently looking at (the joystick while walking, up/down in battle).
-        controllers.poll(game.touch_scheme());
+        controllers.poll(game.touch_scheme(), game.input_assignment());
         game.update(&controllers, &mut renderer, dt);
         game.draw(&mut renderer);
         draw_touch_controls(&controllers, &mut renderer);

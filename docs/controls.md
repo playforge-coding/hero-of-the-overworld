@@ -23,8 +23,10 @@ by holding two directions at once (a diagonal on the stick counts too).
 ## Gamepads
 
 Plug in a controller and it just works — anywhere the keyboard does, a gamepad
-does too, and you can use both at once. Gamepad support is native-only; the
-[web build](getting-started.md) uses the keyboard or the touch controls below.
+does too, and you can use both at once. Gamepads work on **both** the desktop and
+the **[web build](getting-started.md)** (in the browser you may need to press a
+button on the pad once so the browser reveals it). See
+[local co-op](#local-co-op-share-the-party) below for playing with two people.
 
 ## Touch controls
 
@@ -46,25 +48,44 @@ The directional control fits what you're doing:
 - **Battle** — just **up/down**, since the command menu is a vertical list.
   Left/right and Menu are hidden there; A confirms and B backs out.
 
-### One controller per party member
+### Local co-op: share the party
 
-Connect **more than one** gamepad and each one takes over a **party member**:
-the first gamepad (and the keyboard) drives member 1, the second drives member 2,
-and so on. This matters in the [battle](battles.md) command phase — when it's a
-hero's turn to choose ATTACK / SKILL / DEFEND, *that hero's* controller drives
-the menu, so a couch of players can each plan their own character. Everywhere
-else (the world map, walking a level, dialogue) any connected controller works,
-since those screens are single-player.
+Two people can play at once. Each **input source** — the keyboard and every
+connected gamepad — is a **player**, and party members are dealt out to players
+**round-robin**. This matters in the [battle](battles.md) command phase — when it's
+a hero's turn to choose ATTACK / SKILL / DEFEND (and to land its
+[timed hits](battles.md#action-timing-strikes-and-blocks)), *that hero's* player
+drives it, so a couch of players each plan their own characters.
 
-If there are more party members than gamepads, the extra members fall back to
-the shared input, so a lone player still commands the whole party in turn — the
-game plays exactly as it does on a single controller.
+When there are **more party members than players**, the extra members wrap back
+around rather than being left unowned — so **two players share three heroes
+cleanly**: player 1 handles members 1 & 3, player 2 handles member 2. With a single
+input source, every member maps to it, so a lone player still commands the whole
+party in turn.
+
+#### Assigning inputs to players
+
+By default the keyboard and the first gamepad are the **same** player 1 (so one
+person can use either), and each further gamepad is its own player. To change that
+— for instance to have **one person on the keyboard and another on a controller** —
+open the **CONTROLS** screen: press **Menu** (<kbd>Shift</kbd>/<kbd>C</kbd>, or
+Start) on the **title screen**. Pick each row (KEYBOARD, GAMEPAD 1, …) and use
+**Left/Right** to set which **player** it belongs to, then **DONE**. Put the
+keyboard on Player 1 and the pad on Player 2 and the two of you split the party.
+The mapping is [saved](gameplay.md#saving) with your game.
+
+Everywhere outside battle (the world map, walking a level, the inventory,
+dialogue) any connected controller — or the keyboard — works, since those screens
+are single-player.
 
 ## What the buttons do, screen by screen
 
 ### Title
 
-- **Confirm** — begin, opening the [world map](world.md#the-world-map).
+- **Confirm** — begin (or **CONTINUE** a saved game), opening the
+  [world map](world.md#the-world-map).
+- **Menu** — open the **CONTROLS** screen to
+  [assign inputs to players](#assigning-inputs-to-players) for local co-op.
 
 ### World map
 

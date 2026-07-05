@@ -895,9 +895,9 @@ impl Battle {
         reg: &Registry,
     ) -> CommandResult {
         let hero = cmd.hero;
-        // Each hero is commanded by the gamepad assigned to their party slot;
-        // with one controller (or the keyboard) `player` falls back to the shared
-        // input, so a lone player still commands every hero in turn.
+        // Each hero is commanded by the player its party slot maps to (round-robin
+        // over the connected pads — so two players cleanly share three heroes). A
+        // lone player, with a single input source, commands every hero in turn.
         let input = controllers.player(self.battlers[hero].party_index.unwrap_or(0));
 
         match &mut cmd.stage {

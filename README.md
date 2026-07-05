@@ -48,11 +48,13 @@ cargo build --release --target wasm32-unknown-unknown --bin hero
 ```
 
 Controls: **arrows / WASD** move, **Enter / Z / Space** confirm, **Esc / X / Backspace**
-cancel or back out, **Shift / C** open the menu (leave a level). A **gamepad**
-works too (native builds) — D-pad/stick to move, A confirm, B cancel; plug in
-several and each controls a party member in battle. On a **touchscreen** (phones,
-the web build) on-screen controls appear after the first touch — a floating
-joystick in the overworld, a d-pad in menus, up/down in battle. See
+cancel or leave a level, **Shift / C** (Menu) open the inventory in a level (or the
+controls screen on the title). A **gamepad** works too — on desktop *and* in the
+browser — D-pad/stick to move, A confirm, B cancel; plug in several and each
+controls a party member in battle (assign keyboard/pads to players on the title's
+CONTROLS screen). On a **touchscreen** (phones, the web build) on-screen controls
+appear after the first touch — a floating joystick in the overworld, a d-pad in
+menus, up/down in battle. See
 [`docs/controls.md`](docs/controls.md).
 
 Press Enter on the title to reach the **world map**, pick a level, and enter it. You walk
@@ -77,15 +79,17 @@ that is letterboxed into the real window, so game code never deals with real pix
 | --- | --- |
 | [`src/renderer.rs`](src/renderer.rs) | thin macroquad wrapper: a virtual-resolution sprite/rect/text draw queue, letterboxed |
 | [`src/data.rs`](src/data.rs) | the RON file format + indexed registries (the content DB) |
-| [`src/party.rs`](src/party.rs) | the persistent, extensible party (HP/MP/XP carried between battles) |
+| [`src/party.rs`](src/party.rs) | the persistent, extensible party (HP/MP/XP carried between battles) + the shared owned-item bag |
+| [`src/inventory.rs`](src/inventory.rs) | the party inventory / equipment screen (equip & unequip from the bag) |
+| [`src/input_config.rs`](src/input_config.rs) | the controls screen: map keyboard/gamepads to players for local co-op |
 | [`src/overworld.rs`](src/overworld.rs) | tile-mapped levels: screens, walking, camera, roaming enemies |
 | [`src/battle.rs`](src/battle.rs) | the turn-based battle scene (commands → AI → resolve) |
 | [`src/shop.rs`](src/shop.rs) | the shop interior scene: walk-in store + buy-and-equip UI |
 | [`src/cutscene.rs`](src/cutscene.rs) | data-driven scripted dialogue + party recruitment |
 | [`src/audio.rs`](src/audio.rs) | background music via `macroquad::audio` (native + web) |
 | [`src/save.rs`](src/save.rs) | custom binary save format + storage (native file via `dirs`, web IndexedDB) |
-| [`src/game.rs`](src/game.rs) | scene state machine (title → map → level → cutscene → battle → shop → report) |
-| [`src/input.rs`](src/input.rs) | logical buttons polled from the keyboard, gamepads (`gilrs`), and on-screen touch controls each frame |
+| [`src/game.rs`](src/game.rs) | scene state machine (title → map → level → cutscene → battle → shop → inventory → controls → report) |
+| [`src/input.rs`](src/input.rs) | logical buttons polled from the keyboard, gamepads (`gilrs` natively, the browser Gamepad API on web), and on-screen touch controls each frame; maps input sources to players |
 | [`src/app.rs`](src/app.rs) | the macroquad main loop + window config |
 
 The `Renderer` keeps the same small API the game modules were written against (a queue of

@@ -66,6 +66,9 @@
          wasm module is instantiated. -->
     <script src="./sapp_jsutils.js"></script>
     <script src="./hoto_storage.js"></script>
+    <!-- Web gamepad support: reads the browser Gamepad API and exposes it to the
+         wasm input module. Also a miniquad plugin, so it loads here too. -->
+    <script src="./hoto_gamepads.js"></script>
     <script>
       // The bin is named `hero`, so `cargo build --target wasm32-unknown-unknown`
       // produces hero.wasm.

@@ -12,7 +12,8 @@ use crate::audio::{Audio, Track};
 use crate::battle::{Battle, BattleOutcome};
 use crate::cutscene::{Cutscene, CutsceneOutcome};
 use crate::data::Registry;
-use crate::input::{Button, Controllers, Input, TouchScheme};
+use crate::input::{Button, Controllers, Input, InputAssignment, TouchScheme};
+use crate::input_config::{InputConfig, InputConfigEvent};
 use crate::inventory::{Inventory, InventoryEvent};
 use crate::overworld::{Event, Overworld, Trigger};
 use crate::party::{Party, PartyMember};
@@ -33,6 +34,9 @@ enum Scene {
     /// The party inventory / equipment screen, opened with Menu from a level. The
     /// `Level` runtime stays alive in `self.level` so closing returns you to it.
     Inventory(Inventory),
+    /// The input-mapping config, opened with Menu from the title screen: assign
+    /// the keyboard and each gamepad to players for local co-op.
+    InputConfig(InputConfig),
     Report {
         win: bool,
         lines: Vec<String>,
@@ -68,6 +72,9 @@ pub struct Game {
     pending_cutscene: Option<Cutscene>,
     scene: Scene,
     time: f32,
+    /// How input sources (keyboard, each pad) map to players. Edited on the input
+    /// config screen, fed to [`Controllers::poll`] each frame, and persisted.
+    input_assignment: InputAssignment,
 }
 
 impl Game {
@@ -92,6 +99,7 @@ impl Game {
             pending_cutscene: None,
             scene: Scene::Title,
             time: 0.0,
+            input_assignment: InputAssignment::default(),
         };
         // Resume a prior session if one is on disk / in the browser.
         if let Some(data) = save::load() {
@@ -137,6 +145,10 @@ impl Game {
             }
         }
         self.party.bag = data.bag;
+        self.input_assignment = InputAssignment {
+            keyboard: data.input_keyboard as usize,
+            gamepads: data.input_gamepads.iter().map(|&p| p as usize).collect(),
+        };
         self.played_cutscenes = data.played_cutscenes.into_iter().collect();
         self.level_progress = data.levels.into_iter().map(|l| (l.id, l.screens)).collect();
 
@@ -231,6 +243,13 @@ impl Game {
             levels,
             location,
             bag: self.party.bag.clone(),
+            input_keyboard: self.input_assignment.keyboard as u32,
+            input_gamepads: self
+                .input_assignment
+                .gamepads
+                .iter()
+                .map(|&p| p as u32)
+                .collect(),
         };
         save::store(&data);
         self.has_save = true;
@@ -259,6 +278,12 @@ impl Game {
     /// while walking the overworld, up/down only in the vertical battle menu, and
     /// a plain d-pad everywhere else (title, map, shop, dialogue). Read by the
     /// main loop before polling input.
+    /// The live input-source → player mapping, read by the main loop each frame
+    /// when it polls the controllers.
+    pub fn input_assignment(&self) -> &InputAssignment {
+        &self.input_assignment
+    }
+
     pub fn touch_scheme(&self) -> TouchScheme {
         match self.scene {
             Scene::Level => TouchScheme::Joystick,
@@ -285,6 +310,11 @@ impl Game {
                     } else {
                         Scene::Map
                     }
+                } else if input.pressed(Button::Menu) {
+                    // Open the controls / input-mapping config.
+                    let mut cfg = InputConfig::new(self.input_assignment.clone());
+                    cfg.sync_gamepads(controllers.gamepad_count());
+                    Scene::InputConfig(cfg)
                 } else {
                     Scene::Title
                 }
@@ -328,6 +358,18 @@ impl Game {
                 }
                 None => Scene::Inventory(inv),
             },
+            Scene::InputConfig(mut cfg) => {
+                cfg.sync_gamepads(controllers.gamepad_count());
+                match cfg.update(input) {
+                    Some(InputConfigEvent::Close(assign)) => {
+                        // Apply the new mapping and remember it across sessions.
+                        self.input_assignment = assign;
+                        self.save();
+                        Scene::Title
+                    }
+                    None => Scene::InputConfig(cfg),
+                }
+            }
             Scene::Report {
                 win,
                 lines,
@@ -555,6 +597,7 @@ impl Game {
             Scene::Battle(battle) => battle.draw(renderer, &self.reg),
             Scene::Shop(shop) => shop.draw(renderer, &self.reg, &self.party),
             Scene::Inventory(inv) => inv.draw(renderer, &self.party, &self.reg),
+            Scene::InputConfig(cfg) => cfg.draw(renderer),
             Scene::Report { win, lines, .. } => Self::draw_report(*win, lines, renderer),
         }
     }
@@ -616,6 +659,15 @@ impl Game {
                 color::rgb(150, 150, 180),
             );
         }
+
+        // Always-on hint for the input/controls config (Menu key).
+        r.draw_text_centered(
+            "PRESS MENU (SHIFT / START) FOR CONTROLS",
+            VIRTUAL_W / 2.0,
+            171.0,
+            1.0,
+            color::rgb(110, 110, 140),
+        );
     }
 
     fn draw_map(&self, r: &mut Renderer) {

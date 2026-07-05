@@ -79,6 +79,11 @@ pub struct SaveData {
     /// Appended at the end of the format and read leniently, so pre-bag saves
     /// (which simply lack this trailing section) still load with an empty bag.
     pub bag: Vec<String>,
+    /// Input mapping: which player number the keyboard is on, and one per gamepad
+    /// (by connection order). Trailing and lenient like `bag`; absent → defaults
+    /// (keyboard on player 0, each pad its own player).
+    pub input_keyboard: u32,
+    pub input_gamepads: Vec<u32>,
 }
 
 // ---- Encoding ---------------------------------------------------------------
@@ -175,6 +180,13 @@ pub fn to_bytes(data: &SaveData) -> Vec<u8> {
     put_u32(&mut out, data.bag.len() as u32);
     for id in &data.bag {
         put_str(&mut out, id);
+    }
+
+    // Trailing, back-compatibly optional: the input-source → player mapping.
+    put_u32(&mut out, data.input_keyboard);
+    put_u32(&mut out, data.input_gamepads.len() as u32);
+    for &p in &data.input_gamepads {
+        put_u32(&mut out, p);
     }
 
     out
@@ -341,6 +353,20 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
         None => Vec::new(),
     };
 
+    // The input mapping is a further trailing addition, read the same lenient way:
+    // absent (older save) → defaults.
+    let (input_keyboard, input_gamepads) = match r.u32() {
+        Some(kb) => {
+            let n = r.u32()? as usize;
+            let mut gamepads = Vec::with_capacity(n.min(64));
+            for _ in 0..n {
+                gamepads.push(r.u32()?);
+            }
+            (kb, gamepads)
+        }
+        None => (0, Vec::new()),
+    };
+
     Some(SaveData {
         gold,
         members,
@@ -349,6 +375,8 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
         levels,
         location,
         bag,
+        input_keyboard,
+        input_gamepads,
     })
 }
 
@@ -503,6 +531,8 @@ mod tests {
                 y: 48.0,
             }),
             bag: vec!["iron_sword".into(), "leather_armor".into()],
+            input_keyboard: 0,
+            input_gamepads: vec![1, 2],
         }
     }
 
@@ -521,14 +551,18 @@ mod tests {
     }
 
     #[test]
-    fn pre_bag_save_loads_with_empty_bag() {
-        // A save written before the bag existed simply ends before the trailing
-        // bag section. Simulate that by dropping the 4-byte bag count, and confirm
-        // it decodes to the same state with an empty bag rather than failing.
+    fn pre_bag_save_loads_with_defaults() {
+        // A save written before the trailing bag + input sections existed simply
+        // ends after `location`. With an empty bag and default input, those
+        // sections are: bag count (0) + keyboard (0) + gamepad count (0) = 12
+        // bytes. Dropping them yields exactly such an older save, which must still
+        // decode — to empty bag and default (all-zero) input — rather than failing.
         let mut data = sample();
         data.bag = Vec::new();
+        data.input_keyboard = 0;
+        data.input_gamepads = Vec::new();
         let bytes = to_bytes(&data);
-        let old = &bytes[..bytes.len() - 4];
+        let old = &bytes[..bytes.len() - 12];
         assert_eq!(from_bytes(old), Some(data));
     }
 
