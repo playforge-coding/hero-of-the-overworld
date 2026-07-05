@@ -185,6 +185,144 @@ struct Popup {
     color: Color,
 }
 
+// ---- Action timing (attack / block timed hits) ------------------------------
+
+// SMRPG-style timed hits: there is *no* on-screen indicator. The window is woven
+// into the strike animation itself — you have to read the swing and tap Confirm
+// as the blow connects. The weapon connects at `STRIKE_CONNECT` (the peak of the
+// lunge); a tap within `STRIKE_PERFECT` of it is "on time" → the full bonus,
+// within `STRIKE_GOOD` is a hair early/late → the lesser bonus, and anything
+// further out (or no tap) misses. Tapping *before* the animation gets you nothing
+// — an early panic tap simply whiffs.
+const STRIKE_CONNECT: f32 = 0.2;
+const STRIKE_PERFECT: f32 = 0.05;
+const STRIKE_GOOD: f32 = 0.13;
+/// When the blow actually lands — just after the timing window shuts, so the tap
+/// is already known. Kept in step with the lunge's hold (see the timeline in
+/// [`Battle::update_execute`]).
+const STRIKE_APPLY: f32 = STRIKE_CONNECT + STRIKE_GOOD;
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum TimingKind {
+    /// A hero's own strike: a well-timed tap *adds* damage (+50% / +100%).
+    Attack,
+    /// A hero bracing for an incoming blow: a well-timed tap *subtracts* the
+    /// enemy's damage (−50% / −100%).
+    Block,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum TimingResult {
+    Miss,
+    Good,
+    Perfect,
+}
+
+/// The timed-hit tracker for the current action. There is no bar and no marker:
+/// the `presser` gets exactly **one** clean Confirm tap, recorded as the elapsed
+/// *animation* time [`press_t`](Self::press_t), and how close that is to
+/// [`STRIKE_CONNECT`] decides the [`TimingResult`] and its damage [`HitMod`].
+/// Mashing the button ([`presses`](Self::presses) > 1) earns nothing — you can't
+/// hammer your way to a perfect.
+struct TimedHit {
+    kind: TimingKind,
+    /// The hero (battler index) whose controller drives the tap: the attacker for
+    /// [`TimingKind::Attack`], the defender for [`TimingKind::Block`].
+    presser: usize,
+    /// Elapsed animation time of the *first* tap, for scoring (`None` until the
+    /// presser taps — a tap only counts while the strike is playing out).
+    press_t: Option<f32>,
+    /// How many taps landed during the swing. Only a single, deliberate tap is
+    /// eligible: zero is a plain miss, and two or more is button-mashing, which
+    /// forfeits the bonus.
+    presses: u32,
+}
+
+impl TimedHit {
+    fn new(kind: TimingKind, presser: usize) -> Self {
+        TimedHit {
+            kind,
+            presser,
+            press_t: None,
+            presses: 0,
+        }
+    }
+
+    /// How well the tap landed, from its distance to the connect moment. Anything
+    /// but a single clean tap misses — no tap, or mashing.
+    fn result(&self) -> TimingResult {
+        if self.presses != 1 {
+            return TimingResult::Miss;
+        }
+        let off = (self.press_t.unwrap_or(f32::INFINITY) - STRIKE_CONNECT).abs();
+        if off <= STRIKE_PERFECT {
+            TimingResult::Perfect
+        } else if off <= STRIKE_GOOD {
+            TimingResult::Good
+        } else {
+            TimingResult::Miss
+        }
+    }
+
+    /// The damage modifier this timing produces.
+    fn hit_mod(&self) -> HitMod {
+        match self.kind {
+            TimingKind::Attack => HitMod {
+                attack_mult: match self.result() {
+                    TimingResult::Perfect => 2.0,
+                    TimingResult::Good => 1.5,
+                    TimingResult::Miss => 1.0,
+                },
+                block_reduce: 0.0,
+            },
+            TimingKind::Block => HitMod {
+                attack_mult: 1.0,
+                block_reduce: match self.result() {
+                    TimingResult::Perfect => 1.0,
+                    TimingResult::Good => 0.5,
+                    TimingResult::Miss => 0.0,
+                },
+            },
+        }
+    }
+
+    /// Label + colour for the floating feedback shown when the blow lands. A miss
+    /// shows nothing — you simply don't earn the bonus, no scolding text.
+    fn flash(&self) -> Option<(&'static str, Color)> {
+        match (self.kind, self.result()) {
+            (_, TimingResult::Miss) => None,
+            (TimingKind::Attack, TimingResult::Good) => {
+                Some(("GOOD  +50%", color::rgb(255, 226, 120)))
+            }
+            (TimingKind::Attack, TimingResult::Perfect) => {
+                Some(("PERFECT  +100%", color::rgb(255, 150, 60)))
+            }
+            (TimingKind::Block, TimingResult::Good) => {
+                Some(("BLOCK  -50%", color::rgb(140, 200, 255)))
+            }
+            (TimingKind::Block, TimingResult::Perfect) => {
+                Some(("BLOCK  -100%", color::rgb(120, 240, 140)))
+            }
+        }
+    }
+}
+
+/// A damage modifier from an action's timing: an offensive multiplier (the
+/// attacker's own attack-timing) and a fraction of damage removed by a block (the
+/// defender's block-timing). For any one action exactly one is non-neutral.
+#[derive(Copy, Clone)]
+struct HitMod {
+    attack_mult: f32,
+    block_reduce: f32,
+}
+
+impl HitMod {
+    const NEUTRAL: HitMod = HitMod {
+        attack_mult: 1.0,
+        block_reduce: 0.0,
+    };
+}
+
 // ---- Battle state -----------------------------------------------------------
 
 pub enum BattleOutcome {
@@ -231,6 +369,15 @@ struct Execute {
     idx: usize,
     elapsed: f32,
     applied: bool,
+    /// Whether the current action's start-up (banner + arming its timed hit) has
+    /// run. Reset for each action in the queue.
+    started: bool,
+    /// The timed-hit tracker for the current action, if it has one. Records the
+    /// presser's tap as the strike animation plays. `None` for actions with no
+    /// timing (heals, defends, unblockable blows).
+    timed: Option<TimedHit>,
+    /// Damage modifier banked from `timed`, applied when the blow lands.
+    hit_mod: HitMod,
     /// True for the tail-of-round bookkeeping step (an empty-queue execute) that
     /// resolves status ticks (burn damage, etc.) once before the next round.
     end_of_round: bool,
@@ -484,7 +631,7 @@ impl Battle {
                 None
             }
             State::Execute(exec) => {
-                let done = self.update_execute(exec, rng, reg, dt);
+                let done = self.update_execute(exec, controllers, rng, reg, dt);
                 if done {
                     // An `end_of_round` execute finishes the round (statuses have
                     // ticked) and opens the next one; any other execute was a
@@ -625,6 +772,9 @@ impl Battle {
             idx: 0,
             elapsed: 0.0,
             applied: false,
+            started: false,
+            timed: None,
+            hit_mod: HitMod::NEUTRAL,
             end_of_round: false,
             statuses_ticked: false,
             banner: String::new(),
@@ -639,6 +789,9 @@ impl Battle {
             idx: 0,
             elapsed: 0.0,
             applied: false,
+            started: false,
+            timed: None,
+            hit_mod: HitMod::NEUTRAL,
             end_of_round: true,
             statuses_ticked: false,
             banner: String::new(),
@@ -808,6 +961,7 @@ impl Battle {
     fn update_execute(
         &mut self,
         exec: &mut Execute,
+        controllers: &Controllers,
         rng: &mut Rng,
         reg: &Registry,
         dt: f32,
@@ -832,22 +986,49 @@ impl Battle {
 
         // Skip actions whose actor died before acting.
         if !self.battlers[exec.queue[exec.idx].actor].alive() {
-            exec.idx += 1;
-            exec.elapsed = 0.0;
-            exec.applied = false;
+            self.next_action(exec);
             return false;
         }
 
-        exec.elapsed += dt;
         let action = exec.queue[exec.idx].clone();
         let actor = action.actor;
-        let dir = self.battlers[actor].facing_dir();
 
-        // Timeline: 0.0 windup, 0.2 impact, 0.55 hold, 0.75 return, 0.9 end.
+        // Action start-up: announce it and, if it warrants one, arm the timed hit
+        // (a hero's attack, or a blockable enemy blow on a hero). No prompt or bar
+        // is shown — the window lives inside the swing below.
+        if !exec.started {
+            exec.started = true;
+            exec.banner = self.action_banner(&action, reg);
+            exec.timed = self.make_timed(&action, reg);
+            exec.hit_mod = HitMod::NEUTRAL;
+        }
+
+        // Movement + impact timeline: 0.0 windup, STRIKE_CONNECT peak/connect,
+        // STRIKE_APPLY the blow lands, 0.55 hold, 0.75 return, 0.9 end. The timed
+        // hit is woven in: the presser must tap Confirm as the swing connects, and
+        // the blow lands scaled by the `hit_mod` the tap earned.
+        if exec.elapsed == 0.0 {
+            let clip = self.battlers[actor].sprite.attack.clone();
+            self.battlers[actor].anim = Anim::from_clip(&clip, false);
+        }
+        exec.elapsed += dt;
         let t = exec.elapsed;
+
+        // Tally the presser's taps as they happen in the swing: the first fixes
+        // the timing, and any beyond it mark this as mashing (which forfeits the
+        // bonus in `TimedHit::result`).
+        if let Some(th) = &mut exec.timed {
+            let pi = self.battlers[th.presser].party_index.unwrap_or(0);
+            if controllers.player(pi).pressed(Button::Confirm) {
+                th.press_t.get_or_insert(t);
+                th.presses += 1;
+            }
+        }
+
+        let dir = self.battlers[actor].facing_dir();
         let lunge = 18.0;
-        self.battlers[actor].offset.x = if t < 0.2 {
-            dir * lunge * (t / 0.2)
+        self.battlers[actor].offset.x = if t < STRIKE_CONNECT {
+            dir * lunge * (t / STRIKE_CONNECT)
         } else if t < 0.55 {
             dir * lunge
         } else if t < 0.75 {
@@ -856,16 +1037,29 @@ impl Battle {
             0.0
         };
 
-        if t < 0.05 && !exec.applied {
-            // Start of action: set banner + play attack anim.
-            exec.banner = self.action_banner(&action, reg);
-            let clip = self.battlers[actor].sprite.attack.clone();
-            self.battlers[actor].anim = Anim::from_clip(&clip, false);
-        }
-
-        if t >= 0.2 && !exec.applied {
+        if t >= STRIKE_APPLY && !exec.applied {
             exec.applied = true;
-            self.apply_action(&action, rng, reg, &mut exec.popups);
+            // The timing window has closed: lock in the tap's modifier and float
+            // its label as after-the-fact feedback (a miss shows nothing).
+            if let Some(th) = &exec.timed {
+                exec.hit_mod = th.hit_mod();
+                if let Some((label, col)) = th.flash() {
+                    let shown = action
+                        .targets
+                        .iter()
+                        .copied()
+                        .find(|&x| self.battlers[x].alive())
+                        .unwrap_or(actor);
+                    let pos = self.battlers[shown].pos() + Vec2::new(0.0, -28.0);
+                    exec.popups.push(Popup {
+                        text: label.to_string(),
+                        pos,
+                        t: 0.0,
+                        color: col,
+                    });
+                }
+            }
+            self.apply_action(&action, exec.hit_mod, rng, reg, &mut exec.popups);
         }
 
         if t >= 0.9 {
@@ -873,12 +1067,54 @@ impl Battle {
             let idle = self.battlers[actor].idle.clone();
             self.battlers[actor].anim = idle;
             self.battlers[actor].offset = Vec2::ZERO;
-            exec.idx += 1;
-            exec.elapsed = 0.0;
-            exec.applied = false;
+            self.next_action(exec);
         }
 
         false
+    }
+
+    /// Advance the execute queue to the next action, clearing per-action state.
+    fn next_action(&self, exec: &mut Execute) {
+        exec.idx += 1;
+        exec.elapsed = 0.0;
+        exec.applied = false;
+        exec.started = false;
+        exec.timed = None;
+        exec.hit_mod = HitMod::NEUTRAL;
+    }
+
+    /// Arm the timed hit for an action, if it warrants one. A hero's damaging
+    /// action gets an *attack* window (a well-timed tap adds damage); a *blockable*
+    /// enemy blow on a hero gets a *block* window (a well-timed tap subtracts
+    /// damage). Heals, defends, and unblockable attacks get none.
+    fn make_timed(&self, action: &Action, reg: &Registry) -> Option<TimedHit> {
+        // Whether the action deals damage, and (if it lands on a hero) whether it
+        // ignores blocks.
+        let (damages, unblockable) = match &action.kind {
+            ActionKind::Attack => (true, false), // a plain swing is blockable
+            ActionKind::Defend => (false, false),
+            ActionKind::Skill(id) => match reg.skill(id) {
+                Some(def) => (!matches!(def.kind, SkillKind::Heal), def.is_unblockable()),
+                None => (false, false),
+            },
+        };
+        if !damages || !action.targets.iter().any(|&t| self.battlers[t].alive()) {
+            return None;
+        }
+
+        match self.battlers[action.actor].side {
+            // Hero striking foes: time the swing for bonus damage.
+            Side::Hero => Some(TimedHit::new(TimingKind::Attack, action.actor)),
+            // Enemy striking heroes: brace to block, unless the blow is unblockable.
+            Side::Enemy if !unblockable => {
+                let defender =
+                    action.targets.iter().copied().find(|&t| {
+                        self.battlers[t].alive() && self.battlers[t].side == Side::Hero
+                    })?;
+                Some(TimedHit::new(TimingKind::Block, defender))
+            }
+            Side::Enemy => None,
+        }
     }
 
     fn action_banner(&self, action: &Action, reg: &Registry) -> String {
@@ -896,6 +1132,7 @@ impl Battle {
     fn apply_action(
         &mut self,
         action: &Action,
+        hit_mod: HitMod,
         rng: &mut Rng,
         reg: &Registry,
         popups: &mut Vec<Popup>,
@@ -909,7 +1146,7 @@ impl Battle {
                 let atk = self.eff_stats(reg, actor).attack;
                 for &tgt in &action.targets {
                     if self.battlers[tgt].alive() {
-                        self.strike(actor, tgt, atk, 100, reg, rng, popups);
+                        self.strike(actor, tgt, atk, 100, hit_mod, reg, rng, popups);
                     }
                 }
             }
@@ -941,7 +1178,8 @@ impl Battle {
                         let atk = self.eff_stats(reg, actor).attack;
                         for &tgt in &targets {
                             if self.battlers[tgt].alive()
-                                && self.strike(actor, tgt, atk, def.power, reg, rng, popups)
+                                && self
+                                    .strike(actor, tgt, atk, def.power, hit_mod, reg, rng, popups)
                             {
                                 self.inflict_all(reg, tgt, &def.inflicts, popups);
                             }
@@ -951,7 +1189,8 @@ impl Battle {
                         let mag = self.eff_stats(reg, actor).magic;
                         for &tgt in &targets {
                             if self.battlers[tgt].alive()
-                                && self.strike(actor, tgt, mag, def.power, reg, rng, popups)
+                                && self
+                                    .strike(actor, tgt, mag, def.power, hit_mod, reg, rng, popups)
                             {
                                 self.inflict_all(reg, tgt, &def.inflicts, popups);
                             }
@@ -997,6 +1236,7 @@ impl Battle {
         target: usize,
         offense: i32,
         power: i32,
+        hit_mod: HitMod,
         reg: &Registry,
         rng: &mut Rng,
         popups: &mut Vec<Popup>,
@@ -1045,10 +1285,25 @@ impl Battle {
             dmg = (dmg * 2 / 3).max(1);
         }
 
+        // Attack-timing bonus (the attacker's well-timed swing does more).
+        if hit_mod.attack_mult != 1.0 {
+            dmg = ((dmg as f32 * hit_mod.attack_mult).round() as i32).max(1);
+        }
+        // Block-timing reduction (the defender's well-timed block does less to
+        // them — a perfect block subtracts all of it).
+        let blocked = hit_mod.block_reduce > 0.0;
+        if blocked {
+            dmg = (dmg as f32 * (1.0 - hit_mod.block_reduce)).round().max(0.0) as i32;
+        }
+
         let b = &mut self.battlers[target];
         b.hp = (b.hp - dmg).max(0);
         b.flash = if is_crit { 0.45 } else { 0.3 };
-        let (text, color) = if is_crit {
+        let (text, color) = if blocked && dmg == 0 {
+            ("BLOCK".to_string(), color::rgb(140, 200, 255))
+        } else if blocked {
+            (format!("{dmg}"), color::rgb(140, 200, 255))
+        } else if is_crit {
             (format!("{dmg}!"), color::rgb(255, 150, 60))
         } else {
             (format!("{dmg}"), color::rgb(255, 226, 120))
@@ -1482,6 +1737,9 @@ fn dummy_execute() -> Execute {
         idx: 0,
         elapsed: 0.0,
         applied: false,
+        started: false,
+        timed: None,
+        hit_mod: HitMod::NEUTRAL,
         end_of_round: false,
         statuses_ticked: false,
         banner: String::new(),
@@ -1689,5 +1947,116 @@ mod tests {
         assert!(crit_chance(6) > BASE_CRIT, "weapon crit adds to the rate");
         assert_eq!(crit_chance(1000), MAX_CRIT, "crit is capped");
         assert_eq!(crit_chance(-1000), 0, "crit never goes negative");
+    }
+
+    /// A single clean tap `off` seconds away from the connect, with its result.
+    fn tap_at(kind: TimingKind, off: f32) -> TimingResult {
+        let mut t = TimedHit::new(kind, 0);
+        t.press_t = Some(STRIKE_CONNECT + off);
+        t.presses = 1;
+        t.result()
+    }
+
+    #[test]
+    fn attack_timing_scales_damage_by_lateness() {
+        // Dead on the connect → perfect, double damage.
+        assert_eq!(tap_at(TimingKind::Attack, 0.0), TimingResult::Perfect);
+        // A hair off (inside GOOD but outside PERFECT) → good, +50%.
+        assert_eq!(
+            tap_at(TimingKind::Attack, STRIKE_PERFECT + 0.02),
+            TimingResult::Good
+        );
+        // Well before the connect → miss, no bonus. An early panic tap whiffs.
+        assert_eq!(
+            tap_at(TimingKind::Attack, -(STRIKE_GOOD + 0.05)),
+            TimingResult::Miss
+        );
+
+        // The multipliers those results carry.
+        let m = |r| timed_for(TimingKind::Attack, r).hit_mod().attack_mult;
+        assert_eq!(m(TimingResult::Perfect), 2.0);
+        assert_eq!(m(TimingResult::Good), 1.5);
+        assert_eq!(m(TimingResult::Miss), 1.0);
+    }
+
+    #[test]
+    fn block_timing_subtracts_incoming_damage() {
+        assert_eq!(tap_at(TimingKind::Block, 0.0), TimingResult::Perfect);
+        let reduce = |r| {
+            let m = timed_for(TimingKind::Block, r).hit_mod();
+            assert_eq!(m.attack_mult, 1.0, "block never boosts offense");
+            m.block_reduce
+        };
+        assert_eq!(
+            reduce(TimingResult::Perfect),
+            1.0,
+            "a perfect block negates it"
+        );
+        assert_eq!(reduce(TimingResult::Good), 0.5, "a late block halves it");
+        assert_eq!(
+            reduce(TimingResult::Miss),
+            0.0,
+            "a missed block does nothing"
+        );
+    }
+
+    /// A single-tap `TimedHit` that yields the given result, for hit_mod checks.
+    fn timed_for(kind: TimingKind, r: TimingResult) -> TimedHit {
+        let mut t = TimedHit::new(kind, 0);
+        match r {
+            TimingResult::Perfect => {
+                t.press_t = Some(STRIKE_CONNECT);
+                t.presses = 1;
+            }
+            TimingResult::Good => {
+                t.press_t = Some(STRIKE_CONNECT + STRIKE_PERFECT + 0.02);
+                t.presses = 1;
+            }
+            TimingResult::Miss => {} // no tap
+        }
+        t
+    }
+
+    #[test]
+    fn untapped_timing_misses() {
+        // No tap at all during the swing → miss, no bonus.
+        let t = TimedHit::new(TimingKind::Attack, 0);
+        assert_eq!(t.result(), TimingResult::Miss);
+        assert_eq!(t.hit_mod().attack_mult, 1.0);
+    }
+
+    #[test]
+    fn mashing_forfeits_the_bonus() {
+        // Multiple taps — even with one landing dead on the connect — earn
+        // nothing, so hammering the button can't fish for a perfect.
+        let mut t = TimedHit::new(TimingKind::Attack, 0);
+        t.press_t = Some(STRIKE_CONNECT); // first tap was perfectly timed…
+        t.presses = 4; // …but it was part of a mash
+        assert_eq!(t.result(), TimingResult::Miss);
+        assert_eq!(t.hit_mod().attack_mult, 1.0);
+    }
+
+    #[test]
+    fn declared_unblockable_attacks_skip_the_block_window() {
+        let reg = crate::data::Registry::load();
+        for id in [
+            "fireball",
+            "flame_breath",
+            "lance_charge",
+            "trample",
+            "firebolt",
+            "frost",
+        ] {
+            assert!(
+                reg.skill(id).expect(id).is_unblockable(),
+                "{id} should be unblockable"
+            );
+        }
+        for id in ["claw", "tail_swipe", "reap"] {
+            assert!(
+                !reg.skill(id).expect(id).is_unblockable(),
+                "{id} should be blockable"
+            );
+        }
     }
 }

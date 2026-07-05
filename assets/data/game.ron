@@ -316,23 +316,25 @@ GameData(
             id: "fireball", name: "FIREBALL",
             description: "A demon's blazing orb; leaves the target burning.",
             mp_cost: 6, power: 150, kind: Magical, target: OneEnemy,
-            inflicts: ["burn"],
+            inflicts: ["burn"], unblockable: true,
         ),
         SkillDef(
             id: "firebolt", name: "FIREBOLT",
             description: "Hurl a searing bolt of flame at one foe.",
             mp_cost: 6, power: 180, kind: Magical, target: OneEnemy,
+            unblockable: true,
         ),
         SkillDef(
             id: "frost", name: "FROST",
             description: "A biting frost that chills all foes.",
             mp_cost: 12, power: 115, kind: Magical, target: AllEnemies,
+            unblockable: true,
         ),
         SkillDef(
             id: "flame_breath", name: "FLAME BREATH",
             description: "A dragon's roaring gout of fire; sears and burns every foe.",
             mp_cost: 10, power: 135, kind: Magical, target: AllEnemies,
-            inflicts: ["burn"],
+            inflicts: ["burn"], unblockable: true,
         ),
         SkillDef(
             id: "tail_swipe", name: "TAIL SWIPE",
@@ -349,11 +351,13 @@ GameData(
             id: "lance_charge", name: "LANCE CHARGE",
             description: "A thundering couched-lance charge at one hero.",
             mp_cost: 6, power: 185, kind: Physical, target: OneEnemy,
+            unblockable: true,
         ),
         SkillDef(
             id: "trample", name: "TRAMPLE",
             description: "The warhorse tramples the whole party underhoof.",
             mp_cost: 8, power: 90, kind: Physical, target: AllEnemies,
+            unblockable: true,
         ),
     ],
 

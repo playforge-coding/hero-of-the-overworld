@@ -111,6 +111,43 @@ Before an attack deals damage, it has to **land** — and it might land **hard**
 
 Heals always land and never crit.
 
+## Action timing: strikes and blocks
+
+Damage isn't settled the instant a blow is thrown — you have a hand in it, the
+way [Super Mario RPG](https://www.mariowiki.com/Super_Mario_RPG:_Legend_of_the_Seven_Stars)
+does it. There's **no bar and no indicator**: you have to **read the animation**
+and tap **Confirm** at the moment the blow *connects*. Learn the rhythm of each
+swing — an early panic-tap simply whiffs, and **mashing the button earns
+nothing**. You get exactly **one clean tap**; hammering the button forfeits the
+bonus entirely, so it really is about timing.
+
+- **Attacking.** Whenever one of your heroes deals damage — a basic **ATTACK** or
+  any offensive **skill** — tap as your weapon lands and your blow hits harder:
+    - **on time** (right on the connect) → **+100% damage** (double), shown
+      as **PERFECT**;
+    - **a hair off** → **+50% damage**, shown as **GOOD**;
+    - **too early/late**, or don't tap → normal damage.
+- **Blocking.** When an enemy throws a **blockable** blow at a hero, tap as it
+  lands and you shrug off part of the hit:
+    - **on time** → the whole hit is **subtracted** (a perfect block deals **0**,
+      shown as **BLOCK**);
+    - **a hair off** → **half** the damage is subtracted;
+    - **too early/late**, or don't tap → you take it in full.
+
+The window is tight and centred on the exact moment the animation connects, so
+timing is a real skill — no meter to watch, just the swing. A well-timed block
+stacks on top of **DEFEND**, and the bonuses ride along with crits and everything
+else in the [damage formula](#how-damage-works).
+
+### Unblockable attacks
+
+Some enemy attacks are **unblockable** — no block window appears and you take the
+hit (you can still **DEFEND** to soften it the ordinary way). Piercing and magical
+blows declare themselves unblockable: **FIREBALL**, **FLAME BREATH**, **FROST**,
+**FIREBOLT**, **LANCE CHARGE**, and **TRAMPLE**. A plain melee swing, **CLAW**,
+**REAP**, or **TAIL SWIPE** can all be blocked. A skill opts in with a single
+`unblockable: true` data flag — see **[Extending the Game](modding.md)**.
+
 ## How damage works
 
 A landed hit's damage is based on the attacker's offensive stat and the skill's
@@ -122,6 +159,8 @@ damage ≈ (offense × power / 100) − defense / 2      (at least 1)
         × 1.5 on a critical hit
         × 0.88–1.12 random variance
         × 0.66 if the target is defending
+        × 1.5 / 2.0 on a good / perfect attack-timing tap
+        × 0.5 / 0.0 on a late / perfect block   (blocks can reach 0 damage)
 ```
 
 - **ATTACK** uses power 100; skills use their own power value.

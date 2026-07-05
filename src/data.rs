@@ -122,6 +122,19 @@ pub struct SkillDef {
     /// skill may inflict several at once; unknown ids are ignored.
     #[serde(default)]
     pub inflicts: Vec<String>,
+    /// Declares the attack unblockable: when an enemy uses it on a hero, the
+    /// player gets no timed-block window (see the battle timing mini-game).
+    /// Piercing and magical blows (fireball, lance charge, trample, …) set this;
+    /// an ordinary melee swing leaves it `false` and can be blocked.
+    #[serde(default)]
+    pub unblockable: bool,
+}
+
+impl SkillDef {
+    /// Whether this attack ignores a defender's timed block.
+    pub fn is_unblockable(&self) -> bool {
+        self.unblockable
+    }
 }
 
 /// A status condition that can be attached to a battler (burn, poison, slow, …).

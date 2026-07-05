@@ -96,6 +96,12 @@ SkillDef(
 - `target` is `OneEnemy`, `AllEnemies`, `OneAlly`, `AllAllies`, or `SelfOnly`.
 - `power` is a percentage multiplier on the relevant stat (see
   [How damage works](battles.md#how-damage-works)).
+- `inflicts` (optional) is a list of status ids applied on a hit, e.g.
+  `inflicts: ["burn"]`.
+- `unblockable: true` (optional) makes the attack skip a hero's timed block, for
+  piercing or magical blows — see
+  [Action timing](battles.md#unblockable-attacks). Omitted, the attack can be
+  blocked.
 
 ## Add equipment
 
