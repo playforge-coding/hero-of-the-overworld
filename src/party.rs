@@ -5,7 +5,7 @@
 //! just pushing/removing entries. Battle code iterates whatever is here, so a
 //! second or third character assisting in battle needs no special-casing.
 
-use crate::data::{BattlerSprite, Registry, Stats};
+use crate::data::{BattlerSprite, EquipSlot, Registry, Stats};
 
 /// A recruited character. Carries live HP/MP between battles.
 #[derive(Clone, Debug)]
@@ -70,6 +70,11 @@ impl PartyMember {
 pub struct Party {
     pub members: Vec<PartyMember>,
     pub gold: i32,
+    /// Owned but **unequipped** equipment (ids into the registry's `equipment`),
+    /// a multiset — duplicates allowed. Gear bought at a shop that displaces an
+    /// equipped item lands here, and the inventory screen equips/unequips between
+    /// this bag and party members. Persisted in the save file.
+    pub bag: Vec<String>,
 }
 
 impl Party {
@@ -110,6 +115,72 @@ impl Party {
 
     pub fn any_alive(&self) -> bool {
         self.members.iter().any(|m| m.is_alive())
+    }
+
+    /// A member's current item in `slot`, if any.
+    fn slot_id(member: &PartyMember, slot: EquipSlot) -> &Option<String> {
+        match slot {
+            EquipSlot::Weapon => &member.weapon,
+            EquipSlot::Armor => &member.armor,
+        }
+    }
+
+    fn slot_id_mut(member: &mut PartyMember, slot: EquipSlot) -> &mut Option<String> {
+        match slot {
+            EquipSlot::Weapon => &mut member.weapon,
+            EquipSlot::Armor => &mut member.armor,
+        }
+    }
+
+    /// Move a member's equipped item in `slot` back into the [bag](Self::bag),
+    /// leaving the slot empty. No-op if the slot is already empty.
+    pub fn unequip(&mut self, member: usize, slot: EquipSlot) {
+        if let Some(m) = self.members.get_mut(member) {
+            if let Some(id) = Self::slot_id_mut(m, slot).take() {
+                self.bag.push(id);
+            }
+        }
+    }
+
+    /// Equip the bag item at `bag_index` onto `member`, into the slot the item's
+    /// definition dictates. Whatever the member had in that slot swaps back into
+    /// the bag, so nothing is ever lost or duplicated. Returns whether it equipped
+    /// (a valid, known item and member).
+    pub fn equip_from_bag(&mut self, reg: &Registry, member: usize, bag_index: usize) -> bool {
+        let Some(id) = self.bag.get(bag_index).cloned() else {
+            return false;
+        };
+        let Some(slot) = reg.equipment(&id).map(|e| e.slot) else {
+            return false;
+        };
+        if member >= self.members.len() {
+            return false;
+        }
+        // Take the item out of the bag, swap it in, and return the displaced one.
+        self.bag.remove(bag_index);
+        let prev = Self::slot_id_mut(&mut self.members[member], slot).replace(id);
+        if let Some(prev) = prev {
+            self.bag.push(prev);
+        }
+        true
+    }
+
+    /// The bag indices holding equipment of the given `slot` type, for building a
+    /// slot-filtered chooser in the inventory screen.
+    pub fn bag_indices_for(&self, reg: &Registry, slot: EquipSlot) -> Vec<usize> {
+        self.bag
+            .iter()
+            .enumerate()
+            .filter(|(_, id)| reg.equipment(id).map(|e| e.slot) == Some(slot))
+            .map(|(i, _)| i)
+            .collect()
+    }
+
+    /// A member's equipped item id in `slot`, for display.
+    pub fn equipped(&self, member: usize, slot: EquipSlot) -> Option<&str> {
+        self.members
+            .get(member)
+            .and_then(|m| Self::slot_id(m, slot).as_deref())
     }
 
     /// The party's overall level: the highest level any member has reached.

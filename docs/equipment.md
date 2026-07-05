@@ -6,9 +6,9 @@ comments: true
 
 Every hero can carry one **weapon** and one piece of **armor**. Equipment folds
 its bonuses into that hero's battle stats and adds combat attributes on top, so
-the right gear makes a real difference in a fight. While you're choosing a
-command, a panel shows the acting hero's weapon and armor — icon, bonuses, and a
-short **description** of each.
+the right gear makes a real difference in a fight. You review and change what each
+hero has equipped on the **[inventory / equipment](gameplay.md#inventory-and-equipment)**
+screen (press **Menu** in a level), where every item shows its bonuses.
 
 ## What gear does
 
@@ -52,7 +52,18 @@ behind a keen, reliable **CAVALRY LANCE**.
 A hero can **start** with gear (set on their `CharacterDef`), or you can **buy**
 it at a **[shop](shops.md)**. The Greenwood's OUTFITTER sells the kit above;
 buying an item equips it to the hero you choose and spends the gold you've won in
-battle, replacing whatever was in that slot.
+battle. Whatever it replaces isn't thrown away — it drops into the party's shared
+**bag**.
+
+## Changing gear anywhere
+
+You don't need a shop to shuffle equipment around. Press **Menu**
+(<kbd>Shift</kbd>/<kbd>C</kbd>, or Start on a gamepad) while walking a level to open
+the **[inventory / equipment](gameplay.md#inventory-and-equipment)** screen. The
+party owns a shared **bag** of unequipped gear; there you equip bag items onto any
+hero, unequip pieces back into the bag, or hand a weapon down from one hero to
+another. Equipping **swaps** the displaced item into the bag, so nothing is ever
+lost — and the whole bag rides along in your [save](gameplay.md#saving).
 
 ## Adding your own
 

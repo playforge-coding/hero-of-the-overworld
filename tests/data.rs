@@ -2,7 +2,7 @@
 //! on every `cargo test` and guard the extensibility contract: content is valid
 //! and cross-referenced correctly.
 
-use hero_of_the_overworld::data::{embedded_texture, CutsceneStep, Registry};
+use hero_of_the_overworld::data::{embedded_texture, CutsceneStep, EquipSlot, Registry};
 use hero_of_the_overworld::party::Party;
 
 fn registry() -> Registry {
@@ -410,6 +410,57 @@ fn starting_party_is_built_at_full_health() {
         assert_eq!(m.mp, m.stats.max_mp);
         assert_eq!(m.level, 1);
     }
+}
+
+#[test]
+fn bag_equip_and_unequip_move_items_without_loss() {
+    let reg = registry();
+    // The starting swordsman comes with an iron sword and leather armor.
+    let mut party = Party::from_registry(&reg);
+    assert_eq!(party.equipped(0, EquipSlot::Weapon), Some("iron_sword"));
+
+    // Unequip the weapon: it lands in the bag and the slot empties.
+    party.unequip(0, EquipSlot::Weapon);
+    assert_eq!(party.equipped(0, EquipSlot::Weapon), None);
+    assert!(party.bag.iter().any(|id| id == "iron_sword"));
+
+    // Bag a different weapon and equip it back into the empty slot.
+    party.bag.push("cavalry_lance".into());
+    let idx = party
+        .bag
+        .iter()
+        .position(|id| id == "cavalry_lance")
+        .unwrap();
+    assert!(party.equip_from_bag(&reg, 0, idx));
+    assert_eq!(party.equipped(0, EquipSlot::Weapon), Some("cavalry_lance"));
+    // The lance left the bag; the earlier iron sword is still stored there.
+    assert!(!party.bag.iter().any(|id| id == "cavalry_lance"));
+    assert!(party.bag.iter().any(|id| id == "iron_sword"));
+}
+
+#[test]
+fn equipping_swaps_the_displaced_item_into_the_bag() {
+    let reg = registry();
+    let mut party = Party::from_registry(&reg); // iron sword already equipped
+    party.bag.push("cavalry_lance".into());
+    let idx = party.bag_indices_for(&reg, EquipSlot::Weapon)[0];
+    assert!(party.equip_from_bag(&reg, 0, idx));
+    assert_eq!(party.equipped(0, EquipSlot::Weapon), Some("cavalry_lance"));
+    // Swapping conserves gear: the displaced iron sword returns to the bag.
+    assert!(party.bag.iter().any(|id| id == "iron_sword"));
+}
+
+#[test]
+fn bag_indices_filter_by_slot() {
+    let reg = registry();
+    let mut party = Party::from_registry(&reg);
+    party.bag = vec![
+        "iron_sword".into(),
+        "leather_armor".into(),
+        "cavalry_lance".into(),
+    ];
+    assert_eq!(party.bag_indices_for(&reg, EquipSlot::Weapon).len(), 2);
+    assert_eq!(party.bag_indices_for(&reg, EquipSlot::Armor).len(), 1);
 }
 
 #[test]

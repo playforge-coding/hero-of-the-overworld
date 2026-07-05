@@ -13,6 +13,7 @@ use crate::battle::{Battle, BattleOutcome};
 use crate::cutscene::{Cutscene, CutsceneOutcome};
 use crate::data::Registry;
 use crate::input::{Button, Controllers, Input, TouchScheme};
+use crate::inventory::{Inventory, InventoryEvent};
 use crate::overworld::{Event, Overworld, Trigger};
 use crate::party::{Party, PartyMember};
 use crate::renderer::{color, Renderer, VIRTUAL_H, VIRTUAL_W};
@@ -29,6 +30,9 @@ enum Scene {
     /// Inside a shop, entered from a keeper on the overworld. The `Level` runtime
     /// stays alive in `self.level` so leaving drops you back where you entered.
     Shop(Shop),
+    /// The party inventory / equipment screen, opened with Menu from a level. The
+    /// `Level` runtime stays alive in `self.level` so closing returns you to it.
+    Inventory(Inventory),
     Report {
         win: bool,
         lines: Vec<String>,
@@ -132,6 +136,7 @@ impl Game {
                 *slot = c;
             }
         }
+        self.party.bag = data.bag;
         self.played_cutscenes = data.played_cutscenes.into_iter().collect();
         self.level_progress = data.levels.into_iter().map(|l| (l.id, l.screens)).collect();
 
@@ -225,6 +230,7 @@ impl Game {
             played_cutscenes: self.played_cutscenes.iter().cloned().collect(),
             levels,
             location,
+            bag: self.party.bag.clone(),
         };
         save::store(&data);
         self.has_save = true;
@@ -257,6 +263,7 @@ impl Game {
         match self.scene {
             Scene::Level => TouchScheme::Joystick,
             Scene::Battle(_) => TouchScheme::UpDown,
+            // The inventory is a menu screen → d-pad (the catch-all below).
             _ => TouchScheme::Dpad,
         }
     }
@@ -312,6 +319,14 @@ impl Game {
                     Scene::Level
                 }
                 None => Scene::Shop(shop),
+            },
+            Scene::Inventory(mut inv) => match inv.update(input, &mut self.party, &self.reg, dt) {
+                // Closing can have re-equipped gear, so persist it.
+                Some(InventoryEvent::Close) => {
+                    self.save();
+                    Scene::Level
+                }
+                None => Scene::Inventory(inv),
             },
             Scene::Report {
                 win,
@@ -401,6 +416,7 @@ impl Game {
                 let shop = Shop::new(renderer, &mut self.cache, &self.reg, &self.party, def);
                 Scene::Shop(shop)
             }
+            Some(Event::OpenInventory) => Scene::Inventory(Inventory::new()),
             Some(Event::Battle(trigger)) => {
                 // Members who fell in a previous fight rejoin this one with a
                 // sliver of health instead of staying gone.
@@ -538,6 +554,7 @@ impl Game {
             Scene::Cutscene(cs) => cs.draw(renderer),
             Scene::Battle(battle) => battle.draw(renderer, &self.reg),
             Scene::Shop(shop) => shop.draw(renderer, &self.reg, &self.party),
+            Scene::Inventory(inv) => inv.draw(renderer, &self.party, &self.reg),
             Scene::Report { win, lines, .. } => Self::draw_report(*win, lines, renderer),
         }
     }

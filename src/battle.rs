@@ -14,13 +14,10 @@
 //! encounter in the [`Registry`], so more party members or new enemies work
 //! with zero changes here.
 
-use std::collections::HashMap;
-
 use glam::Vec2;
 
 use crate::data::{
-    BattlerSprite, EnemyAi, EquipmentDef, Registry, SkillDef, SkillKind, Stats, StatusDef,
-    TargetKind,
+    BattlerSprite, EnemyAi, Registry, SkillDef, SkillKind, Stats, StatusDef, TargetKind,
 };
 use crate::input::{Button, Controllers, Input};
 use crate::party::Party;
@@ -105,9 +102,6 @@ struct Battler {
     mp: i32,
     max_mp: i32,
     skills: Vec<String>,
-    /// Equipped item ids (into the registry's `equipment`), for the gear panel.
-    weapon: Option<String>,
-    armor: Option<String>,
     /// Derived combat attributes (base + equipment), in percent.
     crit: i32,
     accuracy: i32,
@@ -153,6 +147,16 @@ impl Battler {
 
     fn pos(&self) -> Vec2 {
         self.home + self.offset
+    }
+
+    /// On-screen sprite size after the battlefield zoom-out (see [`FIELD_SCALE`]).
+    /// Used for both drawing and positioning overlays (the target cursor) so they
+    /// stay pinned to the shrunk sprite.
+    fn draw_wh(&self) -> (f32, f32) {
+        (
+            self.sprite.draw_w * FIELD_SCALE,
+            self.sprite.draw_h * FIELD_SCALE,
+        )
     }
 
     fn facing_dir(&self) -> f32 {
@@ -483,8 +487,6 @@ pub struct Battle {
     /// turn comes up.
     turn_order: Vec<usize>,
     turn_idx: usize,
-    /// Icon texture for each equipped item id, resolved once at construction.
-    icons: HashMap<String, TextureHandle>,
 }
 
 impl Battle {
@@ -496,7 +498,6 @@ impl Battle {
         encounter_id: &str,
     ) -> Self {
         let mut battlers = Vec::new();
-        let mut icons: HashMap<String, TextureHandle> = HashMap::new();
 
         // Heroes on the left.
         let living: Vec<usize> = (0..party.members.len())
@@ -508,7 +509,6 @@ impl Battle {
             let home = hero_home(slot);
             // Fold equipment into the battler's stats and combat attributes.
             let eq = reg.equipped(&m.stats, m.weapon.as_deref(), m.armor.as_deref());
-            load_item_icons(renderer, cache, reg, &mut icons, [&m.weapon, &m.armor]);
             // Resolve this hero's timed-hit window (attacks and blocks): a
             // per-character override (e.g. Gareth's generous window) or the default.
             let (timing_perfect, timing_good) = reg
@@ -525,8 +525,6 @@ impl Battle {
                 mp: m.mp,
                 max_mp: m.stats.max_mp,
                 skills: m.skills.clone(),
-                weapon: m.weapon.clone(),
-                armor: m.armor.clone(),
                 crit: eq.crit,
                 accuracy: eq.accuracy,
                 evasion: eq.evasion,
@@ -566,7 +564,6 @@ impl Battle {
             let home = enemy_home(slot);
             let stats = def.stats.scaled_to(party_level);
             let eq = reg.equipped(&stats, def.weapon.as_deref(), def.armor.as_deref());
-            load_item_icons(renderer, cache, reg, &mut icons, [&def.weapon, &def.armor]);
             battlers.push(Battler {
                 name: def.name.clone(),
                 side: Side::Enemy,
@@ -577,8 +574,6 @@ impl Battle {
                 mp: stats.max_mp,
                 max_mp: stats.max_mp,
                 skills: def.skills.clone(),
-                weapon: def.weapon.clone(),
-                armor: def.armor.clone(),
                 crit: eq.crit,
                 accuracy: eq.accuracy,
                 evasion: eq.evasion,
@@ -610,7 +605,6 @@ impl Battle {
             turn_order: Vec::new(),
             turn_idx: 0,
             encounter_name: name,
-            icons,
         }
     }
 
@@ -1135,7 +1129,9 @@ impl Battle {
         }
 
         let dir = self.battlers[actor].facing_dir();
-        let lunge = 18.0;
+        // Scale the lunge with the field so it stays proportional to the shrunk
+        // sprites (see FIELD_SCALE).
+        let lunge = 18.0 * FIELD_SCALE;
         self.battlers[actor].offset.x = if t < STRIKE_CONNECT {
             dir * lunge * (t / STRIKE_CONNECT)
         } else if t < 0.55 {
@@ -1662,7 +1658,7 @@ impl Battle {
             return;
         }
         let pos = b.pos();
-        let (dw, dh) = (b.sprite.draw_w, b.sprite.draw_h);
+        let (dw, dh) = b.draw_wh();
         let dest = [pos.x - dw / 2.0, pos.y - dh, dw, dh];
         let src = b.anim.src(&b.sprite);
 
@@ -1759,7 +1755,6 @@ impl Battle {
         match &cmd.stage {
             Stage::Root { cursor } => {
                 menu_box(r, 6.0, 16.0, 90.0, &ROOT_ITEMS, *cursor);
-                self.draw_gear_panel(r, reg, hero);
             }
             Stage::Skill { cursor } => {
                 let mut items: Vec<String> = self.battlers[hero]
@@ -1784,7 +1779,7 @@ impl Battle {
                 r.draw_text("SELECT TARGET", 6.0, 18.0, 1.0, color::rgb(255, 210, 120));
                 if let Some(&tgt) = candidates.get(*cursor) {
                     let p = self.battlers[tgt].pos();
-                    let dh = self.battlers[tgt].sprite.draw_h;
+                    let (_, dh) = self.battlers[tgt].draw_wh();
                     // Blinking cursor above the target.
                     r.draw_text_centered("v", p.x, p.y - dh - 10.0, 1.0, color::rgb(255, 240, 120));
                     r.draw_text_centered(
@@ -1795,100 +1790,6 @@ impl Battle {
                         color::WHITE,
                     );
                 }
-            }
-        }
-    }
-
-    /// The acting hero's equipped weapon and armor, with icons, bonuses, and
-    /// descriptions — shown while choosing a command.
-    fn draw_gear_panel(&self, r: &mut Renderer, reg: &Registry, hero: usize) {
-        let b = &self.battlers[hero];
-        // Swapped down from the top: the panel now sits at the bottom-left, just
-        // above the party panel (whose height tracks the party size).
-        let party_h = 8.0
-            + self
-                .battlers
-                .iter()
-                .filter(|bt| bt.side == Side::Hero)
-                .count() as f32
-                * 16.0;
-        // Size the panel to its widest row so a gear-heavy weapon (e.g. Gareth's
-        // SCOUT'S EDGE, which carries four stat mods) never spills past the box.
-        // Text in each row starts 24px in (icon + gap); measure the name+mods
-        // line and the description line, take the wider, and pad the right edge.
-        let row_extent = |id: &Option<String>| -> f32 {
-            match id.as_deref().and_then(|id| reg.equipment(id)) {
-                Some(item) => {
-                    let mods = mods_summary(item);
-                    let mut line = r.text_width(&item.name, 1.0);
-                    if !mods.is_empty() {
-                        line += 6.0 + r.text_width(&mods, 1.0);
-                    }
-                    24.0 + line.max(r.text_width(&item.description, 1.0))
-                }
-                None => 0.0,
-            }
-        };
-        let content = row_extent(&b.weapon).max(row_extent(&b.armor));
-        let (w, h) = ((content + 4.0).max(196.0), 52.0);
-        let x = 6.0;
-        let y = VIRTUAL_H - party_h - h - 2.0;
-        r.draw_rect(x, y, w, h, color::rgba(12, 14, 28, 232));
-        r.draw_rect_outline(x, y, w, h, 1.0, color::rgba(80, 90, 140, 255));
-        r.draw_text(
-            "EQUIPMENT",
-            x + 4.0,
-            y + 3.0,
-            1.0,
-            color::rgb(170, 180, 210),
-        );
-        self.draw_gear_row(r, reg, "WPN", &b.weapon, x + 4.0, y + 14.0);
-        self.draw_gear_row(r, reg, "ARM", &b.armor, x + 4.0, y + 33.0);
-    }
-
-    fn draw_gear_row(
-        &self,
-        r: &mut Renderer,
-        reg: &Registry,
-        label: &str,
-        id: &Option<String>,
-        x: f32,
-        y: f32,
-    ) {
-        // Icon slot background.
-        r.draw_rect(x, y, 16.0, 16.0, color::rgba(20, 24, 44, 255));
-        r.draw_rect_outline(x, y, 16.0, 16.0, 0.5, color::rgba(90, 100, 150, 200));
-        let tx = x + 20.0;
-        match id
-            .as_deref()
-            .and_then(|id| reg.equipment(id).map(|it| (id, it)))
-        {
-            Some((id, item)) => {
-                if let Some(&tex) = self.icons.get(id) {
-                    r.draw_texture(tex, x, y, 16.0, 16.0, color::WHITE);
-                }
-                r.draw_text(&item.name, tx, y, 1.0, color::WHITE);
-                let mods = mods_summary(item);
-                if !mods.is_empty() {
-                    let nw = r.text_width(&item.name, 1.0);
-                    r.draw_text(&mods, tx + nw + 6.0, y, 1.0, color::rgb(150, 220, 160));
-                }
-                r.draw_text(
-                    &item.description,
-                    tx,
-                    y + 9.0,
-                    1.0,
-                    color::rgb(190, 190, 205),
-                );
-            }
-            None => {
-                r.draw_text(
-                    &format!("{label}: (none)"),
-                    tx,
-                    y + 4.0,
-                    1.0,
-                    color::rgb(120, 120, 140),
-                );
             }
         }
     }
@@ -1985,33 +1886,6 @@ fn crit_chance(atk_crit: i32) -> i32 {
 }
 
 /// A compact "+6 ATK  +5% CRIT" line summarising an item's bonuses.
-fn mods_summary(item: &EquipmentDef) -> String {
-    let m = &item.mods;
-    let mut parts = Vec::new();
-    if m.attack != 0 {
-        parts.push(format!("{:+} ATK", m.attack));
-    }
-    if m.defense != 0 {
-        parts.push(format!("{:+} DEF", m.defense));
-    }
-    if m.magic != 0 {
-        parts.push(format!("{:+} MAG", m.magic));
-    }
-    if m.speed != 0 {
-        parts.push(format!("{:+} SPD", m.speed));
-    }
-    if item.crit != 0 {
-        parts.push(format!("{:+}% CRIT", item.crit));
-    }
-    if item.accuracy != 0 {
-        parts.push(format!("{:+}% ACC", item.accuracy));
-    }
-    if item.evasion != 0 {
-        parts.push(format!("{:+}% EVA", item.evasion));
-    }
-    parts.join(" ")
-}
-
 /// Greedy word-wrap to at most `max` characters per line (fixed-width font).
 fn wrap_text(text: &str, max: usize) -> Vec<String> {
     let mut lines = Vec::new();
@@ -2033,31 +1907,39 @@ fn wrap_text(text: &str, max: usize) -> Vec<String> {
     lines
 }
 
-/// Resolve and cache the icon texture for each given equipped item id.
-fn load_item_icons(
-    renderer: &mut Renderer,
-    cache: &mut TextureCache,
-    reg: &Registry,
-    icons: &mut HashMap<String, TextureHandle>,
-    ids: [&Option<String>; 2],
-) {
-    for id in ids.into_iter().flatten() {
-        if !icons.contains_key(id) {
-            if let Some(item) = reg.equipment(id) {
-                let h = cache.get(renderer, &item.icon);
-                icons.insert(id.clone(), h);
-            }
-        }
-    }
+/// Battlefield zoom-out. The combat scene — battler sprites and the spacing
+/// between them — is drawn at this fraction of full size, framed around
+/// [`field_focus`], so a full party (now up to three) and a pack of foes have room
+/// to breathe instead of crowding each other and the bottom UI panels. Only the
+/// *field* scales: menus, bars, and banners keep their normal size.
+const FIELD_SCALE: f32 = 0.75;
+
+/// The point the battlefield zoom pulls toward — horizontally centred and set high
+/// enough that the lowest hero clears the party panel along the bottom.
+fn field_focus() -> Vec2 {
+    Vec2::new(VIRTUAL_W / 2.0, 70.0)
+}
+
+/// Pull a full-size battlefield position in toward [`field_focus`] by
+/// [`FIELD_SCALE`] — the camera "zooming out" about that point.
+fn zoom_field(p: Vec2) -> Vec2 {
+    let f = field_focus();
+    f + (p - f) * FIELD_SCALE
 }
 
 fn hero_home(slot: usize) -> Vec2 {
     // Diagonal column on the left, facing right.
-    Vec2::new(70.0 - slot as f32 * 8.0, 92.0 + slot as f32 * 24.0)
+    zoom_field(Vec2::new(
+        70.0 - slot as f32 * 8.0,
+        92.0 + slot as f32 * 24.0,
+    ))
 }
 
 fn enemy_home(slot: usize) -> Vec2 {
-    Vec2::new(228.0 + (slot % 2) as f32 * 20.0, 74.0 + slot as f32 * 26.0)
+    zoom_field(Vec2::new(
+        228.0 + (slot % 2) as f32 * 20.0,
+        74.0 + slot as f32 * 26.0,
+    ))
 }
 
 fn bar(r: &mut Renderer, rect: [f32; 4], value: i32, max: i32, fill: Color) {
@@ -2157,6 +2039,31 @@ mod tests {
         t.press_t = Some(STRIKE_CONNECT + off);
         t.presses = 1;
         t.result()
+    }
+
+    #[test]
+    fn battlefield_zoom_fits_a_full_party() {
+        // The party panel (bottom-left) grows with the party; its top for a full
+        // three-hero party, from the same formula draw_party_panel uses.
+        let panel_top = VIRTUAL_H - (8.0 + 3.0 * 16.0);
+        // The lowest hero's feet (its home y) must sit above that panel so a full
+        // party doesn't render into it — this is what the zoom-out buys us.
+        assert!(
+            hero_home(2).y <= panel_top,
+            "the third hero ({}) overlaps the party panel (top {panel_top})",
+            hero_home(2).y
+        );
+
+        // Everyone stays on screen, heroes on the left, foes on the right.
+        for slot in 0..3 {
+            let h = hero_home(slot);
+            let e = enemy_home(slot);
+            for p in [h, e] {
+                assert!(p.x > 0.0 && p.x < VIRTUAL_W, "battler off-screen: {p:?}");
+                assert!(p.y > 0.0 && p.y < VIRTUAL_H, "battler off-screen: {p:?}");
+            }
+            assert!(h.x < e.x, "hero should sit left of the enemy in its row");
+        }
     }
 
     /// A taunt attempt whose (only) post-hit tap lands at animation time `t`.

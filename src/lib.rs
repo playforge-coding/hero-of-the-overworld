@@ -24,6 +24,7 @@ pub mod cutscene;
 pub mod data;
 pub mod game;
 pub mod input;
+pub mod inventory;
 pub mod overworld;
 pub mod party;
 pub mod renderer;

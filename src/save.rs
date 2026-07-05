@@ -75,6 +75,10 @@ pub struct SaveData {
     pub levels: Vec<SavedLevel>,
     /// The player's in-level position, if they saved while walking a level.
     pub location: Option<SavedLocation>,
+    /// Owned, unequipped equipment ids (the party's [bag](crate::party::Party::bag)).
+    /// Appended at the end of the format and read leniently, so pre-bag saves
+    /// (which simply lack this trailing section) still load with an empty bag.
+    pub bag: Vec<String>,
 }
 
 // ---- Encoding ---------------------------------------------------------------
@@ -165,6 +169,12 @@ pub fn to_bytes(data: &SaveData) -> Vec<u8> {
             put_f32(&mut out, loc.y);
         }
         None => put_bool(&mut out, false),
+    }
+
+    // Trailing, back-compatibly optional: the party's owned-item bag.
+    put_u32(&mut out, data.bag.len() as u32);
+    for id in &data.bag {
+        put_str(&mut out, id);
     }
 
     out
@@ -318,6 +328,19 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
         None
     };
 
+    // The bag is a trailing addition: a save written before it simply ends here,
+    // so a missing count reads as an empty bag rather than a decode failure.
+    let bag = match r.u32() {
+        Some(n) => {
+            let mut bag = Vec::with_capacity((n as usize).min(1024));
+            for _ in 0..n {
+                bag.push(r.string()?);
+            }
+            bag
+        }
+        None => Vec::new(),
+    };
+
     Some(SaveData {
         gold,
         members,
@@ -325,6 +348,7 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
         played_cutscenes,
         levels,
         location,
+        bag,
     })
 }
 
@@ -478,6 +502,7 @@ mod tests {
                 x: 123.5,
                 y: 48.0,
             }),
+            bag: vec!["iron_sword".into(), "leather_armor".into()],
         }
     }
 
@@ -493,6 +518,18 @@ mod tests {
     fn empty_save_round_trips() {
         let data = SaveData::default();
         assert_eq!(from_bytes(&to_bytes(&data)), Some(data));
+    }
+
+    #[test]
+    fn pre_bag_save_loads_with_empty_bag() {
+        // A save written before the bag existed simply ends before the trailing
+        // bag section. Simulate that by dropping the 4-byte bag count, and confirm
+        // it decodes to the same state with an empty bag rather than failing.
+        let mut data = sample();
+        data.bag = Vec::new();
+        let bytes = to_bytes(&data);
+        let old = &bytes[..bytes.len() - 4];
+        assert_eq!(from_bytes(old), Some(data));
     }
 
     #[test]

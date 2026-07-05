@@ -88,6 +88,24 @@ There's no game over. If every hero is knocked out in a battle, the party is
 **revived at full health "at camp"** and you're returned to the level to try
 again. Losing a fight costs you the attempt, not your progress.
 
+## Inventory and equipment
+
+Press **Menu** (<kbd>Shift</kbd>/<kbd>C</kbd>, or Start on a gamepad) while walking
+a level to open the **inventory / equipment** screen — manage gear anywhere, no
+shop trip needed. The party shares a **bag** of items it owns but isn't wearing,
+and here you move gear between that bag and your heroes:
+
+- Pick a **hero** (Up/Down) and a **slot** — weapon or armor (Left/Right).
+- **Confirm** opens the bag's items that fit that slot; Confirm one to **equip** it,
+  or choose **(UNEQUIP)** to stow whatever's there.
+- Equipping **swaps**: whatever the hero was wearing goes back to the bag, so gear
+  is never lost or duplicated — just moved around the party.
+
+Where does bag gear come from? Buying at a **[shop](shops.md)** equips the new item
+and drops the one it replaces into the bag (rather than discarding it), so your old
+kit is always there to hand down to another hero. The whole bag is
+[saved](#saving) with the rest of your party.
+
 ## Progress and scoring
 
 Your goal is simply to **clear every level**. The world map shows a running
@@ -100,7 +118,8 @@ Your progress is **saved automatically** — there's nothing to manage. The game
 writes a save after each battle, whenever you leave a level, and after a story
 cutscene, capturing:
 
-- your **party** — members, levels, XP, live HP/MP, equipped gear, and gold;
+- your **party** — members, levels, XP, live HP/MP, equipped gear, the shared
+  [item bag](#inventory-and-equipment), and gold;
 - which **levels are cleared** (and therefore which are unlocked);
 - your **in-level progress** — the specific demons you've already beaten, so
   quitting halfway through a level doesn't undo the fights you've won;

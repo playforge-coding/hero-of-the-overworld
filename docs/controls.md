@@ -15,7 +15,7 @@ only what they *do* changes with context.
 | **Move** | <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> / <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | D-pad or left stick | Move the party leader, the map cursor, or a menu selection |
 | **Confirm** | <kbd>Enter</kbd> / <kbd>Z</kbd> / <kbd>Space</kbd> | A (south button) | Start, select, confirm a command, advance dialogue |
 | **Cancel** | <kbd>Esc</kbd> / <kbd>X</kbd> / <kbd>Backspace</kbd> | B (east button) | Back out of a menu, leave a level to the map |
-| **Menu** | <kbd>Shift</kbd> / <kbd>C</kbd> | Start / Select | Leave the current level and return to the world map |
+| **Menu** | <kbd>Shift</kbd> / <kbd>C</kbd> | Start / Select | Open the party [inventory / equipment](gameplay.md#inventory-and-equipment) screen while in a level |
 
 Movement is analog-feeling: hold a direction to keep walking, and diagonals work
 by holding two directions at once (a diagonal on the stick counts too).
@@ -79,11 +79,21 @@ game plays exactly as it does on a single controller.
   Walking into a mid-edge opening flips to the neighbouring screen.
 - **Confirm** — when standing by a [shopkeeper](shops.md) (a **PRESS Z** prompt
   shows), step into their shop.
-- **Cancel** / **Menu** — leave the level and go back to the world map. Progress
-  in the level (which demons you've beaten) is [saved](gameplay.md#saving), so
-  it's kept even across sessions.
+- **Menu** — open the party [inventory / equipment](gameplay.md#inventory-and-equipment)
+  screen to change gear on the go.
+- **Cancel** — leave the level and go back to the world map. Progress in the level
+  (which demons you've beaten) is [saved](gameplay.md#saving), so it's kept even
+  across sessions.
 
 Touching a roaming enemy starts a [battle](battles.md).
+
+### Inventory / equipment
+
+- **Move** — Up/Down pick a hero, Left/Right pick their weapon or armor slot.
+- **Confirm** — open the bag chooser for that slot, then Confirm again to equip the
+  highlighted item (or **(UNEQUIP)** to stow the current one).
+- **Cancel** — back out of the chooser, or (from the hero list) **Menu**/**Cancel**
+  closes the screen and returns you to the level.
 
 ### Inside a shop
 

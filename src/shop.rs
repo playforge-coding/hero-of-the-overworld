@@ -635,10 +635,15 @@ fn apply_purchase(party: &mut Party, member_idx: usize, entry: &StockEntry) -> P
         return PurchaseResult::TooPoor;
     }
     party.gold -= entry.price;
+    // Equip the newly-bought item and keep whatever it displaces in the party's
+    // bag rather than discarding it (the inventory screen can re-equip it later).
     let member = &mut party.members[member_idx];
-    match entry.slot {
-        EquipSlot::Weapon => member.weapon = Some(entry.id.clone()),
-        EquipSlot::Armor => member.armor = Some(entry.id.clone()),
+    let displaced = match entry.slot {
+        EquipSlot::Weapon => member.weapon.replace(entry.id.clone()),
+        EquipSlot::Armor => member.armor.replace(entry.id.clone()),
+    };
+    if let Some(old) = displaced {
+        party.bag.push(old);
     }
     PurchaseResult::Bought
 }
@@ -687,7 +692,7 @@ fn wrap(text: &str, max: usize) -> Vec<String> {
 }
 
 /// A short "ATK+6 CRIT+6 ACC+4" summary of what a piece of equipment grants.
-fn summarize(item: &crate::data::EquipmentDef) -> String {
+pub(crate) fn summarize(item: &crate::data::EquipmentDef) -> String {
     let mut parts: Vec<String> = Vec::new();
     let m = &item.mods;
     for (label, v) in [

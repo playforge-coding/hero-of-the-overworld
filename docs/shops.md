@@ -39,15 +39,17 @@ At the counter, the buy menu lists the keeper's wares:
 - **Left / Right** — choose **which party member** to outfit. Their current gear
   in that slot is shown as **NOW: …**.
 - **Confirm** — **buy and equip**. The price is deducted from your gold and the
-  item is worn immediately, replacing whatever was in that slot.
+  item is worn immediately; whatever it replaces drops into your party's shared
+  **[bag](gameplay.md#inventory-and-equipment)** rather than being lost.
 - **Cancel** — close the menu (back to walking the room).
 
 Stock is **unlimited** — the only limit is the gold in your purse, so the same
 keeper will happily sell you a second sword. Purchases are
 [saved](gameplay.md#saving) as soon as you leave.
 
-!!! note "No resale (yet)"
-    Buying an item **equips it in place** of your current gear, and there's no
-    inventory to stash or sell the old piece. Spend with intent — the item you
-    replace is gone. Equipment you buy is the same gear described in
-    **[Weapons & Armor](equipment.md)**.
+!!! note "Old gear is kept"
+    Buying an item equips it and stows the piece it replaces in the party's shared
+    **[item bag](gameplay.md#inventory-and-equipment)** — so you can re-equip it, or
+    hand it to another hero, from the **Menu** inventory screen at any time. (There's
+    no selling yet, so gold only flows one way.) Equipment you buy is the same gear
+    described in **[Weapons & Armor](equipment.md)**.

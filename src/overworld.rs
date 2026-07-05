@@ -136,6 +136,8 @@ pub enum Event {
     Battle(Trigger),
     /// Enter the shop with this id (player walked up to a keeper and confirmed).
     EnterShop(String),
+    /// Open the party inventory / equipment screen (the Menu button).
+    OpenInventory,
     /// Leave the level and go back to the map screen.
     ExitToMap,
 }
@@ -463,8 +465,12 @@ impl Overworld {
             self.grace = (self.grace - dt).max(0.0);
         }
 
-        if input.pressed(Button::Cancel) || input.pressed(Button::Menu) {
+        if input.pressed(Button::Cancel) {
             return Some(Event::ExitToMap);
+        }
+        // The Menu button opens the party inventory / equipment screen.
+        if input.pressed(Button::Menu) {
+            return Some(Event::OpenInventory);
         }
 
         // --- Player ---------------------------------------------------------
