@@ -70,6 +70,40 @@ GameData(
             skills: ["firebolt", "frost", "mend"],
             armor: Some("travelers_robe"),
         ),
+        // GARETH — a mountain hermit of TRAVELLER'S END and once the king's own
+        // scout. He saw the advisor treat with demons, warned the authorities,
+        // was branded a traitor for it, and fled to the heights. Joins after
+        // TRAVELLER'S END is cleared (via the `gareth_joins` cutscene); not in
+        // `starting_party`. Uses the `hermit` sheet: Roland's swordsman layout
+        // with the four unused bottom rows trimmed (6x8 instead of 5x12), so
+        // walk rows 0-3 run 5 frames and attack rows 4-7 run 6. He is the
+        // FASTEST, nimblest hero — high speed, cheap darting strikes.
+        CharacterDef(
+            id: "hermit",
+            name: "GARETH",
+            stats: Stats(max_hp: 94, max_mp: 30, attack: 20, defense: 11, magic: 8, speed: 21),
+            sprite: BattlerSprite(
+                texture: "hermit",
+                frame_w: 16, frame_h: 16,
+                draw_w: 48.0, draw_h: 48.0,
+                faces_left: false,
+                // "walk right" row read as a ready/idle stance (5 frames).
+                idle:   AnimClip(row: 2, first_col: 0, frames: 5, fps: 5.0),
+                // "attack right" row (6 frames) — struck fast to read as nimble.
+                attack: AnimClip(row: 6, first_col: 0, frames: 6, fps: 18.0),
+            ),
+            // Overworld walk: rows 0-3 are walk down/up/right/left (5 frames).
+            overworld: Some(OverworldWalk(
+                texture: "hermit",
+                frame_w: 16, frame_h: 16,
+                draw_w: 20.0, draw_h: 20.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 5, fps: 9.0,
+            )),
+            skills: ["quick_slash", "swallow_cut", "mend"],
+            weapon: Some("scouts_edge"),
+            armor: Some("scouts_cloak"),
+        ),
     ],
 
     enemies: [
@@ -361,6 +395,18 @@ GameData(
             description: "The warhorse tramples the whole party underhoof.",
             mp_cost: 8, power: 90, kind: Physical, target: AllEnemies,
         ),
+        // GARETH's blade-work. Fast and cheap, to match the nimblest hero: a
+        // spammable single strike and a darting sweep across a whole pack.
+        SkillDef(
+            id: "quick_slash", name: "QUICK SLASH",
+            description: "A darting cut, drawn and returned in a blink.",
+            mp_cost: 3, power: 150, kind: Physical, target: OneEnemy,
+        ),
+        SkillDef(
+            id: "swallow_cut", name: "SWALLOW CUT",
+            description: "A flowing sweep that flits between every foe.",
+            mp_cost: 7, power: 95, kind: Physical, target: AllEnemies,
+        ),
     ],
 
     // ------------------------------------------------------------------------
@@ -423,6 +469,21 @@ GameData(
             description: "A mounted knight's warlance; long and deadly.",
             slot: Weapon, icon: "starter_sword",
             mods: StatMods(attack: 10), crit: 8, accuracy: 6,
+        ),
+        // GARETH's kit: a scout's gear, light and quick. The back-slung blade is
+        // keen and fast (a touch of speed, high crit/accuracy); the cloak trades
+        // armor for the evasion of a man who lived by not being caught.
+        EquipmentDef(
+            id: "scouts_edge", name: "SCOUT'S EDGE",
+            description: "A slim back-slung blade; keen, light, and lightning-quick.",
+            slot: Weapon, icon: "starter_sword",
+            mods: StatMods(attack: 7, speed: 3), crit: 14, accuracy: 10,
+        ),
+        EquipmentDef(
+            id: "scouts_cloak", name: "SCOUT'S CLOAK",
+            description: "A ranger's travel-worn cloak; you never see him coming.",
+            slot: Armor, icon: "starter_gear",
+            mods: StatMods(defense: 3, speed: 2), evasion: 14,
         ),
     ],
 
@@ -725,6 +786,7 @@ GameData(
             start_screen: 0, start: (2, 5),
             ground: Some("stone"),
             intro_cutscene: Some("travellersend_intro"),
+            clear_cutscene: Some("gareth_joins"),
             screens: [
                 // The trailhead: grassy slopes at the foot of the range.
                 ScreenDef(
@@ -1157,6 +1219,26 @@ GameData(
                     text: "CRABS AND SKELETONS ARE THE LEAST OF IT. THE DARK KNIGHTS RIDE THESE HEIGHTS."),
                 Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
                     text: "THEN WE CLIMB - AND WE DO NOT STOP UNTIL WE REACH THE SUMMIT."),
+            ],
+        ),
+        CutsceneDef(
+            id: "gareth_joins",
+            steps: [
+                Say(speaker: Some("???"), portrait: Some("hermit"),
+                    text: "STILL BREATHING, AFTER ALL THAT? NO ONE CLEARS THIS PASS. NO ONE."),
+                Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+                    text: "WHO ARE YOU? YOU MOVE LIKE NO HERMIT I EVER MET."),
+                Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+                    text: "GARETH. THE KING'S SCOUT, ONCE. I SAW THE ADVISOR MEET WITH DEMONS IN THE DARK."),
+                Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+                    text: "I WARNED THE AUTHORITIES. THEY BRANDED ME THE TRAITOR AND HUNTED ME. SO I RAN - HERE, TO TRAVELLER'S END."),
+                Say(speaker: Some("ELARA"), portrait: Some("mage"),
+                    text: "THEN YOU KNEW THE TRUTH BEFORE ANY OF US. WE MARCH ON THE ADVISOR NOW - COME WITH US."),
+                Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+                    text: "I HAVE WAITED YEARS FOR SOMEONE TO SAY THAT. MY BLADE IS YOURS - AND IT IS FAST."),
+                Recruit(character: "hermit"),
+                Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+                    text: "THEN LEAD ON, SCOUT. NO ONE KNOWS THE ROAD TO THE FORTRESS BETTER THAN YOU."),
             ],
         ),
     ],

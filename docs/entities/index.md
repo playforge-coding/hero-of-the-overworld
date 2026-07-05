@@ -34,6 +34,7 @@ preserve the turn order.
 | ---- | -- | -- | --- | --- | --- | --- | ----- |
 | [Roland](roland.md) | 120 | 24 | 22 | 14 | 10 | 12 | Start (party leader) |
 | [Elara](elara.md) | 78 | 60 | 10 | 9 | 26 | 13 | After clearing Greenwood |
+| [Gareth](gareth.md) | 94 | 30 | 20 | 11 | 8 | 21 | After clearing Traveller's End |
 
 ## Enemies
 

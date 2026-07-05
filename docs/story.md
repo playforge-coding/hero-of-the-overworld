@@ -61,6 +61,13 @@ already the new reign was remaking the kingdom in its own image:
 - **Others stayed**, took the new king's colours, and turned their swords on the
   world they had once protected.
 
+Not everyone learned the truth too late. The king's own scout, **[Gareth](entities/gareth.md)**,
+saw the advisor treating with demons in the dark *before* the doors were thrown wide —
+and said so. For warning the authorities he was branded the traitor and hunted, and
+fled to the high passes of **Traveller's End**, where he has lived a hermit ever
+since. He is out there still, waiting for someone who means to set it right — and he
+joins Roland's party once you fight your way over that mountain.
+
 And the wizard told Roland the rest of it plainly: the world could still be **saved**,
 but only if someone went and *did* it — now, before the rot set in for good. He had
 not been waiting in this cave by accident. He had been waiting for **him.**

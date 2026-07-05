@@ -429,6 +429,39 @@ fn party_is_extensible() {
     assert_eq!(party.members.len(), before + 1);
 }
 
+/// A hero recruited mid-game joins at the party's current level (not level 1),
+/// with base stats grown up the same curve, so newcomers like Gareth arrive on
+/// par with Roland instead of as dead weight.
+#[test]
+fn recruits_join_at_party_level() {
+    let reg = registry();
+    let mut party = Party::from_registry(&reg);
+
+    // Push the starting party up several levels.
+    party.grant_xp(1000);
+    let party_level = party.level();
+    assert!(party_level > 1, "party should have leveled up");
+
+    // Gareth's authored base stats (what a level-1 build would have).
+    let base = reg.character("hermit").expect("gareth defined");
+    let base_hp = base.stats.max_hp;
+
+    party.recruit(&reg, "hermit");
+    let gareth = party
+        .members
+        .iter()
+        .find(|m| m.def_id == "hermit")
+        .expect("gareth recruited");
+
+    assert_eq!(gareth.level, party_level, "joins at the party's level");
+    assert!(
+        gareth.stats.max_hp > base_hp,
+        "grown stats, not level-1 base"
+    );
+    assert_eq!(gareth.hp, gareth.stats.max_hp, "arrives at full health");
+    assert_eq!(gareth.xp, 0, "no leftover XP debt");
+}
+
 #[test]
 fn xp_grants_levels_and_growth() {
     let reg = registry();

@@ -610,6 +610,9 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
     Some(match key {
         "swordsman" => include_bytes!("../assets/textures/entities/playables/swordsman.png"),
         "mage" => include_bytes!("../assets/textures/entities/playables/mage.png"),
+        // GARETH, the mountain hermit — Roland's sheet minus the four unused
+        // bottom rows (6x8: walk rows 0-3, attack rows 4-7).
+        "hermit" => include_bytes!("../assets/textures/entities/playables/hermit.png"),
         "demon" => include_bytes!("../assets/textures/entities/monsters/demon.png"),
         "shopkeeper" => include_bytes!("../assets/textures/entities/npcs/shopkeeper.png"),
         "slime" => include_bytes!("../assets/textures/entities/monsters/slime.png"),

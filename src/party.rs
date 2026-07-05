@@ -46,6 +46,23 @@ impl PartyMember {
     pub fn is_alive(&self) -> bool {
         self.hp > 0
     }
+
+    /// Apply one level's worth of growth: bump the level, add the modest,
+    /// extensible stat gains, and refill HP/MP. Speed is intentionally left
+    /// unchanged — enemies don't gain speed with level either, so leveling it
+    /// would skew turn order. This is the single source of the growth curve,
+    /// shared by [`Party::grant_xp`] (earning a level in battle) and
+    /// [`Party::recruit`] (bringing a new hero up to the party's level).
+    fn level_up(&mut self) {
+        self.level += 1;
+        self.stats.max_hp += 12;
+        self.stats.max_mp += 3;
+        self.stats.attack += 2;
+        self.stats.defense += 1;
+        self.stats.magic += 1;
+        self.hp = self.stats.max_hp;
+        self.mp = self.stats.max_mp;
+    }
 }
 
 /// The whole active party. Extensible: add characters as they are recruited.
@@ -67,9 +84,20 @@ impl Party {
 
     /// Add a character to the party by id. Returns whether it was added.
     /// This is the primary extension point for "more characters in battle".
+    ///
+    /// A new recruit joins at the **party's current level** rather than level 1,
+    /// so a hero picked up mid-game (Elara after GREENWOOD, Gareth after
+    /// TRAVELLER'S END) arrives on par with Roland instead of as dead weight —
+    /// their base stats are grown up the same curve leveling grants. The starting
+    /// party is unaffected: it is built one member at a time from an empty party,
+    /// so the level target is 1.
     pub fn recruit(&mut self, reg: &Registry, id: &str) -> bool {
+        let target_level = self.level();
         match PartyMember::from_def(reg, id) {
-            Some(m) => {
+            Some(mut m) => {
+                while m.level < target_level {
+                    m.level_up();
+                }
                 self.members.push(m);
                 true
             }
@@ -123,17 +151,7 @@ impl Party {
             let needed = m.level * 20;
             while m.xp >= needed {
                 m.xp -= needed;
-                m.level += 1;
-                // Modest, extensible growth curve.
-                m.stats.max_hp += 12;
-                m.stats.max_mp += 3;
-                m.stats.attack += 2;
-                m.stats.defense += 1;
-                m.stats.magic += 1;
-                // Speed is intentionally left unchanged: enemies don't gain
-                // speed with level either, so leveling it would skew turn order.
-                m.hp = m.stats.max_hp;
-                m.mp = m.stats.max_mp;
+                m.level_up();
                 leveled.push(i);
             }
         }

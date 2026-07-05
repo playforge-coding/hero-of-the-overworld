@@ -46,10 +46,15 @@ but at the start of the **next** battle they rejoin the party back on their feet
 with **5 HP** — enough to fight on, though you'll want to heal them up quickly.
 
 New heroes join through the story. After you clear the **Greenwood**, a cutscene
-introduces **ELARA**, a mage, who joins your party for good. The battle system
+introduces **ELARA**, a mage; clear **Traveller's End** and **GARETH**, a swift
+mountain hermit and the fastest hero in the game, joins next. The battle system
 simply iterates whoever is in the party, so a second (or third) hero fights
 alongside you with no fuss. See **[Extending the Game](modding.md)** to add your
 own.
+
+A hero who joins mid-game arrives **at the party's current level**, not level 1 —
+their base stats are grown up the same curve as [levelling up](#levelling-up), so
+a newcomer fights on par with Roland instead of joining as dead weight.
 
 ## Levelling up
 

@@ -31,12 +31,17 @@ and crit are rolled.
 | **IRON SWORD** | Weapon | +6 ATK, +6% crit, +4% accuracy | [Roland](entities/roland.md) | Standard-issue soldier's blade. |
 | **LEATHER ARMOR** | Armor | +5 DEF, +4% evasion | [Roland](entities/roland.md) | Boiled leather; turns a glance. |
 | **TRAVELER'S ROBE** | Armor | +3 DEF, +2 MAG, +8% evasion | [Elara](entities/elara.md) | Light, enchanted travel cloth. |
+| **SCOUT'S EDGE** | Weapon | +7 ATK, +3 SPD, +14% crit, +10% accuracy | [Gareth](entities/gareth.md) | A slim back-slung blade; keen, light, and lightning-quick. |
+| **SCOUT'S CLOAK** | Armor | +3 DEF, +2 SPD, +14% evasion | [Gareth](entities/gareth.md) | A ranger's travel-worn cloak; you never see him coming. |
 | **STONE FISTS** | Weapon | +18 ATK, +12% crit, **−34% accuracy** | [Gargoyle](entities/gargoyle.md) | Crushing stone knuckles; heavy and clumsy. |
 | **CAVALRY LANCE** | Weapon | +10 ATK, +8% crit, +6% accuracy | [Dark Knight](entities/dark_knight.md) | A mounted knight's warlance; long and deadly. |
 
 Fitting the story, ROLAND marches out in the plain starter kit of a first-month
 conscript, while ELARA's robe leans on evasion and a touch of magic rather than
-heavy protection. Equipment isn't hero-only: the **[gargoyle](entities/gargoyle.md)**
+heavy protection. **GARETH** — the former king's scout — keeps the tools of his old
+trade: a light, back-slung **SCOUT'S EDGE** and a **SCOUT'S CLOAK** that trade
+armor for speed, crit, and the evasion of a man who lived by not being caught.
+Equipment isn't hero-only: the **[gargoyle](entities/gargoyle.md)**
 swings the brutal but wildly inaccurate **STONE FISTS**, which is exactly why it
 hits like a truck yet misses so often — the accuracy penalty is a real stat, and
 the **[dark knights](entities/dark_knight.md)** of Traveller's End ride into battle
