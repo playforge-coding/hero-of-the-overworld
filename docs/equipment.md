@@ -31,8 +31,8 @@ and crit are rolled.
 | **IRON SWORD** | Weapon | +6 ATK, +6% crit, +4% accuracy | [Roland](entities/roland.md) | Standard-issue soldier's blade. |
 | **LEATHER ARMOR** | Armor | +5 DEF, +4% evasion | [Roland](entities/roland.md) | Boiled leather; turns a glance. |
 | **TRAVELER'S ROBE** | Armor | +3 DEF, +2 MAG, +8% evasion | [Elara](entities/elara.md) | Light, enchanted travel cloth. |
-| **SCOUT'S EDGE** | Weapon | +7 ATK, +3 SPD, +14% crit, +10% accuracy | [Gareth](entities/gareth.md) | A slim back-slung blade; keen, light, and lightning-quick. |
-| **SCOUT'S CLOAK** | Armor | +3 DEF, +2 SPD, +14% evasion | [Gareth](entities/gareth.md) | A ranger's travel-worn cloak; you never see him coming. |
+| **SCOUT'S EDGE** | Weapon | +7 ATK, +3 SPD, +14% crit, +10% accuracy | [Gareth](entities/gareth.md) | A keen, light back-slung blade. |
+| **SCOUT'S CLOAK** | Armor | +3 DEF, +2 SPD, +14% evasion | [Gareth](entities/gareth.md) | A light, silent ranger's cloak. |
 | **STONE FISTS** | Weapon | +18 ATK, +12% crit, **−34% accuracy** | [Gargoyle](entities/gargoyle.md) | Crushing stone knuckles; heavy and clumsy. |
 | **CAVALRY LANCE** | Weapon | +10 ATK, +8% crit, +6% accuracy | [Dark Knight](entities/dark_knight.md) | A mounted knight's warlance; long and deadly. |
 

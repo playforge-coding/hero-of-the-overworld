@@ -475,13 +475,13 @@ GameData(
         // armor for the evasion of a man who lived by not being caught.
         EquipmentDef(
             id: "scouts_edge", name: "SCOUT'S EDGE",
-            description: "A slim back-slung blade; keen, light, and lightning-quick.",
+            description: "A keen, light back-slung blade.",
             slot: Weapon, icon: "starter_sword",
             mods: StatMods(attack: 7, speed: 3), crit: 14, accuracy: 10,
         ),
         EquipmentDef(
             id: "scouts_cloak", name: "SCOUT'S CLOAK",
-            description: "A ranger's travel-worn cloak; you never see him coming.",
+            description: "A light, silent ranger's cloak.",
             slot: Armor, icon: "starter_gear",
             mods: StatMods(defense: 3, speed: 2), evasion: 14,
         ),

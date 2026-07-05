@@ -1629,7 +1629,25 @@ impl Battle {
                 .filter(|bt| bt.side == Side::Hero)
                 .count() as f32
                 * 16.0;
-        let (w, h) = (196.0, 52.0);
+        // Size the panel to its widest row so a gear-heavy weapon (e.g. Gareth's
+        // SCOUT'S EDGE, which carries four stat mods) never spills past the box.
+        // Text in each row starts 24px in (icon + gap); measure the name+mods
+        // line and the description line, take the wider, and pad the right edge.
+        let row_extent = |id: &Option<String>| -> f32 {
+            match id.as_deref().and_then(|id| reg.equipment(id)) {
+                Some(item) => {
+                    let mods = mods_summary(item);
+                    let mut line = r.text_width(&item.name, 1.0);
+                    if !mods.is_empty() {
+                        line += 6.0 + r.text_width(&mods, 1.0);
+                    }
+                    24.0 + line.max(r.text_width(&item.description, 1.0))
+                }
+                None => 0.0,
+            }
+        };
+        let content = row_extent(&b.weapon).max(row_extent(&b.armor));
+        let (w, h) = ((content + 4.0).max(196.0), 52.0);
         let x = 6.0;
         let y = VIRTUAL_H - party_h - h - 2.0;
         r.draw_rect(x, y, w, h, color::rgba(12, 14, 28, 232));
