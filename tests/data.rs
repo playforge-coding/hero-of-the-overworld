@@ -2,7 +2,9 @@
 //! on every `cargo test` and guard the extensibility contract: content is valid
 //! and cross-referenced correctly.
 
-use hero_of_the_overworld::data::{embedded_texture, CutsceneStep, EquipSlot, Registry};
+use hero_of_the_overworld::data::{
+    embedded_texture, AttackAnim, CutsceneStep, EquipSlot, Registry,
+};
 use hero_of_the_overworld::party::{FieldUse, Party};
 
 fn registry() -> Registry {
@@ -58,12 +60,20 @@ fn all_references_resolve() {
             assert!(reg.skill(s).is_some(), "enemy {} skill '{s}' missing", e.id);
         }
     }
-    // Every status a skill inflicts exists (e.g. FIREBALL -> burn).
+    // Every status a skill inflicts exists (e.g. FIREBALL -> burn), and any
+    // projectile attack animation names an embedded texture.
     for s in &reg.data.skills {
         for st in &s.inflicts {
             assert!(
                 reg.status(st).is_some(),
                 "skill {} inflicts unknown status '{st}'",
+                s.id
+            );
+        }
+        if let AttackAnim::Projectile { texture } = &s.anim {
+            assert!(
+                embedded_texture(texture).is_some(),
+                "skill {} projectile texture '{texture}' not embedded",
                 s.id
             );
         }
@@ -495,21 +505,54 @@ fn field_item_heals_and_is_spent_only_when_useful() {
     );
 }
 
+/// Items only top up the living — a potion can't revive a downed hero (that's
+/// MEND's job), and a refused use spends nothing.
+#[test]
+fn field_items_do_not_revive() {
+    let reg = registry();
+    let mut party = Party::from_registry(&reg);
+    party.add_item("potion", 1);
+    party.members[0].hp = 0; // downed
+    let idx = party.items.iter().position(|s| s.id == "potion").unwrap();
+    assert!(matches!(
+        party.use_item_in_field(&reg, idx, 0),
+        FieldUse::NoEffect
+    ));
+    assert!(!party.members[0].is_alive(), "a potion must not revive");
+    assert_eq!(
+        party.items.iter().find(|s| s.id == "potion").unwrap().count,
+        1,
+        "a refused use spends nothing"
+    );
+}
+
 /// Healing moves work from the field too: a hero who knows MEND can cast it on an
 /// ally, spending the caster's MP; an unaffordable cast is refused for free.
 #[test]
 fn field_heal_move_restores_hp_and_bills_mp() {
     let reg = registry();
-    let mut party = Party::from_registry(&reg);
-    // ROLAND knows MEND (a Heal skill); confirm it shows up as field-usable.
+    // MEND belongs to ELARA alone now, and is her last-unlocked (capstone) move —
+    // build a party of just her and level her up until she has learned it.
+    let mut party = Party::default();
+    assert!(party.recruit(&reg, "mage"), "ELARA (mage) should recruit");
+    while !party.members[0].skills.iter().any(|id| id == "mend") {
+        assert!(
+            party.members[0].level < 50,
+            "ELARA should learn MEND by levelling"
+        );
+        party.grant_xp(&reg, 1000);
+    }
+
+    // It shows up as a field-usable healing move.
     let moves = party.field_heal_skills(&reg, 0);
     assert!(
         moves.iter().any(|id| id == "mend"),
         "MEND should be a field heal move"
     );
 
-    // Wound the leader and have them mend themselves.
+    // Wound her and have her mend herself.
     party.members[0].hp = 1;
+    party.members[0].mp = party.members[0].stats.max_mp;
     let mp_before = party.members[0].mp;
     match party.use_heal_skill_in_field(&reg, 0, "mend", 0) {
         FieldUse::Restored { hp, .. } => assert!(hp > 0, "MEND should restore HP"),
@@ -526,6 +569,58 @@ fn field_heal_move_restores_hp_and_bills_mp() {
         FieldUse::NotEnoughMp
     ));
     assert_eq!(party.members[0].mp, 0, "a refused cast spends no MP");
+}
+
+/// MEND revives: cast on a **downed** ally it brings them back up (a non-reviving
+/// heal would refuse a fallen target). Exercised through the field-use path.
+#[test]
+fn field_mend_revives_a_downed_ally() {
+    let reg = registry();
+    assert!(
+        reg.skill("mend").is_some_and(|s| s.revives),
+        "MEND should be flagged as reviving"
+    );
+
+    let mut party = Party::default();
+    assert!(party.recruit(&reg, "mage")); // ELARA — the caster (member 0)
+    assert!(party.recruit(&reg, "swordsman")); // ROLAND — will be downed (member 1)
+    while !party.members[0].skills.iter().any(|id| id == "mend") {
+        assert!(party.members[0].level < 50, "ELARA should learn MEND");
+        party.grant_xp(&reg, 1000);
+    }
+
+    // Knock ROLAND out, then have ELARA mend him back.
+    party.members[1].hp = 0;
+    assert!(!party.members[1].is_alive(), "ROLAND is down");
+    party.members[0].mp = party.members[0].stats.max_mp;
+    match party.use_heal_skill_in_field(&reg, 0, "mend", 1) {
+        FieldUse::Restored { hp, .. } => assert!(hp > 0, "revive restores HP"),
+        _ => panic!("MEND should revive a downed ally"),
+    }
+    assert!(
+        party.members[1].is_alive(),
+        "the fallen ally is back on their feet"
+    );
+}
+
+/// MEND is exclusive to ELARA — no other character knows it from the start or via
+/// their learnset. The warrior and scout get their own capstone instead.
+#[test]
+fn only_elara_learns_mend() {
+    let reg = registry();
+    for c in &reg.data.characters {
+        let has_mend =
+            c.skills.iter().any(|s| s == "mend") || c.learnset.iter().any(|l| l.skill == "mend");
+        if c.id == "mage" {
+            assert!(has_mend, "ELARA should learn MEND");
+        } else {
+            assert!(
+                !has_mend,
+                "{} must not know MEND (it's ELARA's alone)",
+                c.id
+            );
+        }
+    }
 }
 
 #[test]

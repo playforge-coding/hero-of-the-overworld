@@ -32,12 +32,15 @@ most battles fall quickly.
 | Skill | Kind | MP | Target | Learned |
 | ----- | ---- | -- | ------ | ------- |
 | FIREBOLT | Magical | 6 | One enemy | Start |
-| MEND | Heal | 6 | One ally | Start |
 | FROST | Magical | 12 | All enemies | **Level 4** |
+| MEND | Heal | 10 | One ally | **Level 7** |
 
-**FIREBOLT** is a hard single-target nuke off her high magic; **MEND** lets her
-double as a healer; and at **level 4** she learns **FROST**, which hits every demon
-at once (a duo or trio can be softened or finished in one cast). See
+**FIREBOLT** is a hard single-target nuke off her high magic; at **level 4** she
+learns **FROST**, which hits every demon at once (a duo or trio can be softened or
+finished in one cast); and at **level 7** she masters **MEND**, a potent heal that
+also **revives a downed ally** (bringing them back with the healed HP). MEND is
+**hers alone** — no other hero can heal or revive by magic, so Elara is the party's
+lifeline. It's also her **last-unlocked** move. See
 [Battles](../battles.md#skills) and [Levelling up](../gameplay.md#levelling-up).
 
 ## Gear

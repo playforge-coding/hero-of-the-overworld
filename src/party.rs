@@ -103,9 +103,15 @@ impl PartyMember {
     /// battle (from the inventory screen). Returns the HP and MP actually restored
     /// (either may be 0), so a full-health target refuses the item rather than
     /// wasting it. Damage and status effects are ignored here — they only mean
-    /// something in a fight (see [`ItemEffect::usable_in_field`]); a heal on a
-    /// downed member revives them.
+    /// something in a fight (see [`ItemEffect::usable_in_field`]). Items only top up
+    /// the **living**; a downed hero can't be potioned back — reviving is the
+    /// domain of a reviving heal like MEND (see [`SkillDef::revives`]).
+    ///
+    /// [`SkillDef::revives`]: crate::data::SkillDef::revives
     fn apply_field_item(&mut self, effect: &ItemEffect) -> (i32, i32) {
+        if !self.is_alive() {
+            return (0, 0);
+        }
         let mut hp = 0;
         let mut mp = 0;
         if effect.heal > 0 && self.hp < self.stats.max_hp {
@@ -388,8 +394,11 @@ impl Party {
 
     /// Cast `caster`'s healing move `skill_id` on `target` **from the field**:
     /// spend the caster's MP and restore the target's HP (scaled off the caster's
-    /// effective magic, like in battle). Refuses — spending nothing — if the skill
-    /// isn't a heal, the caster can't afford it, or the target is already full.
+    /// effective magic, like in battle). A [reviving](crate::data::SkillDef::revives)
+    /// heal can bring a **downed** target back; an ordinary one only tops up the
+    /// living. Refuses — spending nothing — if the skill isn't a heal, the caster
+    /// can't afford it, or the target would gain nothing (already full, or downed
+    /// with a non-reviving heal).
     pub fn use_heal_skill_in_field(
         &mut self,
         reg: &Registry,
@@ -403,7 +412,7 @@ impl Party {
         if def.kind != SkillKind::Heal {
             return FieldUse::NoEffect;
         }
-        let (mp_cost, power) = (def.mp_cost, def.power);
+        let (mp_cost, power, revives) = (def.mp_cost, def.power, def.revives);
         // Caster's affordability and effective magic (base + equipment).
         let mag = match self.members.get(caster) {
             Some(c) if c.is_alive() => {
@@ -417,9 +426,10 @@ impl Party {
             _ => return FieldUse::NoEffect,
         };
         let heal = (mag * power / 100).max(1);
-        // Apply to the target; bail (spending no MP) if it would be wasted.
+        // Apply to the target; bail (spending no MP) if it would be wasted. A
+        // downed target only counts when the move revives.
         let gained = match self.members.get_mut(target) {
-            Some(t) if t.is_alive() && t.hp < t.stats.max_hp => {
+            Some(t) if t.hp < t.stats.max_hp && (revives || t.is_alive()) => {
                 let before = t.hp;
                 t.hp = (t.hp + heal).min(t.stats.max_hp);
                 t.hp - before

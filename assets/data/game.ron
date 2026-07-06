@@ -40,9 +40,13 @@ GameData(
                 row_down: 0, row_up: 1, row_right: 2, row_left: 3,
                 frames: 4, fps: 8.0,
             )),
-            skills: ["power_strike", "mend"],
-            // ROLAND masters his sweeping WHIRLWIND once he's a few fights in.
-            learnset: [LearnedSkill(level: 3, skill: "whirlwind")],
+            skills: ["power_strike"],
+            // ROLAND masters his sweeping WHIRLWIND a few fights in, then his
+            // devastating SUNDER as his final, most powerful move.
+            learnset: [
+                LearnedSkill(level: 3, skill: "whirlwind"),
+                LearnedSkill(level: 7, skill: "sunder"),
+            ],
             weapon: Some("iron_sword"),
             armor: Some("leather_armor"),
         ),
@@ -69,9 +73,13 @@ GameData(
                 row_down: 0, row_up: 1, row_right: 2, row_left: 3,
                 frames: 4, fps: 8.0,
             )),
-            skills: ["firebolt", "mend"],
-            // ELARA's chilling FROST comes with a little more study.
-            learnset: [LearnedSkill(level: 4, skill: "frost")],
+            skills: ["firebolt"],
+            // ELARA's chilling FROST comes with a little more study, and she alone
+            // masters the potent healing of MEND as her final move.
+            learnset: [
+                LearnedSkill(level: 4, skill: "frost"),
+                LearnedSkill(level: 7, skill: "mend"),
+            ],
             armor: Some("travelers_robe"),
         ),
         // GARETH — a mountain hermit of TRAVELLER'S END and once the king's own
@@ -109,10 +117,14 @@ GameData(
                 row_down: 0, row_up: 1, row_right: 2, row_left: 3,
                 frames: 5, fps: 9.0,
             )),
-            skills: ["quick_slash", "mend"],
-            // GARETH's SWALLOW CUT — a scout's finishing technique — comes early;
-            // recruited mid-game, he already knows it (learnset catches up on join).
-            learnset: [LearnedSkill(level: 2, skill: "swallow_cut")],
+            skills: ["quick_slash"],
+            // GARETH's SWALLOW CUT — a scout's sweep — comes early; his lethal
+            // FINAL CUT is his last, most powerful move. Recruited mid-game, the
+            // learnset catches him up to everything his level grants on join.
+            learnset: [
+                LearnedSkill(level: 2, skill: "swallow_cut"),
+                LearnedSkill(level: 7, skill: "final_cut"),
+            ],
             weapon: Some("scouts_edge"),
             armor: Some("scouts_cloak"),
         ),
@@ -365,10 +377,20 @@ GameData(
             description: "A spinning slash that hits every foe.",
             mp_cost: 8, power: 95, kind: Physical, target: AllEnemies,
         ),
+        // ROLAND's capstone (his last learned move, replacing the shared MEND):
+        // a devastating single-target cleave, mightier than POWER STRIKE.
+        SkillDef(
+            id: "sunder", name: "SUNDER",
+            description: "A crushing overhead cleave that splits a foe's guard.",
+            mp_cost: 12, power: 245, kind: Physical, target: OneEnemy,
+        ),
+        // ELARA's capstone: a potent restorative mastered late (her last learned
+        // move). Only she knows it — the other heroes get their own ultimate below.
         SkillDef(
             id: "mend", name: "MEND",
-            description: "Knit an ally's wounds with white magic.",
-            mp_cost: 6, power: 140, kind: Heal, target: OneAlly,
+            description: "Mastered white magic: heals an ally, or revives a fallen one.",
+            mp_cost: 10, power: 240, kind: Heal, target: OneAlly,
+            revives: true,   // can bring a downed ally back
         ),
         SkillDef(
             id: "claw", name: "CLAW",
@@ -380,12 +402,14 @@ GameData(
             description: "A demon's blazing orb; leaves the target burning.",
             mp_cost: 6, power: 150, kind: Magical, target: OneEnemy,
             inflicts: ["burn"], unblockable: true,
+            anim: Projectile(texture: "fireball"),   // hurls a fireball at the target
         ),
         SkillDef(
             id: "firebolt", name: "FIREBOLT",
             description: "Hurl a searing bolt of flame at one foe.",
             mp_cost: 6, power: 180, kind: Magical, target: OneEnemy,
             unblockable: true,
+            anim: Projectile(texture: "fireball"),   // ELARA's flaming bolt
         ),
         SkillDef(
             id: "frost", name: "FROST",
@@ -398,6 +422,8 @@ GameData(
             description: "A dragon's roaring gout of fire; sears and burns every foe.",
             mp_cost: 10, power: 135, kind: Magical, target: AllEnemies,
             inflicts: ["burn"], unblockable: true,
+            // Fans a fireball out at every party member at once.
+            anim: Projectile(texture: "fireball"),
         ),
         SkillDef(
             id: "tail_swipe", name: "TAIL SWIPE",
@@ -415,6 +441,7 @@ GameData(
             description: "A thundering couched-lance charge at one hero.",
             mp_cost: 6, power: 145, kind: Physical, target: OneEnemy,
             unblockable: true,
+            anim: Charge,   // gallops through the hero and wraps the field
         ),
         // The warhorse's stomp is a heavy but telegraphed blow — you can brace and
         // block it, unlike the piercing LANCE CHARGE. That gives the party timing
@@ -423,6 +450,7 @@ GameData(
             id: "trample", name: "TRAMPLE",
             description: "The warhorse tramples the whole party underhoof.",
             mp_cost: 8, power: 90, kind: Physical, target: AllEnemies,
+            anim: Charge,   // sweeps across the whole party
         ),
         // GARETH's blade-work. Fast and cheap, to match the nimblest hero: a
         // spammable single strike and a darting sweep across a whole pack.
@@ -435,6 +463,14 @@ GameData(
             id: "swallow_cut", name: "SWALLOW CUT",
             description: "A flowing sweep that flits between every foe.",
             mp_cost: 7, power: 95, kind: Physical, target: AllEnemies,
+            anim: Charge,   // GARETH darts across the whole enemy line
+        ),
+        // GARETH's capstone (his last learned move, replacing the shared MEND): a
+        // single, flawless killing stroke — the deadliest hit in the party.
+        SkillDef(
+            id: "final_cut", name: "FINAL CUT",
+            description: "A flawless killing stroke that finds the fatal gap.",
+            mp_cost: 10, power: 250, kind: Physical, target: OneEnemy,
         ),
     ],
 

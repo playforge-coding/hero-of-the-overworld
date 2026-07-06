@@ -38,12 +38,16 @@ otherwise it reads **BEGIN**.
 
 You start as a single hero, **ROLAND** the swordsman. Party members carry their
 **HP**, **MP**, **level**, and **XP** between battles, so damage taken in one
-fight persists into the next until you heal (with the MEND skill, or by being
-revived — see below).
+fight persists into the next until you heal (with [Elara](entities/elara.md)'s MEND
+skill, a healing [item](items.md), or by being revived — see below).
 
 A hero **knocked out** in battle isn't lost. They sit out the rest of that fight,
 but at the start of the **next** battle they rejoin the party back on their feet
 with **5 HP** — enough to fight on, though you'll want to heal them up quickly.
+You don't have to wait, though: [Elara](entities/elara.md)'s **MEND** can **revive
+a downed ally on the spot** — target the fallen hero mid-battle, or from the
+[party menu](#inventory-and-equipment) between fights, and they're back up with the
+healed HP. (Healing [items](items.md) only top up the living; reviving is MEND's alone.)
 
 New heroes join through the story. After you clear the **Greenwood**, a cutscene
 introduces **ELARA**, a mage; clear **Traveller's End** and **GARETH**, a swift

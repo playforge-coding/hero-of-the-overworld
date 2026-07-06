@@ -145,8 +145,10 @@ Adding genuinely new art is the only code touch: register the PNG once in
 [`embedded_texture`](src/data.rs) so it ships inside the wasm bundle too.
 
 The data file also defines **skills** (physical / magical / heal, single or all targets,
-each with a description — a character knows some from the start and unlocks others via a
-level-gated **learnset**), **equipment** (weapons and armor with stat bonuses, crit /
+each with a description and an optional **attack animation** — a lunge, a flying
+**projectile**, or a screen-wrapping **charge** — plus a character knows some from the
+start and unlocks others via a level-gated **learnset**), **equipment** (weapons and
+armor with stat bonuses, crit /
 accuracy / evasion, and descriptions — heroes and enemies equip them by id), **items**
 (consumables with a target and a composable effect — heal / damage / restore MP / inflict
 a status — used in battle, bought or dropped), **enemies** (stats, skills, AI, XP/gold

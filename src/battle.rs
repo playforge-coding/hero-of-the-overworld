@@ -16,8 +16,11 @@
 
 use glam::Vec2;
 
+use std::collections::HashMap;
+
 use crate::data::{
-    BattlerSprite, EnemyAi, ItemDrop, Registry, SkillDef, SkillKind, Stats, StatusDef, TargetKind,
+    AttackAnim, BattlerSprite, EnemyAi, ItemDrop, Registry, SkillDef, SkillKind, Stats, StatusDef,
+    TargetKind,
 };
 use crate::input::{Button, Controllers, Input};
 use crate::party::{ItemStack, Party};
@@ -207,6 +210,37 @@ struct Popup {
     color: Color,
 }
 
+// ---- Projectiles ------------------------------------------------------------
+
+/// A live projectile sprite in flight (an [`AttackAnim::Projectile`] attack): it
+/// travels in a straight line from `from` to `to` over `dur` seconds, then
+/// vanishes as the blow lands. Purely visual — the damage is applied by the
+/// action's impact step, timed to coincide with arrival.
+struct Projectile {
+    /// Texture key (into [`Battle::projectile_textures`]).
+    tex: String,
+    from: Vec2,
+    to: Vec2,
+    elapsed: f32,
+    dur: f32,
+}
+
+impl Projectile {
+    /// Current position along its flight (clamped to the endpoint on arrival).
+    fn pos(&self) -> Vec2 {
+        let s = (self.elapsed / self.dur).clamp(0.0, 1.0);
+        self.from.lerp(self.to, s)
+    }
+}
+
+/// A resolved projectile texture: its handle plus native pixel size, so the draw
+/// can centre and scale it without re-querying every frame.
+struct ProjTex {
+    handle: TextureHandle,
+    w: f32,
+    h: f32,
+}
+
 // ---- Action timing (attack / block timed hits) ------------------------------
 
 // SMRPG-style timed hits: there is *no* on-screen indicator. The window is woven
@@ -228,6 +262,27 @@ const STRIKE_GOOD: f32 = 0.13;
 /// is already known. Kept in step with the lunge's hold (see the timeline in
 /// [`Battle::update_execute`]).
 const STRIKE_APPLY: f32 = STRIKE_CONNECT + STRIKE_GOOD;
+
+// ---- Attack-animation timeline (see `AttackAnim` + `update_execute`) ---------
+// The timed-hit window always sits at `STRIKE_CONNECT` (you tap as the move is
+// *committed* — the swing, the cast, the spur of the charge). Each animation then
+// carries its own **impact** time (when damage lands) and **end** time (when the
+// actor returns to idle). Impact is never earlier than the timing window's close,
+// so a well-timed tap (or block) is always resolved before the blow is applied.
+
+/// Projectile attacks: the sprite launches as the cast connects and flies to its
+/// target, the blow landing on arrival.
+const PROJ_LAUNCH: f32 = 0.18;
+const PROJ_IMPACT: f32 = 0.52;
+const PROJ_END: f32 = 0.95;
+
+/// Charge attacks: the actor sweeps across the field, striking mid-dash, then
+/// wraps the screen and returns — a longer beat than a lunge.
+const CHARGE_IMPACT: f32 = 0.34;
+const CHARGE_END: f32 = 1.1;
+
+/// The default lunge's end-of-action time (unchanged classic timing).
+const LUNGE_END: f32 = 0.9;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum TimingKind {
@@ -470,8 +525,20 @@ struct Execute {
     /// presser's tap as the strike animation plays. `None` for actions with no
     /// timing (heals, defends, unblockable blows).
     timed: Option<TimedHit>,
+    /// Whether the timing window has closed and its [`hit_mod`](Self::hit_mod) is
+    /// locked in. This gates when the blow may land (never before the tap is
+    /// scored) and separates the *timing* moment from the (possibly later) impact
+    /// of a projectile or charge.
+    timing_locked: bool,
     /// Damage modifier banked from `timed`, applied when the blow lands.
     hit_mod: HitMod,
+    /// This action's attack animation (resolved at start-up). Drives the actor's
+    /// motion, when projectiles fly, and the impact/end beats.
+    anim: AttackAnim,
+    /// Projectiles currently in flight for this action (an [`AttackAnim::Projectile`]).
+    projectiles: Vec<Projectile>,
+    /// Guards the one-shot projectile launch.
+    projectiles_spawned: bool,
     /// The taunt follow-up for this action, if it warrants one (a hero's basic
     /// attack on a living foe). Tracks the post-hit tap; `None` otherwise.
     taunt: Option<TauntTry>,
@@ -507,6 +574,10 @@ pub struct Battle {
     /// turn comes up.
     turn_order: Vec<usize>,
     turn_idx: usize,
+    /// Projectile textures (keyed by art key) preloaded from every skill's
+    /// [`AttackAnim::Projectile`], so a projectile in flight can be drawn without
+    /// touching the texture cache mid-frame.
+    projectile_textures: HashMap<String, ProjTex>,
 }
 
 impl Battle {
@@ -621,6 +692,25 @@ impl Battle {
             });
         }
 
+        // Preload the projectile art any skill references, once, so drawing a
+        // projectile mid-flight never has to reach for the texture cache.
+        let mut projectile_textures = HashMap::new();
+        for skill in &reg.data.skills {
+            if let AttackAnim::Projectile { texture } = &skill.anim {
+                projectile_textures
+                    .entry(texture.clone())
+                    .or_insert_with(|| {
+                        let handle = cache.get(renderer, texture);
+                        let (w, h) = renderer.texture_size(handle);
+                        ProjTex {
+                            handle,
+                            w: w as f32,
+                            h: h as f32,
+                        }
+                    });
+            }
+        }
+
         Battle {
             battlers,
             state: State::Intro(0.6),
@@ -628,6 +718,7 @@ impl Battle {
             turn_idx: 0,
             encounter_name: name,
             items: party.items.clone(),
+            projectile_textures,
         }
     }
 
@@ -675,6 +766,34 @@ impl Battle {
             TargetKind::OneEnemy | TargetKind::AllEnemies => self.living(foes),
             TargetKind::OneAlly | TargetKind::AllAllies => self.living(side),
             TargetKind::SelfOnly => vec![actor],
+        }
+    }
+
+    /// Ally candidates for a **reviving** heal — allies that are still on the
+    /// field whether alive *or* downed, so a revive can pick a fallen member. For
+    /// non-ally target kinds this is just the usual living [`candidates`].
+    fn revive_candidates(&self, actor: usize, target: TargetKind) -> Vec<usize> {
+        match target {
+            TargetKind::OneAlly | TargetKind::AllAllies => {
+                let side = self.battlers[actor].side;
+                self.battlers
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, b)| b.side == side && b.present())
+                    .map(|(i, _)| i)
+                    .collect()
+            }
+            _ => self.candidates(actor, target),
+        }
+    }
+
+    /// The selectable targets for a skill: a reviving heal ([`SkillDef::revives`])
+    /// may also target downed allies; every other skill targets only the living.
+    fn skill_candidates(&self, actor: usize, def: &SkillDef) -> Vec<usize> {
+        if def.revives && matches!(def.kind, SkillKind::Heal) {
+            self.revive_candidates(actor, def.target)
+        } else {
+            self.candidates(actor, def.target)
         }
     }
 
@@ -736,7 +855,7 @@ impl Battle {
                     CommandResult::Stay => {
                         self.state = State::Command(std::mem::replace(cmd, dummy_command()));
                     }
-                    CommandResult::Execute(exec) => self.state = State::Execute(exec),
+                    CommandResult::Execute(exec) => self.state = State::Execute(*exec),
                 }
                 None
             }
@@ -900,7 +1019,11 @@ impl Battle {
             applied: false,
             started: false,
             timed: None,
+            timing_locked: false,
             hit_mod: HitMod::NEUTRAL,
+            anim: AttackAnim::Lunge,
+            projectiles: Vec::new(),
+            projectiles_spawned: false,
             taunt: None,
             end_of_round: false,
             statuses_ticked: false,
@@ -918,7 +1041,11 @@ impl Battle {
             applied: false,
             started: false,
             timed: None,
+            timing_locked: false,
             hit_mod: HitMod::NEUTRAL,
+            anim: AttackAnim::Lunge,
+            projectiles: Vec::new(),
+            projectiles_spawned: false,
             taunt: None,
             end_of_round: true,
             statuses_ticked: false,
@@ -960,11 +1087,11 @@ impl Battle {
                         1 => cmd.stage = Stage::Skill { cursor: 0 },
                         2 => cmd.stage = Stage::Item { cursor: 0 },
                         _ => {
-                            return CommandResult::Execute(self.action_exec(Action {
+                            return CommandResult::Execute(Box::new(self.action_exec(Action {
                                 actor: hero,
                                 kind: ActionKind::Defend,
                                 targets: vec![],
-                            }));
+                            })));
                         }
                     }
                 }
@@ -996,11 +1123,11 @@ impl Battle {
                             };
                         } else {
                             let targets = self.candidates(hero, target);
-                            return CommandResult::Execute(self.action_exec(Action {
+                            return CommandResult::Execute(Box::new(self.action_exec(Action {
                                 actor: hero,
                                 kind,
                                 targets,
-                            }));
+                            })));
                         }
                     }
                 }
@@ -1022,19 +1149,21 @@ impl Battle {
                             let target = def.target;
                             let kind = ActionKind::Skill(def.id.clone());
                             if needs_cursor(target) {
-                                let cands = self.candidates(hero, target);
+                                let cands = self.skill_candidates(hero, def);
                                 cmd.stage = Stage::Target {
                                     pending: Pending { kind, target },
                                     cursor: 0,
                                     candidates: cands,
                                 };
                             } else {
-                                let targets = self.candidates(hero, target);
-                                return CommandResult::Execute(self.action_exec(Action {
-                                    actor: hero,
-                                    kind,
-                                    targets,
-                                }));
+                                let targets = self.skill_candidates(hero, def);
+                                return CommandResult::Execute(Box::new(self.action_exec(
+                                    Action {
+                                        actor: hero,
+                                        kind,
+                                        targets,
+                                    },
+                                )));
                             }
                         }
                     }
@@ -1063,11 +1192,11 @@ impl Battle {
                         TargetKind::AllEnemies | TargetKind::AllAllies => candidates.clone(),
                         _ => vec![candidates[*cursor]],
                     };
-                    return CommandResult::Execute(self.action_exec(Action {
+                    return CommandResult::Execute(Box::new(self.action_exec(Action {
                         actor: hero,
                         kind: pending.kind.clone(),
                         targets,
-                    }));
+                    })));
                 }
                 CommandResult::Stay
             }
@@ -1167,21 +1296,24 @@ impl Battle {
         let action = exec.queue[exec.idx].clone();
         let actor = action.actor;
 
-        // Action start-up: announce it and, if it warrants one, arm the timed hit
-        // (a hero's attack, or a blockable enemy blow on a hero). No prompt or bar
-        // is shown — the window lives inside the swing below.
+        // Action start-up: announce it, resolve its animation, and — if it
+        // warrants one — arm the timed hit (a hero's attack, or a blockable enemy
+        // blow on a hero). No prompt or bar is shown — the window lives inside the
+        // swing/cast below.
         if !exec.started {
             exec.started = true;
             exec.banner = self.action_banner(&action, reg);
+            exec.anim = self.action_anim(&action, reg);
             exec.timed = self.make_timed(&action, reg);
             exec.taunt = self.make_taunt(&action);
             exec.hit_mod = HitMod::NEUTRAL;
         }
 
-        // Movement + impact timeline: 0.0 windup, STRIKE_CONNECT peak/connect,
-        // STRIKE_APPLY the blow lands, 0.55 hold, 0.75 return, 0.9 end. The timed
-        // hit is woven in: the presser must tap Confirm as the swing connects, and
-        // the blow lands scaled by the `hit_mod` the tap earned.
+        // The timeline has three beats, each animation setting its own: the timing
+        // window always closes at `window_close` (tap as the move commits), the
+        // blow lands at `impact_t` (never before the window shuts), and the actor
+        // returns to idle at `end_t`. A lunge collapses all of this into the
+        // classic swing; a projectile lands on arrival; a charge lands mid-sweep.
         if exec.elapsed == 0.0 {
             let clip = self.battlers[actor].sprite.attack.clone();
             self.battlers[actor].anim = Anim::from_clip(&clip, false);
@@ -1189,12 +1321,24 @@ impl Battle {
         exec.elapsed += dt;
         let t = exec.elapsed;
 
-        // Tally the presser's taps as they happen in the swing: the first fixes
-        // the timing, and any beyond it mark this as mashing (which forfeits the
-        // bonus in `TimedHit::result`). Only taps *before* the blow lands count —
-        // once damage is locked in, a later tap belongs to the taunt follow-up
-        // below, not to mashing.
-        if !exec.applied {
+        let window_close = exec
+            .timed
+            .as_ref()
+            .map_or(STRIKE_APPLY, |th| STRIKE_CONNECT + th.good);
+        let impact_t = anim_impact_t(&exec.anim, window_close);
+        let end_t = anim_end_t(&exec.anim);
+
+        // Advance projectiles in flight; drop each as it reaches its target.
+        for p in &mut exec.projectiles {
+            p.elapsed += dt;
+        }
+        exec.projectiles.retain(|p| p.elapsed < p.dur);
+
+        // Tally the presser's taps as they happen: the first fixes the timing, and
+        // any beyond it mark this as mashing (which forfeits the bonus in
+        // `TimedHit::result`). Only taps *before* the window closes count — a later
+        // tap belongs to the taunt follow-up below, not to mashing.
+        if !exec.timing_locked {
             if let Some(th) = &mut exec.timed {
                 let pi = self.battlers[th.presser].party_index.unwrap_or(0);
                 if controllers.player(pi).pressed(Button::Confirm) {
@@ -1204,32 +1348,44 @@ impl Battle {
             }
         }
 
-        let dir = self.battlers[actor].facing_dir();
-        // Scale the lunge with the field so it stays proportional to the shrunk
-        // sprites (see FIELD_SCALE).
-        let lunge = 18.0 * FIELD_SCALE;
-        self.battlers[actor].offset.x = if t < STRIKE_CONNECT {
-            dir * lunge * (t / STRIKE_CONNECT)
-        } else if t < 0.55 {
-            dir * lunge
-        } else if t < 0.75 {
-            dir * lunge * (1.0 - (t - 0.55) / 0.2)
-        } else {
-            0.0
-        };
+        // Move the actor along this animation's path.
+        self.battlers[actor].offset = self.actor_offset(actor, &exec.anim, t, end_t);
 
-        // The blow lands once this action's timing window has fully shut. A
-        // character with a wider window (Gareth) keeps taking taps a little
-        // longer, so the late edge isn't clipped; the lunge holds until 0.55, so
-        // there's slack for it. Actions with no timed hit use the default apply.
-        let apply_t = exec
-            .timed
-            .as_ref()
-            .map_or(STRIKE_APPLY, |th| STRIKE_CONNECT + th.good);
-        if t >= apply_t && !exec.applied {
-            exec.applied = true;
-            // The timing window has closed: lock in the tap's modifier and float
-            // its label as after-the-fact feedback (a miss shows nothing).
+        // A projectile attack launches one bolt per living target as the cast
+        // connects; each flies to arrive right as the blow lands.
+        let proj_tex = match &exec.anim {
+            AttackAnim::Projectile { texture } => Some(texture.clone()),
+            _ => None,
+        };
+        if let Some(tex) = proj_tex {
+            if !exec.projectiles_spawned && t >= PROJ_LAUNCH {
+                exec.projectiles_spawned = true;
+                let dir = self.battlers[actor].facing_dir();
+                let from = self.battlers[actor].pos() + Vec2::new(dir * 6.0, -6.0);
+                let dur = (impact_t - PROJ_LAUNCH).max(0.05);
+                let targets: Vec<usize> = action
+                    .targets
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.battlers[x].alive())
+                    .collect();
+                for tgt in targets {
+                    let to = self.battlers[tgt].pos() + Vec2::new(0.0, -6.0);
+                    exec.projectiles.push(Projectile {
+                        tex: tex.clone(),
+                        from,
+                        to,
+                        elapsed: 0.0,
+                        dur,
+                    });
+                }
+            }
+        }
+
+        // The timing window shuts: lock in the tap's modifier and float its label
+        // as after-the-fact feedback (a miss shows nothing).
+        if t >= window_close && !exec.timing_locked {
+            exec.timing_locked = true;
             if let Some(th) = &exec.timed {
                 exec.hit_mod = th.hit_mod();
                 if let Some((label, col)) = th.flash() {
@@ -1248,13 +1404,19 @@ impl Battle {
                     });
                 }
             }
+        }
+
+        // The blow lands at the animation's impact (never before the tap is
+        // scored), applying the banked `hit_mod`.
+        if t >= impact_t && exec.timing_locked && !exec.applied {
+            exec.applied = true;
             self.apply_action(&action, exec.hit_mod, rng, reg, &mut exec.popups);
         }
 
-        // Taunt follow-up: once the blow has landed, the hero's first tap on the
+        // Taunt follow-up: once the timing is resolved, the hero's first tap on the
         // recovery is their taunt attempt. Land it in the window and the struck
         // foe is marked to prefer this hero next turn; an early tap misses.
-        if exec.applied {
+        if exec.timing_locked {
             if let Some(tt) = &mut exec.taunt {
                 if !tt.resolved {
                     let pi = self.battlers[tt.presser].party_index.unwrap_or(0);
@@ -1281,15 +1443,76 @@ impl Battle {
             }
         }
 
-        if t >= 0.9 {
-            // Restore idle and move to the next action.
+        if t >= end_t {
+            // Restore idle, clear any stray projectiles, and move to the next action.
             let idle = self.battlers[actor].idle.clone();
             self.battlers[actor].anim = idle;
             self.battlers[actor].offset = Vec2::ZERO;
+            exec.projectiles.clear();
             self.next_action(exec);
         }
 
         false
+    }
+
+    /// The attack animation for an action: a skill's own [`AttackAnim`], or the
+    /// default lunge for basic attacks, items, and defends.
+    fn action_anim(&self, action: &Action, reg: &Registry) -> AttackAnim {
+        match &action.kind {
+            ActionKind::Skill(id) => reg.skill(id).map(|s| s.anim.clone()).unwrap_or_default(),
+            _ => AttackAnim::Lunge,
+        }
+    }
+
+    /// The actor's positional offset at time `t` for the given animation: a lunge
+    /// toward the foe, a small cast recoil, or a screen-wrapping charge sweep.
+    fn actor_offset(&self, actor: usize, anim: &AttackAnim, t: f32, end_t: f32) -> Vec2 {
+        let dir = self.battlers[actor].facing_dir();
+        match anim {
+            AttackAnim::Lunge => {
+                // Scale the lunge with the field so it stays proportional to the
+                // shrunk sprites (see FIELD_SCALE).
+                let lunge = 18.0 * FIELD_SCALE;
+                let x = if t < STRIKE_CONNECT {
+                    dir * lunge * (t / STRIKE_CONNECT)
+                } else if t < 0.55 {
+                    dir * lunge
+                } else if t < 0.75 {
+                    dir * lunge * (1.0 - (t - 0.55) / 0.2)
+                } else {
+                    0.0
+                };
+                Vec2::new(x, 0.0)
+            }
+            AttackAnim::Projectile { .. } => {
+                // A small brace: draw back as the bolt launches, then settle. The
+                // projectile itself carries the motion to the target.
+                let recoil = 5.0 * FIELD_SCALE;
+                let x = if t < PROJ_LAUNCH {
+                    -dir * recoil * (t / PROJ_LAUNCH)
+                } else if t < PROJ_LAUNCH + 0.12 {
+                    -dir * recoil * (1.0 - (t - PROJ_LAUNCH) / 0.12)
+                } else {
+                    0.0
+                };
+                Vec2::new(x, 0.0)
+            }
+            AttackAnim::Charge => {
+                // Sweep across the field in the facing direction, wrapping the
+                // screen exactly once so the charger ends back home. `s` eases
+                // 0->1 over the whole charge; travelling one full wrap-band width
+                // (screen + margins) returns the drawn position to the start.
+                let w = virtual_w();
+                let margin = 44.0;
+                let band_lo = -margin;
+                let band_w = w + 2.0 * margin;
+                let home_x = self.battlers[actor].home.x;
+                let s = smoothstep((t / end_t).clamp(0.0, 1.0));
+                let raw = home_x + dir * band_w * s;
+                let drawn = band_lo + (raw - band_lo).rem_euclid(band_w);
+                Vec2::new(drawn - home_x, 0.0)
+            }
+        }
     }
 
     /// Advance the execute queue to the next action, clearing per-action state.
@@ -1299,7 +1522,11 @@ impl Battle {
         exec.applied = false;
         exec.started = false;
         exec.timed = None;
+        exec.timing_locked = false;
         exec.hit_mod = HitMod::NEUTRAL;
+        exec.anim = AttackAnim::Lunge;
+        exec.projectiles.clear();
+        exec.projectiles_spawned = false;
         exec.taunt = None;
     }
 
@@ -1415,24 +1642,41 @@ impl Battle {
                 let Some(def) = reg.skill(id) else { return };
                 let def: SkillDef = def.clone();
                 self.battlers[actor].mp = (self.battlers[actor].mp - def.mp_cost).max(0);
-                // Retarget dead single-targets to a living one if possible.
-                let targets = self.resolve_live_targets(actor, &action.targets, def.target);
+                // A reviving heal keeps downed allies as valid targets; every other
+                // skill retargets a dead single-target to a living one if possible.
+                let revive = def.revives && matches!(def.kind, SkillKind::Heal);
+                let targets = if revive {
+                    self.resolve_revive_targets(actor, &action.targets, def.target)
+                } else {
+                    self.resolve_live_targets(actor, &action.targets, def.target)
+                };
                 match def.kind {
                     SkillKind::Heal => {
                         let mag = self.eff_stats(reg, actor).magic;
                         for &tgt in &targets {
                             let heal = (mag * def.power / 100).max(1);
                             let b = &mut self.battlers[tgt];
+                            let revived = revive && !b.alive() && heal > 0;
                             let before = b.hp;
                             b.hp = (b.hp + heal).min(b.max_hp);
                             let gained = b.hp - before;
                             b.flash = 0.25;
+                            let pos = b.pos();
                             popups.push(Popup {
                                 text: format!("+{gained}"),
-                                pos: b.pos() + Vec2::new(0.0, -6.0),
+                                pos: pos + Vec2::new(0.0, -6.0),
                                 t: 0.0,
                                 color: color::rgb(120, 240, 140),
                             });
+                            // Call out a revive so a downed hero standing back up reads.
+                            if revived {
+                                popups.push(Popup {
+                                    text: "REVIVE".to_string(),
+                                    pos: pos + Vec2::new(0.0, -20.0),
+                                    t: 0.0,
+                                    color: color::rgb(180, 245, 180),
+                                });
+                            }
                         }
                     }
                     SkillKind::Physical => {
@@ -1556,6 +1800,34 @@ impl Battle {
                 .take(1)
                 .collect(),
             _ => self.candidates(actor, target_kind),
+        }
+    }
+
+    /// Like [`resolve_live_targets`], but for a **reviving** heal: a downed ally is
+    /// still a valid target (they're present on the field), so it's kept rather
+    /// than dropped. Only retargets — to a fresh present ally — if every original
+    /// target has actually left the field.
+    fn resolve_revive_targets(
+        &self,
+        actor: usize,
+        targets: &[usize],
+        target_kind: TargetKind,
+    ) -> Vec<usize> {
+        let present: Vec<usize> = targets
+            .iter()
+            .copied()
+            .filter(|&t| self.battlers[t].present())
+            .collect();
+        if !present.is_empty() {
+            return present;
+        }
+        match target_kind {
+            TargetKind::OneEnemy | TargetKind::OneAlly => self
+                .revive_candidates(actor, target_kind)
+                .into_iter()
+                .take(1)
+                .collect(),
+            _ => self.revive_candidates(actor, target_kind),
         }
     }
 
@@ -1770,6 +2042,23 @@ impl Battle {
         match &self.state {
             State::Command(cmd) => self.draw_command(r, cmd, reg),
             State::Execute(exec) => {
+                // Projectiles in flight, drawn over the battlers but under the text.
+                for p in &exec.projectiles {
+                    if let Some(pt) = self.projectile_textures.get(&p.tex) {
+                        let scale = 2.2;
+                        let (w, h) = (pt.w * scale, pt.h * scale);
+                        let pos = p.pos();
+                        // Flip the art when the shot flies left (it's drawn facing right).
+                        let flip = p.to.x < p.from.x;
+                        r.draw_sprite(
+                            pt.handle,
+                            [pos.x - w / 2.0, pos.y - h / 2.0, w, h],
+                            [0.0, 0.0, pt.w, pt.h],
+                            flip,
+                            color::WHITE,
+                        );
+                    }
+                }
                 if !exec.banner.is_empty() {
                     draw_banner(r, &exec.banner);
                 }
@@ -2054,7 +2343,9 @@ pub(crate) fn item_effect_summary(reg: &Registry, def: &crate::data::ItemDef) ->
 
 enum CommandResult {
     Stay,
-    Execute(Execute),
+    /// Boxed to keep the enum small — an [`Execute`] is large, and most command
+    /// frames return the empty [`Stay`](CommandResult::Stay) variant.
+    Execute(Box<Execute>),
 }
 
 fn dummy_command() -> Command {
@@ -2072,7 +2363,11 @@ fn dummy_execute() -> Execute {
         applied: false,
         started: false,
         timed: None,
+        timing_locked: false,
         hit_mod: HitMod::NEUTRAL,
+        anim: AttackAnim::Lunge,
+        projectiles: vec![],
+        projectiles_spawned: false,
         taunt: None,
         end_of_round: false,
         statuses_ticked: false,
@@ -2083,6 +2378,31 @@ fn dummy_execute() -> Execute {
 
 fn needs_cursor(t: TargetKind) -> bool {
     matches!(t, TargetKind::OneEnemy | TargetKind::OneAlly)
+}
+
+/// When an attack animation's blow lands (animation seconds). Clamped to never
+/// precede `window_close`, so a well-timed tap or block is always scored first.
+fn anim_impact_t(anim: &AttackAnim, window_close: f32) -> f32 {
+    match anim {
+        AttackAnim::Lunge => window_close,
+        AttackAnim::Projectile { .. } => PROJ_IMPACT.max(window_close),
+        AttackAnim::Charge => CHARGE_IMPACT.max(window_close),
+    }
+}
+
+/// When an attack animation returns the actor to idle (animation seconds).
+fn anim_end_t(anim: &AttackAnim) -> f32 {
+    match anim {
+        AttackAnim::Lunge => LUNGE_END,
+        AttackAnim::Projectile { .. } => PROJ_END,
+        AttackAnim::Charge => CHARGE_END,
+    }
+}
+
+/// Smooth ease-in-out on `x` in `0..=1` (Hermite), for the charge sweep.
+fn smoothstep(x: f32) -> f32 {
+    let x = x.clamp(0.0, 1.0);
+    x * x * (3.0 - 2.0 * x)
 }
 
 /// A status's popup colour: its configured `tint`, or a warm orange default.

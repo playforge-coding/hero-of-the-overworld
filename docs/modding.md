@@ -70,9 +70,10 @@ CharacterDef(
         idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
         attack: AnimClip(row: 7, first_col: 0, frames: 5, fps: 14.0),
     ),
-    skills: ["firebolt", "mend"],       // known from the start
+    skills: ["firebolt"],                // known from the start
     learnset: [                          // unlocked as they level up (optional)
         LearnedSkill(level: 4, skill: "frost"),
+        LearnedSkill(level: 7, skill: "mend"),   // a capstone: her last, strongest move
     ],
     // armor: Some("travelers_robe"),   // optional starting gear (see below)
     // timing: Some(TimingWindow(perfect: 0.09, good: 0.20)),  // optional
@@ -109,6 +110,8 @@ SkillDef(
     id: "firebolt", name: "FIREBOLT",
     description: "Hurl a searing bolt of flame at one foe.",
     mp_cost: 6, power: 180, kind: Magical, target: OneEnemy,
+    unblockable: true,
+    anim: Projectile(texture: "fireball"),   // optional attack animation
 ),
 ```
 
@@ -122,6 +125,17 @@ SkillDef(
   piercing or magical blows — see
   [Action timing](battles.md#unblockable-attacks). Omitted, the attack can be
   blocked.
+- `revives: true` (optional, `Heal` skills only) lets the heal target a **downed**
+  ally and bring them back with the healed HP — not just top up the living. MEND
+  sets this; ordinary heals leave it off.
+- `anim` (optional) picks the skill's [attack animation](battles.md#attack-animations)
+  — a purely cosmetic motion. It's one of:
+    - `Lunge` — the default step-in-and-strike (used if omitted).
+    - `Projectile(texture: "fireball")` — fires a sprite from the caster to each
+      target, landing as it arrives. `texture` is a key in `embedded_texture` (the
+      bundled `fireball` art lives in `assets/textures/entities/animation_helpers/`).
+    - `Charge` — the attacker dashes through the target(s), wraps around the
+      screen, and returns.
 
 ## Add equipment
 
@@ -363,11 +377,12 @@ CutsceneDef(
 ## Check your work
 
 The fast test suite parses the data file and cross-checks every reference — that
-each skill (including a character's `learnset`), enemy, encounter, texture,
-cutscene, shop, item, and drop id resolves, that shop wares and keeper placements
-are valid, that item effects and enemy drops point at real statuses/items at sane
-odds, and that every level's screens are linked and traversable. It also exercises
-level-up skill unlocks. Run it after editing:
+each skill (including a character's `learnset` and any `Projectile` animation
+texture), enemy, encounter, texture, cutscene, shop, item, and drop id resolves,
+that shop wares and keeper placements are valid, that item effects and enemy drops
+point at real statuses/items at sane odds, and that every level's screens are
+linked and traversable. It also exercises level-up skill unlocks. Run it after
+editing:
 
 ```sh
 cargo test --test data

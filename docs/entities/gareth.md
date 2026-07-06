@@ -48,13 +48,15 @@ level-1 straggler you have to grind back up.
 | Skill | Kind | MP | Target | Learned |
 | ----- | ---- | -- | ------ | ------- |
 | QUICK SLASH | Physical | 3 | One enemy | Start |
-| MEND | Heal | 6 | One ally | Start |
 | SWALLOW CUT | Physical | 7 | All enemies | **Level 2** |
+| FINAL CUT | Physical | 10 | One enemy | **Level 7** |
 
 **QUICK SLASH** is a cheap, spammable single strike — fitting the quickest blade in
-the party; **MEND** lets him patch a wounded ally in a pinch; and **SWALLOW CUT**, a
-flowing sweep that flits between every foe (great against a pack), is learned at
-**level 2**. Since Gareth is recruited late, he joins already knowing it. See
+the party; **SWALLOW CUT**, a flowing sweep that flits between every foe (great
+against a pack), is learned at **level 2**; and **FINAL CUT** — a flawless killing
+stroke and the single hardest-hitting move in the party — is his **last-unlocked**
+ultimate at **level 7**. He has no healing; that's [Elara](elara.md)'s alone. Since
+Gareth is recruited late, he joins already knowing everything his level grants. See
 [Battles](../battles.md#skills) and [Levelling up](../gameplay.md#levelling-up).
 
 ## Gear

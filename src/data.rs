@@ -104,6 +104,27 @@ pub enum TargetKind {
     SelfOnly,
 }
 
+/// How an attack skill plays out visually in battle. Purely cosmetic — it changes
+/// the motion, not the damage, targets, or timing — so a skill gets its own
+/// signature animation with **no engine change beyond a data edit**: the battle
+/// scene reads this and drives the matching motion. New styles are new variants
+/// (the same additive extension pattern the rest of the data model follows).
+#[derive(Clone, Debug, Deserialize, Default, PartialEq, Eq)]
+pub enum AttackAnim {
+    /// The classic melee feel: the attacker lunges toward the target(s) and back.
+    #[default]
+    Lunge,
+    /// A projectile sprite flies from the attacker to each target, and the blow
+    /// lands as it arrives. `texture` is a key resolved by [`embedded_texture`]
+    /// (e.g. a fireball). One projectile is spawned per target — so an all-targets
+    /// skill fans a volley out across the whole enemy (or party) line.
+    Projectile { texture: String },
+    /// The attacker dashes across the battlefield through the target(s), off the
+    /// far edge, wrapping around the screen and back to its post — striking as it
+    /// sweeps past. A mounted charge / darting sweep.
+    Charge,
+}
+
 /// An action a battler can perform. "Attack" is just the built-in basic skill.
 #[derive(Clone, Debug, Deserialize)]
 pub struct SkillDef {
@@ -128,6 +149,14 @@ pub struct SkillDef {
     /// an ordinary melee swing leaves it `false` and can be blocked.
     #[serde(default)]
     pub unblockable: bool,
+    /// A **reviving** heal: it can target a *downed* ally to bring them back (with
+    /// the healed HP), not just top up the living. Only meaningful on a `Heal`
+    /// skill; ignored otherwise. Optional — defaults to `false`.
+    #[serde(default)]
+    pub revives: bool,
+    /// How the skill animates when used. Optional — defaults to a [lunge](AttackAnim::Lunge).
+    #[serde(default)]
+    pub anim: AttackAnim,
 }
 
 impl SkillDef {
@@ -231,8 +260,8 @@ fn default_item_icon() -> String {
 /// apply site in `battle.rs`.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct ItemEffect {
-    /// Flat HP restored to each target (a potion). Applied before damage, and it
-    /// can bring a downed ally back up (revive) when used on one.
+    /// Flat HP restored to each target (a potion). Only tops up the **living** —
+    /// items don't revive; a reviving heal ([`SkillDef::revives`]) does that.
     #[serde(default)]
     pub heal: i32,
     /// Flat MP restored to each target (an ether).
@@ -759,6 +788,8 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "starter_gear" => include_bytes!("../assets/textures/items/starter_gear.png"),
         // Generic pouch icon shared by consumable items until they get bespoke art.
         "item_bag" => include_bytes!("../assets/textures/items/item_bag.png"),
+        // Projectile art for `AttackAnim::Projectile` skills (fireball, flame breath).
+        "fireball" => include_bytes!("../assets/textures/entities/animation_helpers/fireball.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
         "water" => include_bytes!("../assets/textures/tiles/water.png"),
         "tree" => include_bytes!("../assets/textures/tiles/tree.png"),

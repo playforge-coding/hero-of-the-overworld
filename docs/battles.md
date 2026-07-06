@@ -75,9 +75,13 @@ The bundled skills:
 | ----- | ---- | -- | ------ | ----- |
 | POWER STRIKE | Physical | 4 | One enemy | Heavy single-target hit |
 | WHIRLWIND | Physical | 8 | All enemies | Sweep the whole enemy line |
-| MEND | Heal | 6 | One ally | Patch up a wounded hero |
+| SUNDER | Physical | 12 | One enemy | ROLAND's ultimate — a crushing cleave |
 | FIREBOLT | Magical | 6 | One enemy | ELARA's hard-hitting bolt |
 | FROST | Magical | 12 | All enemies | Chills every enemy at once |
+| MEND | Heal | 10 | One ally | ELARA's potent heal — **hers alone**, and **revives** the downed |
+| QUICK SLASH | Physical | 3 | One enemy | GARETH's cheap, spammable strike |
+| SWALLOW CUT | Physical | 7 | All enemies | GARETH's darting sweep |
+| FINAL CUT | Physical | 10 | One enemy | GARETH's ultimate — the party's hardest hit |
 | CLAW | Physical | 0 | One enemy | The demon's free claw swipe |
 | FIREBALL | Magical | 6 | One enemy | The demon's spell — inflicts **BURN** (see below) |
 | REAP | Physical | 0 | One enemy | A [skeleton's](entities/skeleton.md) rusted blade |
@@ -86,18 +90,37 @@ The bundled skills:
 | FLAME BREATH | Magical | 10 | All enemies | The [dragon's](entities/dragon.md) gout of fire — inflicts **BURN** |
 | TAIL SWIPE | Physical | 0 | One enemy | The dragon's crushing tail sweep |
 
-(POWER STRIKE / WHIRLWIND / MEND are Roland's; FIREBOLT / FROST / MEND are Elara's;
-CLAW and FIREBALL belong to the [demon](entities/demon.md); REAP to the
-[skeleton](entities/skeleton.md); LANCE CHARGE and TRAMPLE to the mounted
-[dark knight](entities/dark_knight.md); and FLAME BREATH and TAIL SWIPE to the
-[dragon](entities/dragon.md). Slimes, crabs and gargoyles have no skills — they only
-ever use a basic attack.)
+(POWER STRIKE / WHIRLWIND / SUNDER are Roland's; FIREBOLT / FROST / MEND are Elara's;
+QUICK SLASH / SWALLOW CUT / FINAL CUT are Gareth's; CLAW and FIREBALL belong to the
+[demon](entities/demon.md); REAP to the [skeleton](entities/skeleton.md); LANCE
+CHARGE and TRAMPLE to the mounted [dark knight](entities/dark_knight.md); and FLAME
+BREATH and TAIL SWIPE to the [dragon](entities/dragon.md). Slimes, crabs and
+gargoyles have no skills — they only ever use a basic attack.) **MEND is Elara's
+alone** — she is the party's only source of healing magic, so between fights the
+others lean on [items](items.md).
 
-A hero doesn't necessarily start with every skill above: some are **unlocked by
+A hero doesn't start with every skill above: most are **unlocked by
 [levelling up](gameplay.md#levelling-up)**. Roland learns WHIRLWIND at level 3 and
-Elara learns FROST at level 4, for instance — the move joins their command menu the
-moment they earn it (and the victory report announces it). Each hero page lists
-which of their skills are learned and when.
+Elara FROST at level 4, for instance, and each hero's **most powerful move is their
+last** — Roland's SUNDER, Elara's MEND, and Gareth's FINAL CUT all unlock at level
+7. The move joins their command menu the moment they earn it (and the victory report
+announces it). Each hero page lists which of their skills are learned and when.
+
+## Attack animations
+
+Skills don't all swing the same way. Each one has an **attack animation** that
+gives it a signature motion (it's purely cosmetic — damage, targets and
+[timing](#action-timing-strikes-and-blocks) are unchanged):
+
+| Animation | Looks like | Used by |
+| --------- | ---------- | ------- |
+| **Lunge** (default) | The attacker steps in, strikes, and steps back. | Most melee skills and the basic attack. |
+| **Projectile** | A sprite (a fireball) flies from the caster to the target, and the blow lands as it arrives. An all-targets skill fans one out at **every** foe (or hero) at once. | ELARA's **FIREBOLT**, the demon's **FIREBALL**, and the dragon's **FLAME BREATH** (a fireball at each party member). |
+| **Charge** | The attacker dashes clear across the battlefield through its target(s), off the edge, **wrapping around the screen** and back to its post — striking as it sweeps past. | The dark knight's **LANCE CHARGE** and **TRAMPLE**, and GARETH's darting **SWALLOW CUT**. |
+
+Like everything else, an animation is a data choice on the skill — so giving a new
+move its own projectile or charge is a content edit, no engine change. See
+**[Extending the Game](modding.md#add-a-skill)**.
 
 ## Status effects
 
@@ -208,7 +231,8 @@ damage ≈ (offense × power / 100) − defense / 2      (at least 1)
 - **offense** is **attack** for physical hits and **magic** for magical ones —
   both raised by your **[equipped weapon](#weapons-armor)**.
 - **defense** is raised by your **[equipped armor](#weapons-armor)**.
-- **MEND** and other heals restore HP up to the target's maximum.
+- **MEND** and other heals restore HP up to the target's maximum. **MEND also
+  revives** — cast on a **downed** ally it brings them back up (with the healed HP).
 
 So high **attack**/**magic** hits harder, high **defense** absorbs more, high
 **speed** acts earlier *and* helps you hit and dodge, and the right **gear** tilts
