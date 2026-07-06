@@ -18,6 +18,7 @@ The stone sentinels of the **Stone Pass**. A gargoyle hits like a landslide but 
 | **AI** | Basic (always a plain attack on a random hero) |
 | **Gear** | [Stone Fists](../equipment.md) (+18 ATK, +12 crit, **−34 accuracy**) |
 | **Rewards** | 18 XP · 14 gold on defeat |
+| **Drops** | [ETHER](../items.md) (20%) · [GUARD SALVE](../items.md) (10%) |
 | **Found in** | Stone Pass |
 
 A gargoyle is a glass anvil in reverse: **tanky and hard-hitting** (its **Stone

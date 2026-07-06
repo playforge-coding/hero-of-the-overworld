@@ -16,7 +16,7 @@ use crate::input::{Button, Controllers, Input, InputAssignment, TouchScheme};
 use crate::input_config::{InputConfig, InputConfigEvent};
 use crate::inventory::{Inventory, InventoryEvent};
 use crate::overworld::{Event, Overworld, Trigger};
-use crate::party::{Party, PartyMember};
+use crate::party::{ItemStack, Party, PartyMember};
 use crate::renderer::{color, virtual_w, Renderer, VIRTUAL_H};
 use crate::save::{self, SaveData, SavedLevel, SavedLocation, SavedMember};
 use crate::shop::{Shop, ShopEvent};
@@ -145,6 +145,11 @@ impl Game {
             }
         }
         self.party.bag = data.bag;
+        self.party.items = data
+            .items
+            .into_iter()
+            .map(|(id, count)| ItemStack { id, count })
+            .collect();
         self.input_assignment = InputAssignment {
             keyboard: data.input_keyboard as usize,
             gamepads: data.input_gamepads.iter().map(|&p| p as usize).collect(),
@@ -249,6 +254,12 @@ impl Game {
                 .gamepads
                 .iter()
                 .map(|&p| p as u32)
+                .collect(),
+            items: self
+                .party
+                .items
+                .iter()
+                .map(|s| (s.id.clone(), s.count))
                 .collect(),
         };
         save::store(&data);
@@ -553,10 +564,20 @@ impl Game {
             self.pending_cutscene = self.build_cutscene(&id, renderer);
         }
         let scene = match outcome {
-            BattleOutcome::Victory { xp, gold } => {
+            BattleOutcome::Victory { xp, gold, drops } => {
                 self.party.gold += gold;
                 let leveled = self.party.grant_xp(xp);
                 let mut lines = vec![format!("GAINED {xp} XP  {gold} GOLD")];
+                // Fold in any item drops the fallen enemies yielded.
+                for id in &drops {
+                    self.party.add_item(id, 1);
+                    let name = self
+                        .reg
+                        .item(id)
+                        .map(|it| it.name.clone())
+                        .unwrap_or_else(|| id.clone());
+                    lines.push(format!("FOUND {name}"));
+                }
                 for i in &leveled {
                     if let Some(m) = self.party.members.get(*i) {
                         lines.push(format!("{} REACHED LV {}", m.name, m.level));

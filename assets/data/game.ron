@@ -139,6 +139,7 @@ GameData(
             ai: Basic,
             xp: 4,
             gold: 3,
+            drops: [ItemDrop(item: "potion", chance: 0.25)],
         ),
         // The demons are now the elite threat, held back in the DEMON FORTRESS (plus a
         // lone one guarding the end of GREENWOOD). FIREBALL leaves the target
@@ -168,6 +169,10 @@ GameData(
             ai: Random,
             xp: 16,
             gold: 12,
+            drops: [
+                ItemDrop(item: "might_tonic", chance: 0.15),
+                ItemDrop(item: "hi_potion",   chance: 0.10),
+            ],
         ),
         // Stone sentinels of STONE PASS. They hit like a landslide (via the
         // STONE FISTS weapon) but are ponderously slow — last to act in battle
@@ -200,6 +205,10 @@ GameData(
             gold: 14,
             // Lumbering: far slower than the player, so easy to dodge on the map.
             overworld_speed: Some(18.0),
+            drops: [
+                ItemDrop(item: "ether",       chance: 0.20),
+                ItemDrop(item: "guard_salve", chance: 0.10),
+            ],
         ),
         // The DRAGON: the boss guarding the depths of the DEMON FORTRESS. A huge
         // damage sponge with a party-wide FLAME BREATH (leaves everyone BURNING)
@@ -232,6 +241,8 @@ GameData(
             gold: 120,
             // Prowls its lair at a steady, menacing pace.
             overworld_speed: Some(26.0),
+            // The hoard: a guaranteed hi-potion for felling the boss.
+            drops: [ItemDrop(item: "hi_potion", chance: 1.0)],
         ),
         // ------ TRAVELLER'S END denizens ------------------------------------
         // Mountain crabs: skittering shell-backed fodder of the low slopes. Weak
@@ -264,6 +275,7 @@ GameData(
             gold: 5,
             // Slow scuttle — easy to sidestep on the map.
             overworld_speed: Some(26.0),
+            drops: [ItemDrop(item: "potion", chance: 0.20)],
         ),
         // Skeletons: restless undead of the high boneyards. Middling all-round
         // fighters that swing a REAP with their Random AI. skeleton.png shares
@@ -293,6 +305,7 @@ GameData(
             ai: Random,
             xp: 15,
             gold: 11,
+            drops: [ItemDrop(item: "bomb", chance: 0.22)],
         ),
         // Dark knights: the mounted lords of the pass and the elite threat of
         // TRAVELLER'S END. Fast (a charging warhorse acts early), heavily armed
@@ -327,6 +340,10 @@ GameData(
             gold: 28,
             // Mounted and swift — nearly runs the player down; keep moving.
             overworld_speed: Some(48.0),
+            drops: [
+                ItemDrop(item: "hi_potion",   chance: 0.25),
+                ItemDrop(item: "might_tonic", chance: 0.15),
+            ],
         ),
     ],
 
@@ -433,6 +450,21 @@ GameData(
             duration: 3, damage_per_turn: 8,
             tint: Some((255, 140, 60)),
         ),
+        // Buff statuses granted by consumable items (a stat_mods shift for a few
+        // rounds). These are how items "change stats" / "defend" — see the items
+        // section below, and ItemEffect::inflicts in src/data.rs.
+        StatusDef(
+            id: "might", name: "MIGHT",
+            duration: 3,
+            stat_mods: StatMods(attack: 8),
+            tint: Some((255, 120, 120)),
+        ),
+        StatusDef(
+            id: "guard", name: "GUARD",
+            duration: 3,
+            stat_mods: StatMods(defense: 8),
+            tint: Some((140, 200, 255)),
+        ),
     ],
 
     // ------------------------------------------------------------------------
@@ -493,6 +525,54 @@ GameData(
     ],
 
     // ------------------------------------------------------------------------
+    // Consumable items. Unlike equipment they are spent, not worn: bought at
+    // shops, dropped by enemies (see an enemy's `drops:`), and used in battle
+    // from the ITEM command (restorative ones can also be used from a rest).
+    // `target` says who it hits; `effect` is a composable bag — heal, damage,
+    // restore_mp, and/or inflict statuses (that last is how an item changes
+    // stats / "defends"). Icons default to the shared `item_bag` pouch. Adding
+    // an item is pure data — no engine change. (See src/data.rs ItemDef.)
+    // ------------------------------------------------------------------------
+    items: [
+        ItemDef(
+            id: "potion", name: "POTION",
+            description: "A herbal draught. Restores 40 HP.",
+            price: 30, target: OneAlly,
+            effect: ItemEffect(heal: 40),
+        ),
+        ItemDef(
+            id: "hi_potion", name: "HI-POTION",
+            description: "A potent tonic. Restores 100 HP.",
+            price: 90, target: OneAlly,
+            effect: ItemEffect(heal: 100),
+        ),
+        ItemDef(
+            id: "ether", name: "ETHER",
+            description: "Bitter blue brew. Restores 20 MP.",
+            price: 60, target: OneAlly,
+            effect: ItemEffect(restore_mp: 20),
+        ),
+        ItemDef(
+            id: "bomb", name: "BOMB",
+            description: "A lit satchel charge. 35 fire damage to a foe.",
+            price: 40, target: OneEnemy,
+            effect: ItemEffect(damage: 35, inflicts: ["burn"]),
+        ),
+        ItemDef(
+            id: "might_tonic", name: "MIGHT TONIC",
+            description: "Steels the blood. Raises ATTACK for a few rounds.",
+            price: 50, target: OneAlly,
+            effect: ItemEffect(inflicts: ["might"]),
+        ),
+        ItemDef(
+            id: "guard_salve", name: "GUARD SALVE",
+            description: "A hardening balm. Raises DEFENSE for a few rounds.",
+            price: 50, target: OneAlly,
+            effect: ItemEffect(inflicts: ["guard"]),
+        ),
+    ],
+
+    // ------------------------------------------------------------------------
     // Shops. Each is a little interior you enter from a keeper standing on an
     // overworld screen (see a screen's `shops:` list). `facing` is the wall the
     // keeper looks at — and the doorway you leave by. `stock` items are ids into
@@ -510,6 +590,12 @@ GameData(
                 ShopStock(item: "leather_armor",  price: 40),
                 ShopStock(item: "travelers_robe", price: 70),
                 ShopStock(item: "stone_fists",    price: 120),
+                // Consumables sit on the same counter — `stock` resolves an id as
+                // equipment first, then as an item, so a shop can sell either.
+                ShopStock(item: "potion",         price: 30),
+                ShopStock(item: "ether",          price: 60),
+                ShopStock(item: "bomb",           price: 40),
+                ShopStock(item: "might_tonic",    price: 50),
             ],
         ),
     ],

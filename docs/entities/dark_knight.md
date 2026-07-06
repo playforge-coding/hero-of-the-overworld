@@ -20,6 +20,7 @@ whole party underhoof.
 | **AI** | Random (mixes basic attack, LANCE CHARGE, and TRAMPLE) |
 | **Gear** | [Cavalry Lance](../equipment.md) (+10 ATK, +8% crit, +6% accuracy) |
 | **Rewards** | 34 XP · 28 gold on defeat |
+| **Drops** | [HI-POTION](../items.md) (25%) · [MIGHT TONIC](../items.md) (15%) |
 | **Found in** | Traveller's End |
 
 A dark knight is the closest thing to a boss you'll meet before the Demon Fortress.

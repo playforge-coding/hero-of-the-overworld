@@ -43,6 +43,7 @@ happens, so there's no cancelling back to a hero who has already moved.
 | ------- | ------------ |
 | **ATTACK** | A basic physical strike on one enemy you choose. Free. |
 | **SKILL** | Open the hero's skill list and pick one (costs MP). Then choose a target if the skill needs one. |
+| **ITEM** | Open the party's [item](items.md) stash and use a consumable — a shared pool spent from your inventory. Then choose a target if it needs one. |
 | **DEFEND** | Brace: incoming damage to this hero is reduced until their next turn. |
 
 Choosing **SKILL** shows what that hero knows, each skill's MP cost, and a short
@@ -51,13 +52,22 @@ selected. Depending on the skill you'll then choose a **single** target or it wi
 hit **all** valid targets at once. While you're picking a command, a panel also
 shows the acting hero's equipped **[weapon and armor](#weapons-armor)**.
 
+Choosing **ITEM** lists the consumables the party is carrying, each with its
+count (**×N**) and a summary of what it does — heal, damage, restore MP, or grant
+a buff. Using one **spends it from the shared stash**, so it's gone from every
+hero afterward; an item's effect and target come from the item, not the hero, and
+it costs no MP. See **[Items](items.md)** for the full list and how to get more.
+
 ## Skills
 
 Every skill is one of three kinds and hits a chosen target set:
 
 - **Physical** — scales off the user's **attack**.
 - **Magical** — scales off the user's **magic**.
-- **Heal** — restores HP to an ally, scaling off **magic**.
+- **Heal** — restores HP to an ally, scaling off **magic**. A hero's **Heal** skills
+  can *also* be cast **outside battle**, from the
+  [party menu](gameplay.md#inventory-and-equipment) — handy for topping everyone up
+  between fights.
 
 The bundled skills:
 
@@ -224,8 +234,11 @@ Each enemy has an AI setting:
 ## Winning and losing
 
 - **Victory** awards **XP** and **gold** to every living hero, shown on a short
-  report. Enough XP levels a hero up on the spot. Clearing the *last* enemy of a
-  level can also queue a story [cutscene](#story-and-cutscenes).
+  report. Enough XP levels a hero up on the spot. Some foes also **drop an
+  [item](items.md)** — each defeated enemy rolls its own drop chance, and anything
+  that drops is listed on the report (**FOUND …**) and added to your stash.
+  Clearing the *last* enemy of a level can also queue a story
+  [cutscene](#story-and-cutscenes).
 - **Defeat** revives the party at full health and returns you to the level to try
   again — see [If the party falls](gameplay.md#if-the-party-falls).
 

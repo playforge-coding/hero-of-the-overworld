@@ -216,6 +216,72 @@ pub struct EquipmentDef {
     pub evasion: i32,
 }
 
+/// The default icon key for a consumable item. Items have no bespoke art yet, so
+/// they share the generic bag icon (`item_bag`) unless a def overrides it.
+fn default_item_icon() -> String {
+    "item_bag".to_string()
+}
+
+/// What using a consumable [item](ItemDef) does to each of its targets — a
+/// **composable bag of effects**, so one item can heal, hurt, restore MP and/or
+/// inflict statuses at once. This is the item system's extension point: a new
+/// consumable is a pure data entry as long as its behaviour fits these additive
+/// fields, mirroring how [`StatusDef`] composes status behaviour. When a
+/// genuinely new effect is needed, add one optional field here plus its single
+/// apply site in `battle.rs`.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
+pub struct ItemEffect {
+    /// Flat HP restored to each target (a potion). Applied before damage, and it
+    /// can bring a downed ally back up (revive) when used on one.
+    #[serde(default)]
+    pub heal: i32,
+    /// Flat MP restored to each target (an ether).
+    #[serde(default)]
+    pub restore_mp: i32,
+    /// Flat damage dealt to each target (an offensive item like a bomb). Ignores
+    /// defense and never misses — consumables are reliable.
+    #[serde(default)]
+    pub damage: i32,
+    /// Status ids (into [`GameData::statuses`]) inflicted on each target. This is
+    /// how an item "changes stats" or "defends": point it at a status whose
+    /// [`stat_mods`](StatusDef::stat_mods) grants the buff (or debuff).
+    #[serde(default)]
+    pub inflicts: Vec<String>,
+}
+
+impl ItemEffect {
+    /// Whether this item is usable from the field (inventory screen), not just in
+    /// battle. Only restorative effects (heal / MP) mean anything outside a fight —
+    /// damage needs a foe and status buffs don't persist between battles.
+    pub fn usable_in_field(&self) -> bool {
+        self.heal > 0 || self.restore_mp > 0
+    }
+}
+
+/// A consumable item: stored in the party's stash, used in battle (or, if
+/// restorative, from the inventory screen), and acquired as a monster drop or
+/// shop purchase. Unlike [equipment](EquipmentDef) it is not worn — it is spent.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ItemDef {
+    pub id: String,
+    pub name: String,
+    /// Flavour / effect text shown wherever the item is inspected.
+    pub description: String,
+    /// Texture key for the item's 16×16 icon (resolved by [`embedded_texture`]).
+    /// Defaults to the shared `item_bag` icon.
+    #[serde(default = "default_item_icon")]
+    pub icon: String,
+    /// Base price in gold; also the default shop price when a shop lists it
+    /// without an explicit one.
+    pub price: i32,
+    /// Who the item is used on when consumed. Offensive items target enemies;
+    /// restorative / buff items target allies.
+    pub target: TargetKind,
+    /// What consuming it does to each target.
+    #[serde(default)]
+    pub effect: ItemEffect,
+}
+
 /// A battler's stats after equipment is applied, plus the derived combat
 /// attributes ([crit](Equipped::crit) / [accuracy](Equipped::accuracy) /
 /// [evasion](Equipped::evasion)) that drive hit and critical rolls.
@@ -303,6 +369,16 @@ pub enum EnemyAi {
     Random,
 }
 
+/// One chance-based item drop from an enemy. Rolled once per defeated enemy when
+/// a battle is won; a successful roll adds the item to the party's stash.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ItemDrop {
+    /// Item id (into [`GameData::items`]) that may drop.
+    pub item: String,
+    /// Drop probability, `0.0..=1.0`.
+    pub chance: f32,
+}
+
 /// An enemy definition in the registry.
 #[derive(Clone, Debug, Deserialize)]
 pub struct EnemyDef {
@@ -331,6 +407,11 @@ pub struct EnemyDef {
     /// like gargoyles so the player can outrun and dodge them.
     #[serde(default)]
     pub overworld_speed: Option<f32>,
+    /// Consumable items this enemy may drop on defeat; each is rolled
+    /// independently against its [chance](ItemDrop::chance). Optional — most foes
+    /// drop nothing.
+    #[serde(default)]
+    pub drops: Vec<ItemDrop>,
 }
 
 /// One line of a shop's stock: an equipment id and what it costs. Buying it in
@@ -501,6 +582,10 @@ pub struct GameData {
     /// Weapons and armor referenced by characters/enemies.
     #[serde(default)]
     pub equipment: Vec<EquipmentDef>,
+    /// Consumable items: bought at shops, dropped by enemies, and used in battle
+    /// (or from the inventory screen). Optional — a game with no items omits it.
+    #[serde(default)]
+    pub items: Vec<ItemDef>,
     /// Shops the player can enter from the overworld. Optional — a game with no
     /// shops just omits it.
     #[serde(default)]
@@ -523,6 +608,7 @@ pub struct Registry {
     skills: HashMap<String, usize>,
     statuses: HashMap<String, usize>,
     equipment: HashMap<String, usize>,
+    items: HashMap<String, usize>,
     shops: HashMap<String, usize>,
     encounters: HashMap<String, usize>,
     cutscenes: HashMap<String, usize>,
@@ -544,6 +630,7 @@ impl Registry {
         let skills = index(&|| data.skills.iter().map(|c| c.id.clone()).collect());
         let statuses = index(&|| data.statuses.iter().map(|c| c.id.clone()).collect());
         let equipment = index(&|| data.equipment.iter().map(|c| c.id.clone()).collect());
+        let items = index(&|| data.items.iter().map(|c| c.id.clone()).collect());
         let shops = index(&|| data.shops.iter().map(|c| c.id.clone()).collect());
         let encounters = index(&|| data.encounters.iter().map(|c| c.id.clone()).collect());
         let cutscenes = index(&|| data.cutscenes.iter().map(|c| c.id.clone()).collect());
@@ -554,6 +641,7 @@ impl Registry {
             skills,
             statuses,
             equipment,
+            items,
             shops,
             encounters,
             cutscenes,
@@ -578,6 +666,10 @@ impl Registry {
 
     pub fn equipment(&self, id: &str) -> Option<&EquipmentDef> {
         self.equipment.get(id).map(|&i| &self.data.equipment[i])
+    }
+
+    pub fn item(&self, id: &str) -> Option<&ItemDef> {
+        self.items.get(id).map(|&i| &self.data.items[i])
     }
 
     /// Apply a weapon and armor to `base`, returning the effective stats plus the
@@ -647,6 +739,8 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "dark_knight" => include_bytes!("../assets/textures/entities/monsters/dark_knight.png"),
         "starter_sword" => include_bytes!("../assets/textures/items/starter_sword.png"),
         "starter_gear" => include_bytes!("../assets/textures/items/starter_gear.png"),
+        // Generic pouch icon shared by consumable items until they get bespoke art.
+        "item_bag" => include_bytes!("../assets/textures/items/item_bag.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
         "water" => include_bytes!("../assets/textures/tiles/water.png"),
         "tree" => include_bytes!("../assets/textures/tiles/tree.png"),

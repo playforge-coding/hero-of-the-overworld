@@ -15,7 +15,7 @@ only what they *do* changes with context.
 | **Move** | <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> / <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | D-pad or left stick | Move the party leader, the map cursor, or a menu selection |
 | **Confirm** | <kbd>Enter</kbd> / <kbd>Z</kbd> / <kbd>Space</kbd> | A (south button) | Start, select, confirm a command, advance dialogue |
 | **Cancel** | <kbd>Esc</kbd> / <kbd>X</kbd> / <kbd>Backspace</kbd> | B (east button) | Back out of a menu, leave a level to the map |
-| **Menu** | <kbd>Shift</kbd> / <kbd>C</kbd> | Start / Select | Open the party [inventory / equipment](gameplay.md#inventory-and-equipment) screen while in a level |
+| **Menu** | <kbd>Shift</kbd> / <kbd>C</kbd> | Start / Select | Open the [party menu](gameplay.md#inventory-and-equipment) (gear + healing) while in a level |
 
 Movement is analog-feeling: hold a direction to keep walking, and diagonals work
 by holding two directions at once (a diagonal on the stick counts too).
@@ -56,7 +56,7 @@ The directional control fits what you're doing:
 Two people can play at once. Each **input source** — the keyboard and every
 connected gamepad — is a **player**, and party members are dealt out to players
 **round-robin**. This matters in the [battle](battles.md) command phase — when it's
-a hero's turn to choose ATTACK / SKILL / DEFEND (and to land its
+a hero's turn to choose ATTACK / SKILL / ITEM / DEFEND (and to land its
 [timed hits](battles.md#action-timing-strikes-and-blocks)), *that hero's* player
 drives it, so a couch of players each plan their own characters.
 
@@ -103,8 +103,8 @@ are single-player.
   Walking into a mid-edge opening flips to the neighbouring screen.
 - **Confirm** — when standing by a [shopkeeper](shops.md) (a **PRESS Z** prompt
   shows), step into their shop.
-- **Menu** — open the party [inventory / equipment](gameplay.md#inventory-and-equipment)
-  screen to change gear on the go.
+- **Menu** — open the [party menu](gameplay.md#inventory-and-equipment) to change
+  gear, use a healing item, or cast a healing move — all on the go.
 - **Cancel** — leave the level and go back to the world map. Progress in the level
   (which demons you've beaten) is [saved](gameplay.md#saving), so it's kept even
   across sessions.

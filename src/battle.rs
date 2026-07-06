@@ -17,10 +17,10 @@
 use glam::Vec2;
 
 use crate::data::{
-    BattlerSprite, EnemyAi, Registry, SkillDef, SkillKind, Stats, StatusDef, TargetKind,
+    BattlerSprite, EnemyAi, ItemDrop, Registry, SkillDef, SkillKind, Stats, StatusDef, TargetKind,
 };
 use crate::input::{Button, Controllers, Input};
-use crate::party::Party;
+use crate::party::{ItemStack, Party};
 use crate::renderer::{color, virtual_w, Color, Renderer, TextureHandle, VIRTUAL_H};
 use crate::util::{Rng, TextureCache};
 
@@ -129,6 +129,9 @@ struct Battler {
     ai: EnemyAi,
     xp: i32,
     gold: i32,
+    /// Consumable items this (enemy) battler may drop when the fight is won.
+    /// Empty for heroes.
+    drops: Vec<ItemDrop>,
     home: Vec2,
     offset: Vec2,
     flash: f32,
@@ -182,6 +185,9 @@ impl Battler {
 enum ActionKind {
     Attack,
     Skill(String),
+    /// Use a consumable item (id into the registry's `items`). Resolves its
+    /// composable effect on the targets and spends one from the party stash.
+    Item(String),
     Defend,
 }
 
@@ -404,7 +410,13 @@ impl TauntTry {
 // ---- Battle state -----------------------------------------------------------
 
 pub enum BattleOutcome {
-    Victory { xp: i32, gold: i32 },
+    Victory {
+        xp: i32,
+        gold: i32,
+        /// Item ids dropped by the defeated enemies (already rolled), to be added
+        /// to the party stash by the game.
+        drops: Vec<String>,
+    },
     Defeat,
 }
 
@@ -427,6 +439,10 @@ enum Stage {
         cursor: usize,
     },
     Skill {
+        cursor: usize,
+    },
+    /// Choosing a consumable item to use from the party stash.
+    Item {
         cursor: usize,
     },
     Target {
@@ -468,7 +484,7 @@ struct Execute {
     popups: Vec<Popup>,
 }
 
-const ROOT_ITEMS: [&str; 3] = ["ATTACK", "SKILL", "DEFEND"];
+const ROOT_ITEMS: [&str; 4] = ["ATTACK", "SKILL", "ITEM", "DEFEND"];
 
 // Combat rolls. Hit chance rises with the attacker's accuracy and speed and
 // falls with the target's evasion and speed; crit adds +50% damage.
@@ -482,6 +498,10 @@ pub struct Battle {
     battlers: Vec<Battler>,
     state: State,
     encounter_name: String,
+    /// The party's consumable stash, snapshotted from [`Party::items`] at the
+    /// start of the fight and spent as items are used. Written back to the party
+    /// by [`Battle::sync_party`] when the battle ends, so consumption sticks.
+    items: Vec<ItemStack>,
     /// This round's turn order: all living battlers (heroes and enemies) by
     /// speed, stepped through one at a time so each unit acts the moment its
     /// turn comes up.
@@ -540,6 +560,7 @@ impl Battle {
                 ai: EnemyAi::Basic,
                 xp: 0,
                 gold: 0,
+                drops: Vec::new(),
                 home,
                 offset: Vec2::ZERO,
                 flash: 0.0,
@@ -592,6 +613,7 @@ impl Battle {
                 // worth proportionally more XP and gold.
                 xp: def.xp * scale / 100,
                 gold: def.gold * scale / 100,
+                drops: def.drops.clone(),
                 home,
                 offset: Vec2::ZERO,
                 flash: 0.0,
@@ -605,10 +627,13 @@ impl Battle {
             turn_order: Vec::new(),
             turn_idx: 0,
             encounter_name: name,
+            items: party.items.clone(),
         }
     }
 
-    /// Copy surviving hero HP/MP back into the persistent party.
+    /// Copy surviving hero HP/MP and the (now possibly spent) item stash back into
+    /// the persistent party. Called by the game the instant a battle ends, so
+    /// items used in the fight stay used regardless of win or loss.
     pub fn sync_party(&self, party: &mut Party) {
         for b in &self.battlers {
             if let Some(pi) = b.party_index {
@@ -616,6 +641,7 @@ impl Battle {
                 party.members[pi].mp = b.mp;
             }
         }
+        party.items = self.items.clone();
     }
 
     // ---- Queries ------------------------------------------------------------
@@ -734,8 +760,8 @@ impl Battle {
                 *timer -= dt;
                 if *timer <= 0.0 && controllers.shared().any_pressed() || *timer <= -3.0 {
                     if *win {
-                        let (xp, gold) = self.spoils();
-                        Some(BattleOutcome::Victory { xp, gold })
+                        let (xp, gold, drops) = self.spoils(rng);
+                        Some(BattleOutcome::Victory { xp, gold, drops })
                     } else {
                         Some(BattleOutcome::Defeat)
                     }
@@ -751,11 +777,24 @@ impl Battle {
         outcome
     }
 
-    fn spoils(&self) -> (i32, i32) {
-        self.battlers
-            .iter()
-            .filter(|b| b.side == Side::Enemy)
-            .fold((0, 0), |(xp, gold), b| (xp + b.xp, gold + b.gold))
+    /// Total XP and gold from the defeated enemies, plus the item drops they
+    /// yield — each enemy's drop table rolled independently against its chance.
+    /// Rolling here (rather than at spawn) keeps the outcome deterministic per RNG
+    /// stream and out of the render path.
+    fn spoils(&self, rng: &mut Rng) -> (i32, i32, Vec<String>) {
+        let mut xp = 0;
+        let mut gold = 0;
+        let mut drops = Vec::new();
+        for b in self.battlers.iter().filter(|b| b.side == Side::Enemy) {
+            xp += b.xp;
+            gold += b.gold;
+            for d in &b.drops {
+                if rng.chance(d.chance) {
+                    drops.push(d.item.clone());
+                }
+            }
+        }
+        (xp, gold, drops)
     }
 
     /// Open a fresh round: clear defends, rebuild the speed-ordered turn list of
@@ -919,11 +958,48 @@ impl Battle {
                             };
                         }
                         1 => cmd.stage = Stage::Skill { cursor: 0 },
+                        2 => cmd.stage = Stage::Item { cursor: 0 },
                         _ => {
                             return CommandResult::Execute(self.action_exec(Action {
                                 actor: hero,
                                 kind: ActionKind::Defend,
                                 targets: vec![],
+                            }));
+                        }
+                    }
+                }
+                CommandResult::Stay
+            }
+            Stage::Item { cursor } => {
+                let count = self.items.len() + 1; // + BACK
+                menu_move(cursor, count, input);
+                if input.pressed(Button::Cancel) {
+                    cmd.stage = Stage::Root { cursor: 2 };
+                } else if input.pressed(Button::Confirm) {
+                    if *cursor >= self.items.len() {
+                        cmd.stage = Stage::Root { cursor: 2 };
+                    } else if let Some(item) = reg.item(&self.items[*cursor].id) {
+                        // The item is spent when its action resolves (see
+                        // `apply_action`), not here — so backing out of target
+                        // selection doesn't waste it, mirroring how skills bill MP.
+                        let kind = ActionKind::Item(item.id.clone());
+                        let target = item.target;
+                        if needs_cursor(target) {
+                            let cands = self.candidates(hero, target);
+                            if cands.is_empty() {
+                                return CommandResult::Stay; // nothing to use it on
+                            }
+                            cmd.stage = Stage::Target {
+                                pending: Pending { kind, target },
+                                cursor: 0,
+                                candidates: cands,
+                            };
+                        } else {
+                            let targets = self.candidates(hero, target);
+                            return CommandResult::Execute(self.action_exec(Action {
+                                actor: hero,
+                                kind,
+                                targets,
                             }));
                         }
                     }
@@ -1241,6 +1317,8 @@ impl Battle {
                 Some(def) => (!matches!(def.kind, SkillKind::Heal), def.is_unblockable()),
                 None => (false, false),
             },
+            // Items resolve reliably with no timed-hit window of their own.
+            ActionKind::Item(_) => (false, false),
         };
         if !damages || !action.targets.iter().any(|&t| self.battlers[t].alive()) {
             return None;
@@ -1304,6 +1382,10 @@ impl Battle {
             ActionKind::Skill(id) => {
                 let sk = reg.skill(id).map(|s| s.name.as_str()).unwrap_or("SKILL");
                 format!("{name}: {sk}")
+            }
+            ActionKind::Item(id) => {
+                let it = reg.item(id).map(|i| i.name.as_str()).unwrap_or("ITEM");
+                format!("{name} USES {it}")
             }
         }
     }
@@ -1376,6 +1458,78 @@ impl Battle {
                         }
                     }
                 }
+            }
+            ActionKind::Item(id) => {
+                let Some(item) = reg.item(id) else { return };
+                let effect = item.effect.clone();
+                let target_kind = item.target;
+                // Spend one now that the item actually resolves (so backing out of
+                // targeting earlier cost nothing).
+                self.consume_item_by_id(id);
+                let targets = self.resolve_live_targets(actor, &action.targets, target_kind);
+                for &tgt in &targets {
+                    // Reliable, defense-ignoring flat effects: hurt, then mend, then
+                    // apply any status riders (buffs on allies, debuffs on foes).
+                    if effect.damage > 0 && self.battlers[tgt].alive() {
+                        let b = &mut self.battlers[tgt];
+                        b.hp = (b.hp - effect.damage).max(0);
+                        b.flash = 0.3;
+                        Self::push_number(
+                            popups,
+                            b,
+                            format!("-{}", effect.damage),
+                            color::rgb(255, 120, 90),
+                        );
+                    }
+                    if effect.heal > 0 {
+                        let b = &mut self.battlers[tgt];
+                        let before = b.hp;
+                        b.hp = (b.hp + effect.heal).min(b.max_hp);
+                        let gained = b.hp - before;
+                        b.flash = 0.25;
+                        Self::push_number(
+                            popups,
+                            b,
+                            format!("+{gained}"),
+                            color::rgb(120, 240, 140),
+                        );
+                    }
+                    if effect.restore_mp > 0 {
+                        let b = &mut self.battlers[tgt];
+                        b.mp = (b.mp + effect.restore_mp).min(b.max_mp);
+                        Self::push_number(
+                            popups,
+                            b,
+                            format!("+{}MP", effect.restore_mp),
+                            color::rgb(140, 200, 255),
+                        );
+                    }
+                    if self.battlers[tgt].alive() {
+                        self.inflict_all(reg, tgt, &effect.inflicts, popups);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Float a small number/label popup just above a battler (heal / damage / MP
+    /// feedback for item effects).
+    fn push_number(popups: &mut Vec<Popup>, b: &Battler, text: String, color: Color) {
+        popups.push(Popup {
+            text,
+            pos: b.pos() + Vec2::new(0.0, -6.0),
+            t: 0.0,
+            color,
+        });
+    }
+
+    /// Spend one of consumable `id` from the in-battle stash, dropping the stack
+    /// when it empties. A no-op if the item isn't held (already spent).
+    fn consume_item_by_id(&mut self, id: &str) {
+        if let Some(i) = self.items.iter().position(|s| s.id == id) {
+            self.items[i].count = self.items[i].count.saturating_sub(1);
+            if self.items[i].count == 0 {
+                self.items.remove(i);
             }
         }
     }
@@ -1773,6 +1927,23 @@ impl Battle {
                 self.draw_skill_info(r, reg, hero, *cursor);
                 menu_box(r, 150.0, 96.0, 120.0, &refs, *cursor);
             }
+            Stage::Item { cursor } => {
+                let mut labels: Vec<String> = self
+                    .items
+                    .iter()
+                    .map(|s| {
+                        let name = reg
+                            .item(&s.id)
+                            .map(|i| i.name.clone())
+                            .unwrap_or_else(|| s.id.clone());
+                        format!("{name}  x{}", s.count)
+                    })
+                    .collect();
+                labels.push("BACK".to_string());
+                let refs: Vec<&str> = labels.iter().map(|s| s.as_str()).collect();
+                self.draw_item_info(r, reg, *cursor);
+                menu_box(r, 150.0, 96.0, 120.0, &refs, *cursor);
+            }
             Stage::Target {
                 candidates, cursor, ..
             } => {
@@ -1816,6 +1987,66 @@ impl Battle {
                 color::rgb(200, 200, 215),
             );
         }
+    }
+
+    /// The highlighted item's name, effect summary, and description, shown in the
+    /// item menu (mirrors [`Self::draw_skill_info`]).
+    fn draw_item_info(&self, r: &mut Renderer, reg: &Registry, cursor: usize) {
+        let Some(stack) = self.items.get(cursor) else {
+            return; // "BACK" is highlighted
+        };
+        let Some(def) = reg.item(&stack.id) else {
+            return;
+        };
+        let (x, y, w, h) = (6.0, 16.0, 138.0, 52.0);
+        r.draw_rect(x, y, w, h, color::rgba(12, 14, 28, 232));
+        r.draw_rect_outline(x, y, w, h, 1.0, color::rgba(90, 110, 170, 255));
+        r.draw_text(&def.name, x + 4.0, y + 3.0, 1.0, color::rgb(255, 226, 120));
+        r.draw_text(
+            &item_effect_summary(reg, def),
+            x + 4.0,
+            y + 13.0,
+            1.0,
+            color::rgb(150, 220, 160),
+        );
+        for (i, line) in wrap_text(&def.description, 26).iter().take(3).enumerate() {
+            r.draw_text(
+                line,
+                x + 4.0,
+                y + 23.0 + i as f32 * 9.0,
+                1.0,
+                color::rgb(200, 200, 215),
+            );
+        }
+    }
+}
+
+/// A short "HEAL 40  DMG 30  +20MP  MIGHT" summary of what using a consumable
+/// does, built from its composable [effect](crate::data::ItemEffect). Shared by
+/// the battle item menu, the inventory screen, and the shop.
+pub(crate) fn item_effect_summary(reg: &Registry, def: &crate::data::ItemDef) -> String {
+    let e = &def.effect;
+    let mut parts: Vec<String> = Vec::new();
+    if e.heal > 0 {
+        parts.push(format!("HEAL {}", e.heal));
+    }
+    if e.damage > 0 {
+        parts.push(format!("DMG {}", e.damage));
+    }
+    if e.restore_mp > 0 {
+        parts.push(format!("+{}MP", e.restore_mp));
+    }
+    for id in &e.inflicts {
+        let name = reg
+            .status(id)
+            .map(|s| s.name.clone())
+            .unwrap_or_else(|| id.clone());
+        parts.push(name);
+    }
+    if parts.is_empty() {
+        "-".to_string()
+    } else {
+        parts.join("  ")
     }
 }
 

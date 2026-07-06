@@ -28,6 +28,8 @@ browser (WebAssembly / WebGL).
 
 - :material-sword: **[Weapons & Armor](equipment.md)**
 
+- :material-flask-round-bottom: **[Items](items.md)**
+
 - :material-store: **[Shops](shops.md)**
 
 - :material-book-open-page-variant: **[The Story](story.md)**
@@ -48,8 +50,9 @@ browser (WebAssembly / WebGL).
 | **You control** | The party leader on the map; each hero's action in battle           |
 | **Overworld**   | A world map of levels, each a set of connected tile screens          |
 | **Enemies**     | Slimes, gargoyles, and demons that roam levels and chase you into battle |
-| **Shops**       | Step into a keeper's store to spend gold on weapons and armor        |
-| **Content**     | Heroes, enemies, skills, levels, shops, and cutscenes live in one RON file |
+| **Shops**       | Step into a keeper's store to spend gold on weapons, armor, and items |
+| **Items**       | Consumables — potions, bombs, tonics — used in battle, bought or dropped |
+| **Content**     | Heroes, enemies, skills, items, levels, shops, and cutscenes live in one RON file |
 | **Platforms**   | Native (Windows/macOS/Linux) and web (WebAssembly)                   |
 
 !!! tip "New here?"

@@ -20,6 +20,7 @@ contact — but this one swaps the usual battle track for a dedicated **boss the
 | **Speed** | 11 |
 | **AI** | Random (mixes its skills with plain attacks) |
 | **Rewards** | 150 XP · 120 gold on defeat |
+| **Drops** | [HI-POTION](../items.md) (guaranteed) |
 | **Found in** | Demon Fortress (a single boss, deep in the last screen) |
 
 With five times a demon's HP, the dragon is a war of attrition. Its **Random** AI

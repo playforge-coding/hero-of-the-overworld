@@ -18,6 +18,7 @@ to crack — the low-slope answer to the Greenwood's slimes.
 | **Speed** | 5 |
 | **AI** | Basic (always a plain attack on a random hero) |
 | **Rewards** | 6 XP · 5 gold on defeat |
+| **Drops** | [POTION](../items.md) (20%) |
 | **Found in** | Traveller's End |
 
 Where a [slime](slime.md) is a glass cannon in reverse — soft and quick to pop — a

@@ -18,6 +18,7 @@ A skeleton is a middling all-round fighter — no glaring weakness, no great str
 | **Speed** | 12 |
 | **AI** | Random (mixes its basic attack with REAP) |
 | **Rewards** | 15 XP · 11 gold on defeat |
+| **Drops** | [BOMB](../items.md) (22%) |
 | **Found in** | Traveller's End |
 
 Skeletons are the backbone of the pass's mid-tier packs. They act at a fair clip

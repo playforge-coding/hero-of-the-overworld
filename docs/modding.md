@@ -156,6 +156,50 @@ CharacterDef(
 Both fields are optional; a battler with neither just fights on its base stats.
 For the shipped items and what they do, see **[Weapons & Armor](equipment.md)**.
 
+## Add an item
+
+**Consumables** live in an `items` list. Unlike equipment they're **spent, not
+worn**: used in battle from the **ITEM** command (restorative ones can also be
+used from a rest), and acquired by [buying](#add-a-shop) or as
+[enemy drops](#add-an-enemy-and-an-encounter). Each has a **target** and a
+composable **effect** — any mix of `heal`, `damage`, `restore_mp`, and `inflicts`
+(status ids). That last one is how an item **changes stats** or **defends**: point
+it at a status whose `stat_mods` grants the buff.
+
+```ron
+ItemDef(
+    id: "potion", name: "POTION",
+    description: "A herbal draught. Restores 40 HP.",
+    price: 30, target: OneAlly,
+    effect: ItemEffect(heal: 40),
+),
+ItemDef(
+    id: "bomb", name: "BOMB",
+    description: "A lit satchel charge. 35 fire damage to a foe.",
+    price: 40, target: OneEnemy,
+    effect: ItemEffect(damage: 35, inflicts: ["burn"]),   // ids into `statuses`
+),
+ItemDef(
+    id: "might_tonic", name: "MIGHT TONIC",
+    description: "Steels the blood. Raises ATTACK for a few rounds.",
+    price: 50, target: OneAlly,
+    effect: ItemEffect(inflicts: ["might"]),              // a stat_mods status = a buff
+),
+```
+
+- `target` is a `TargetKind` (`OneEnemy`, `AllEnemies`, `OneAlly`, `AllAllies`,
+  `SelfOnly`) — offensive items target foes, restorative/buff items target allies.
+- `effect` fields all default to 0 / empty, so list only what the item does. Item
+  damage and healing are **flat** (no stat scaling) and reliable — consumables
+  don't miss.
+- `icon` is optional and defaults to the shared `item_bag` pouch; override it (and
+  register the key) to give an item bespoke art.
+- Only `heal` / `restore_mp` items can be used **outside** battle; damage and
+  buffs need a fight to matter.
+
+Sell it at a shop or drop it from an enemy (below), and see
+**[Items](items.md)** for the shipped set.
+
 ## Add a shop
 
 A **shop** is a store the player enters from the overworld to buy gear. It's two
@@ -169,9 +213,10 @@ ShopDef(
     greeting: Some("FRESH FROM THE FORGE - WHAT'LL IT BE?"),
     facing: Down,                         // the wall the keeper faces = the exit door
     stock: [
-        ShopStock(item: "iron_sword",     price: 40),   // ids into `equipment`
+        ShopStock(item: "iron_sword",     price: 40),   // an `equipment` id …
         ShopStock(item: "leather_armor",  price: 40),
         ShopStock(item: "travelers_robe", price: 70),
+        ShopStock(item: "potion",         price: 30),   // … or an `items` id
     ],
 ),
 ```
@@ -180,8 +225,10 @@ ShopDef(
   the interior's **doorway** sits on, so the player leaves the way the keeper
   looks.
 - `greeting` is optional flavour shown in the buy menu.
-- Each `ShopStock` names an `equipment` **id** and its **price** in gold. Stock is
-  unlimited; the buyer chooses which party member to outfit.
+- Each `ShopStock` names a ware **id** and its **price** in gold. The id is
+  resolved as **equipment first, then an [item](#add-an-item)** — so the same
+  counter can sell either. Stock is unlimited; buying gear lets the buyer pick who
+  to outfit, while a consumable just goes into the shared stash.
 
 Then place a keeper on a screen with a `shops` entry (alongside its `spawns`),
 pointing at the shop id:
@@ -210,8 +257,15 @@ EnemyDef(
     skills: ["claw"],
     ai: Random,            // Basic (always attacks) or Random (mixes in skills)
     xp: 12, gold: 8,       // rewards on defeat
+    drops: [               // optional item drops, each rolled on victory
+        ItemDrop(item: "potion", chance: 0.25),   // id into `items`, chance 0.0–1.0
+    ],
 ),
 ```
+
+`drops` is optional (most foes drop nothing). Each `ItemDrop` names an
+[item](#add-an-item) id and an independent **chance** in `0.0..=1.0`; every
+defeated enemy rolls its own table, and a hit is announced on the victory report.
 
 An **encounter** is just a named group of enemy ids (repeats allowed):
 
@@ -298,9 +352,10 @@ CutsceneDef(
 ## Check your work
 
 The fast test suite parses the data file and cross-checks every reference — that
-each skill, enemy, encounter, texture, cutscene, and shop id resolves, that shop
-wares and keeper placements are valid, and that every level's screens are linked
-and traversable. Run it after editing:
+each skill, enemy, encounter, texture, cutscene, shop, item, and drop id resolves,
+that shop wares and keeper placements are valid, that item effects and enemy drops
+point at real statuses/items at sane odds, and that every level's screens are
+linked and traversable. Run it after editing:
 
 ```sh
 cargo test --test data

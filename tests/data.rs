@@ -3,7 +3,7 @@
 //! and cross-referenced correctly.
 
 use hero_of_the_overworld::data::{embedded_texture, CutsceneStep, EquipSlot, Registry};
-use hero_of_the_overworld::party::Party;
+use hero_of_the_overworld::party::{FieldUse, Party};
 
 fn registry() -> Registry {
     Registry::load()
@@ -438,6 +438,79 @@ fn bag_equip_and_unequip_move_items_without_loss() {
     assert!(party.bag.iter().any(|id| id == "iron_sword"));
 }
 
+/// Restorative items can be used from the field: a potion heals the chosen hero
+/// and is consumed only when it actually does something (a full-HP hero refuses
+/// it, wasting nothing).
+#[test]
+fn field_item_heals_and_is_spent_only_when_useful() {
+    let reg = registry();
+    let mut party = Party::from_registry(&reg);
+    party.add_item("potion", 2);
+    // Wound the leader so a potion has something to mend.
+    party.members[0].hp = 1;
+
+    let idx = party.items.iter().position(|s| s.id == "potion").unwrap();
+    match party.use_item_in_field(&reg, idx, 0) {
+        FieldUse::Restored { hp, mp } => {
+            assert!(hp > 0, "the potion should restore HP");
+            assert_eq!(mp, 0);
+        }
+        _ => panic!("a wounded hero should be healed by a potion"),
+    }
+    assert!(party.members[0].hp > 1, "HP went up");
+    assert_eq!(
+        party.items.iter().find(|s| s.id == "potion").unwrap().count,
+        1,
+        "one potion was spent"
+    );
+
+    // Full HP now (heal is generous): the second potion is refused and NOT spent.
+    party.members[0].hp = party.members[0].stats.max_hp;
+    let idx = party.items.iter().position(|s| s.id == "potion").unwrap();
+    assert!(matches!(
+        party.use_item_in_field(&reg, idx, 0),
+        FieldUse::NoEffect
+    ));
+    assert_eq!(
+        party.items.iter().find(|s| s.id == "potion").unwrap().count,
+        1,
+        "a wasted use spends nothing"
+    );
+}
+
+/// Healing moves work from the field too: a hero who knows MEND can cast it on an
+/// ally, spending the caster's MP; an unaffordable cast is refused for free.
+#[test]
+fn field_heal_move_restores_hp_and_bills_mp() {
+    let reg = registry();
+    let mut party = Party::from_registry(&reg);
+    // ROLAND knows MEND (a Heal skill); confirm it shows up as field-usable.
+    let moves = party.field_heal_skills(&reg, 0);
+    assert!(
+        moves.iter().any(|id| id == "mend"),
+        "MEND should be a field heal move"
+    );
+
+    // Wound the leader and have them mend themselves.
+    party.members[0].hp = 1;
+    let mp_before = party.members[0].mp;
+    match party.use_heal_skill_in_field(&reg, 0, "mend", 0) {
+        FieldUse::Restored { hp, .. } => assert!(hp > 0, "MEND should restore HP"),
+        _ => panic!("MEND should heal a wounded ally"),
+    }
+    assert!(party.members[0].hp > 1);
+    assert!(party.members[0].mp < mp_before, "casting spent MP");
+
+    // Drain MP below the cost: the next cast is refused and bills nothing.
+    party.members[0].hp = 1;
+    party.members[0].mp = 0;
+    assert!(matches!(
+        party.use_heal_skill_in_field(&reg, 0, "mend", 0),
+        FieldUse::NotEnoughMp
+    ));
+    assert_eq!(party.members[0].mp, 0, "a refused cast spends no MP");
+}
+
 #[test]
 fn equipping_swaps_the_displaced_item_into_the_bag() {
     let reg = registry();
@@ -613,6 +686,55 @@ fn equipment_references_resolve() {
     }
 }
 
+/// Consumable items are well-formed and every reference around them resolves: an
+/// item's icon is embedded and its inflicted statuses exist; enemy drop tables
+/// name real items at valid odds. This is the items extensibility contract —
+/// adding an item / drop is pure data, and this guards those data edits.
+#[test]
+fn item_and_drop_references_resolve() {
+    let reg = registry();
+
+    for it in &reg.data.items {
+        assert!(
+            embedded_texture(&it.icon).is_some(),
+            "item {} icon '{}' not embedded",
+            it.id,
+            it.icon
+        );
+        assert!(
+            !it.description.trim().is_empty(),
+            "item {} has no description",
+            it.id
+        );
+        assert!(it.price >= 0, "item {} has a negative price", it.id);
+        for sid in &it.effect.inflicts {
+            assert!(
+                reg.status(sid).is_some(),
+                "item {} inflicts unknown status '{sid}'",
+                it.id
+            );
+        }
+    }
+
+    for e in &reg.data.enemies {
+        for d in &e.drops {
+            assert!(
+                reg.item(&d.item).is_some(),
+                "enemy {} drops unknown item '{}'",
+                e.id,
+                d.item
+            );
+            assert!(
+                (0.0..=1.0).contains(&d.chance),
+                "enemy {} drop '{}' has an out-of-range chance {}",
+                e.id,
+                d.item,
+                d.chance
+            );
+        }
+    }
+}
+
 /// Equipment actually changes a battler's effective stats (the extensibility
 /// contract for gear: bonuses apply without touching battle code).
 #[test]
@@ -647,9 +769,10 @@ fn shops_are_valid_and_placed() {
         assert!(!shop.name.trim().is_empty(), "shop {} has no name", shop.id);
         assert!(!shop.stock.is_empty(), "shop {} sells nothing", shop.id);
         for s in &shop.stock {
+            // A stock line is either a piece of equipment or a consumable item.
             assert!(
-                reg.equipment(&s.item).is_some(),
-                "shop {} stocks unknown item '{}'",
+                reg.equipment(&s.item).is_some() || reg.item(&s.item).is_some(),
+                "shop {} stocks unknown ware '{}'",
                 shop.id,
                 s.item
             );

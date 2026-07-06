@@ -50,10 +50,14 @@ behind a keen, reliable **CAVALRY LANCE**.
 ## Getting new gear
 
 A hero can **start** with gear (set on their `CharacterDef`), or you can **buy**
-it at a **[shop](shops.md)**. The Greenwood's OUTFITTER sells the kit above;
-buying an item equips it to the hero you choose and spends the gold you've won in
-battle. Whatever it replaces isn't thrown away — it drops into the party's shared
-**bag**.
+it at a **[shop](shops.md)**. The Greenwood's OUTFITTER sells the kit above
+(alongside a few **[items](items.md)**); buying a piece equips it to the hero you
+choose and spends the gold you've won in battle. Whatever it replaces isn't thrown
+away — it drops into the party's shared **bag**.
+
+Gear is different from **[items](items.md)**: items are consumables you *spend* in
+battle (potions, bombs, tonics), not equipment you *wear*. This page is only about
+weapons and armor.
 
 ## Changing gear anywhere
 

@@ -11,7 +11,7 @@ turn-based battles — then watch a scripted cutscene recruit a new party member
 - **Audio:** looping background music via [`macroquad::audio`](https://docs.rs/macroquad/latest/macroquad/audio/)
   (native + web)
 - **Content:** a plain-text [RON](https://github.com/ron-rs/ron) data file — add heroes,
-  enemies, skills, levels, shops, and cutscenes without touching engine code
+  enemies, skills, items, levels, shops, and cutscenes without touching engine code
 - **Saves:** progress persists automatically in a small custom binary format — a
   file (via [`dirs`](https://crates.io/crates/dirs)) natively, IndexedDB on the web
 - **Tests:** fast data/logic tests plus a real end-to-end suite that drives the actual game
@@ -60,10 +60,12 @@ menus, up/down in battle. See
 Press Enter on the title to reach the **world map**, pick a level, and enter it. You walk
 the tiled overworld freely; roaming enemies chase you inside an aggro radius and start a
 **battle** on contact — but you move faster than they do, so encounters can be dodged. In
-battle each living party member chooses **ATTACK**, a **SKILL**, or **DEFEND**, then
-everyone acts in speed order. Hits can **miss** or land a **critical** for extra damage,
-and each hero's **weapon and armor** tilt those odds. Walk up to a **shopkeeper** on the
-map to step into a store and spend battle winnings on new gear. Clear every demon in a
+battle each living party member chooses **ATTACK**, a **SKILL**, an **ITEM**, or
+**DEFEND**, then everyone acts in speed order. Hits can **miss** or land a **critical**
+for extra damage, and each hero's **weapon and armor** tilt those odds. **Items** are
+consumables — potions, bombs, stat tonics — spent from a shared stash, bought at shops or
+dropped by beaten foes. Walk up to a **shopkeeper** on the map to step into a store and
+spend battle winnings on new gear and items. Clear every demon in a
 level to mark it done on the map and **unlock the next** — progression is linear. Your
 party, clears, per-level progress, and your **exact position in a level** are **saved
 automatically** and resume on the next launch.
@@ -81,12 +83,12 @@ the window, so game code never deals with real pixels or DPI.
 | --- | --- |
 | [`src/renderer.rs`](src/renderer.rs) | thin macroquad wrapper: a virtual-resolution sprite/rect/text draw queue, aspect-adaptive width, letterboxed |
 | [`src/data.rs`](src/data.rs) | the RON file format + indexed registries (the content DB) |
-| [`src/party.rs`](src/party.rs) | the persistent, extensible party (HP/MP/XP carried between battles) + the shared owned-item bag |
-| [`src/inventory.rs`](src/inventory.rs) | the party inventory / equipment screen (equip & unequip from the bag) |
+| [`src/party.rs`](src/party.rs) | the persistent, extensible party (HP/MP/XP carried between battles) + the shared gear bag and consumable-item stash |
+| [`src/inventory.rs`](src/inventory.rs) | the out-of-battle party menu: equip/unequip gear, plus use healing items & moves on the map |
 | [`src/input_config.rs`](src/input_config.rs) | the controls screen: map keyboard/gamepads to players for local co-op |
 | [`src/overworld.rs`](src/overworld.rs) | tile-mapped levels: screens, walking, camera, roaming enemies |
 | [`src/battle.rs`](src/battle.rs) | the turn-based battle scene (commands → AI → resolve) |
-| [`src/shop.rs`](src/shop.rs) | the shop interior scene: walk-in store + buy-and-equip UI |
+| [`src/shop.rs`](src/shop.rs) | the shop interior scene: walk-in store + buy-and-equip / buy-item UI |
 | [`src/cutscene.rs`](src/cutscene.rs) | data-driven scripted dialogue + party recruitment |
 | [`src/audio.rs`](src/audio.rs) | background music via `macroquad::audio` (native + web) |
 | [`src/save.rs`](src/save.rs) | custom binary save format + storage (native file via `dirs`, web IndexedDB) |
@@ -144,10 +146,12 @@ Adding genuinely new art is the only code touch: register the PNG once in
 
 The data file also defines **skills** (physical / magical / heal, single or all targets,
 each with a description), **equipment** (weapons and armor with stat bonuses, crit /
-accuracy / evasion, and descriptions — heroes and enemies equip them by id), **enemies**
-(stats, skills, AI, XP/gold rewards), **encounters** (named groups of enemies), **levels**
-(a map marker plus a set of connected ASCII-tile screens with enemy spawns and shop
-entrances), **shops** (a keeper, a facing/exit wall, and priced wares that buy-and-equip),
+accuracy / evasion, and descriptions — heroes and enemies equip them by id), **items**
+(consumables with a target and a composable effect — heal / damage / restore MP / inflict
+a status — used in battle, bought or dropped), **enemies** (stats, skills, AI, XP/gold
+rewards, and a chance-based item **drop** table), **encounters** (named groups of enemies),
+**levels** (a map marker plus a set of connected ASCII-tile screens with enemy spawns and
+shop entrances), **shops** (a keeper, a facing/exit wall, and priced wares — gear or items),
 and **cutscenes** (scripted dialogue lines and recruits).
 
 ### The sprite sheets
@@ -171,10 +175,10 @@ Tiles (`grass`, `water`, `tree`, `rock`, `barricade`) are their own 16×16 PNGs 
 Two layers:
 
 **1. Fast data/logic tests** — run on every `cargo test`, no display needed. They validate the
-RON parses, every skill/enemy/encounter/texture/cutscene/shop cross-reference resolves, that
-every level's screens are linked and traversable, that shop wares and keeper placements are
-valid, that the shop interior/buy logic behaves, and that the party mechanics (build, recruit,
-level-up) behave.
+RON parses, every skill/enemy/encounter/texture/cutscene/shop/item/drop cross-reference
+resolves, that every level's screens are linked and traversable, that shop wares and keeper
+placements are valid, that the shop interior/buy logic behaves (gear *and* items), and that
+the party mechanics (build, recruit, level-up) behave.
 
 ```bash
 cargo test --test data

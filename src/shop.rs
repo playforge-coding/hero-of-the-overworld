@@ -46,13 +46,23 @@ pub enum ShopEvent {
     Exit,
 }
 
+/// Whether a purchasable line is a piece of equipment (bought onto a member) or a
+/// consumable item (bought into the party's stash).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum StockKind {
+    /// Worn gear; buying equips it to the chosen member (displacing to the bag).
+    Equip(EquipSlot),
+    /// A consumable; buying drops one into the party's item stash.
+    Item,
+}
+
 /// One purchasable line, resolved from the registry for display.
 struct StockEntry {
     id: String,
     name: String,
     price: i32,
-    slot: EquipSlot,
-    /// Short "ATK+6 CRIT+6" style summary of what the item grants.
+    kind: StockKind,
+    /// Short "ATK+6 CRIT+6" (gear) or "HEAL 40" (item) summary of what it grants.
     summary: String,
     description: String,
 }
@@ -96,18 +106,29 @@ impl Shop {
         party: &Party,
         def: &ShopDef,
     ) -> Self {
+        // A stock line's id may be a piece of equipment or a consumable item;
+        // resolve equipment first, then items, so a shop can sell either freely.
         let stock = def
             .stock
             .iter()
             .filter_map(|s| {
-                let item = reg.equipment(&s.item)?;
-                Some(StockEntry {
-                    id: item.id.clone(),
-                    name: item.name.clone(),
+                if let Some(item) = reg.equipment(&s.item) {
+                    return Some(StockEntry {
+                        id: item.id.clone(),
+                        name: item.name.clone(),
+                        price: s.price,
+                        kind: StockKind::Equip(item.slot),
+                        summary: summarize(item),
+                        description: item.description.clone(),
+                    });
+                }
+                reg.item(&s.item).map(|it| StockEntry {
+                    id: it.id.clone(),
+                    name: it.name.clone(),
                     price: s.price,
-                    slot: item.slot,
-                    summary: summarize(item),
-                    description: item.description.clone(),
+                    kind: StockKind::Item,
+                    summary: crate::battle::item_effect_summary(reg, it),
+                    description: it.description.clone(),
                 })
             })
             .collect();
@@ -231,14 +252,17 @@ impl Shop {
     fn buy(&mut self, party: &mut Party) {
         let entry = &self.stock[self.item_cursor];
         self.message = Some(match apply_purchase(party, self.member_cursor, entry) {
-            PurchaseResult::Bought => {
-                let who = party
-                    .members
-                    .get(self.member_cursor)
-                    .map(|m| m.name.as_str())
-                    .unwrap_or("");
-                (format!("{who} EQUIPPED {}", entry.name), 1.8)
-            }
+            PurchaseResult::Bought => match entry.kind {
+                StockKind::Equip(_) => {
+                    let who = party
+                        .members
+                        .get(self.member_cursor)
+                        .map(|m| m.name.as_str())
+                        .unwrap_or("");
+                    (format!("{who} EQUIPPED {}", entry.name), 1.8)
+                }
+                StockKind::Item => (format!("BOUGHT {}", entry.name), 1.8),
+            },
             PurchaseResult::TooPoor => ("NOT ENOUGH GOLD".to_string(), 1.6),
             PurchaseResult::NoMember => return,
         });
@@ -507,15 +531,17 @@ impl Shop {
             y += 12.0;
         }
 
-        // Right column: detail of the selected item.
+        // Right column: detail of the selected line.
+        let selected_kind = self.stock.get(self.item_cursor).map(|e| e.kind);
         if let Some(e) = self.stock.get(self.item_cursor) {
             let dx = split + 6.0;
             let mut dy = py + 36.0;
-            let slot = match e.slot {
-                EquipSlot::Weapon => "WEAPON",
-                EquipSlot::Armor => "ARMOR",
+            let kind = match e.kind {
+                StockKind::Equip(EquipSlot::Weapon) => "WEAPON",
+                StockKind::Equip(EquipSlot::Armor) => "ARMOR",
+                StockKind::Item => "ITEM",
             };
-            r.draw_text(slot, dx, dy, 1.0, color::rgb(160, 200, 255));
+            r.draw_text(kind, dx, dy, 1.0, color::rgb(160, 200, 255));
             dy += 12.0;
             r.draw_text(&e.summary, dx, dy, 1.0, color::rgb(200, 230, 200));
             dy += 12.0;
@@ -525,8 +551,8 @@ impl Shop {
             }
         }
 
-        // The party member being outfitted, with their current gear in this slot.
-        let selected_slot = self.stock.get(self.item_cursor).map(|e| e.slot);
+        // Bottom row. For gear, the member being outfitted and their current item
+        // in that slot; for a consumable, that it just goes to the shared stash.
         let row_y = py + ph - 38.0;
         r.draw_rect(
             px + 2.0,
@@ -535,30 +561,43 @@ impl Shop {
             26.0,
             color::rgba(10, 8, 18, 255),
         );
-        if let Some(m) = party.members.get(self.member_cursor) {
-            let who = format!("< OUTFIT {} >", m.name);
-            r.draw_text_centered(
-                &who,
-                virtual_w() / 2.0,
-                row_y,
-                1.0,
-                color::rgb(255, 236, 180),
-            );
-            let cur_id = match selected_slot {
-                Some(EquipSlot::Weapon) | None => m.weapon.as_deref(),
-                Some(EquipSlot::Armor) => m.armor.as_deref(),
-            };
-            let cur = cur_id
-                .and_then(|id| reg.equipment(id))
-                .map(|it| it.name.clone())
-                .unwrap_or_else(|| "(NONE)".to_string());
-            r.draw_text_centered(
-                &format!("NOW: {cur}"),
-                virtual_w() / 2.0,
-                row_y + 11.0,
-                1.0,
-                color::rgba(190, 200, 210, 255),
-            );
+        match selected_kind {
+            Some(StockKind::Item) => {
+                r.draw_text_centered(
+                    "ADDED TO YOUR ITEMS",
+                    virtual_w() / 2.0,
+                    row_y + 5.0,
+                    1.0,
+                    color::rgb(255, 236, 180),
+                );
+            }
+            _ => {
+                if let Some(m) = party.members.get(self.member_cursor) {
+                    let who = format!("< OUTFIT {} >", m.name);
+                    r.draw_text_centered(
+                        &who,
+                        virtual_w() / 2.0,
+                        row_y,
+                        1.0,
+                        color::rgb(255, 236, 180),
+                    );
+                    let cur_id = match selected_kind {
+                        Some(StockKind::Equip(EquipSlot::Armor)) => m.armor.as_deref(),
+                        _ => m.weapon.as_deref(),
+                    };
+                    let cur = cur_id
+                        .and_then(|id| reg.equipment(id))
+                        .map(|it| it.name.clone())
+                        .unwrap_or_else(|| "(NONE)".to_string());
+                    r.draw_text_centered(
+                        &format!("NOW: {cur}"),
+                        virtual_w() / 2.0,
+                        row_y + 11.0,
+                        1.0,
+                        color::rgba(190, 200, 210, 255),
+                    );
+                }
+            }
         }
 
         r.draw_text_centered(
@@ -660,22 +699,29 @@ enum PurchaseResult {
 /// gold and equip the item to member `member_idx` in its slot. No rendering or
 /// UI state, so it is unit-testable without a live window.
 fn apply_purchase(party: &mut Party, member_idx: usize, entry: &StockEntry) -> PurchaseResult {
-    if party.members.get(member_idx).is_none() {
+    // Equipment is outfitted onto a specific member; a consumable just needs a
+    // party to hold it, so the member only matters for the `Equip` path.
+    if matches!(entry.kind, StockKind::Equip(_)) && party.members.get(member_idx).is_none() {
         return PurchaseResult::NoMember;
     }
     if party.gold < entry.price {
         return PurchaseResult::TooPoor;
     }
     party.gold -= entry.price;
-    // Equip the newly-bought item and keep whatever it displaces in the party's
-    // bag rather than discarding it (the inventory screen can re-equip it later).
-    let member = &mut party.members[member_idx];
-    let displaced = match entry.slot {
-        EquipSlot::Weapon => member.weapon.replace(entry.id.clone()),
-        EquipSlot::Armor => member.armor.replace(entry.id.clone()),
-    };
-    if let Some(old) = displaced {
-        party.bag.push(old);
+    match entry.kind {
+        StockKind::Equip(slot) => {
+            // Equip the newly-bought gear and keep whatever it displaces in the
+            // party's bag rather than discarding it (re-equippable later).
+            let member = &mut party.members[member_idx];
+            let displaced = match slot {
+                EquipSlot::Weapon => member.weapon.replace(entry.id.clone()),
+                EquipSlot::Armor => member.armor.replace(entry.id.clone()),
+            };
+            if let Some(old) = displaced {
+                party.bag.push(old);
+            }
+        }
+        StockKind::Item => party.add_item(&entry.id, 1),
     }
     PurchaseResult::Bought
 }
@@ -764,7 +810,18 @@ mod tests {
             id: id.to_string(),
             name: id.to_uppercase(),
             price,
-            slot,
+            kind: StockKind::Equip(slot),
+            summary: "-".to_string(),
+            description: String::new(),
+        }
+    }
+
+    fn item_stock(id: &str, price: i32) -> StockEntry {
+        StockEntry {
+            id: id.to_string(),
+            name: id.to_uppercase(),
+            price,
+            kind: StockKind::Item,
             summary: "-".to_string(),
             description: String::new(),
         }
@@ -863,5 +920,47 @@ mod tests {
             PurchaseResult::NoMember
         );
         assert_eq!(party.gold, 40);
+    }
+
+    /// Buying a consumable charges gold and drops it into the party's item stash
+    /// (stacking on repeat), independent of any member. A broke party is refused.
+    #[test]
+    fn buying_an_item_stocks_the_stash() {
+        let reg = Registry::load();
+        let mut party = Party::from_registry(&reg);
+        party.gold = 100;
+        let potion = item_stock("potion", 30);
+
+        // Bought once: gold drops, one potion held. The member index is irrelevant.
+        assert_eq!(
+            apply_purchase(&mut party, 0, &potion),
+            PurchaseResult::Bought
+        );
+        assert_eq!(party.gold, 70);
+        assert_eq!(
+            party.items.iter().find(|s| s.id == "potion").unwrap().count,
+            1
+        );
+
+        // Bought again: it stacks rather than adding a second entry.
+        assert_eq!(
+            apply_purchase(&mut party, 0, &potion),
+            PurchaseResult::Bought
+        );
+        assert_eq!(party.gold, 40);
+        assert_eq!(party.items.iter().filter(|s| s.id == "potion").count(), 1);
+        assert_eq!(
+            party.items.iter().find(|s| s.id == "potion").unwrap().count,
+            2
+        );
+
+        // Too poor: refused, stash and gold untouched.
+        let pricey = item_stock("elixir", 999);
+        assert_eq!(
+            apply_purchase(&mut party, 0, &pricey),
+            PurchaseResult::TooPoor
+        );
+        assert_eq!(party.gold, 40);
+        assert!(party.items.iter().all(|s| s.id != "elixir"));
     }
 }

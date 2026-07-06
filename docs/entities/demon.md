@@ -20,6 +20,7 @@ Greenwood; they roam their levels and chase you when you come near, starting a
 | **Speed** | 10 |
 | **AI** | Random (mixes its skills with plain attacks) |
 | **Rewards** | 16 XP · 12 gold on defeat |
+| **Drops** | [MIGHT TONIC](../items.md) (15%) · [HI-POTION](../items.md) (10%) |
 | **Found in** | Greenwood (a lone guardian) and Demon Fortress (in packs) |
 
 A demon is the game's real test: high HP, strong attack, and the only enemy with

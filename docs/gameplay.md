@@ -88,23 +88,42 @@ There's no game over. If every hero is knocked out in a battle, the party is
 **revived at full health "at camp"** and you're returned to the level to try
 again. Losing a fight costs you the attempt, not your progress.
 
-## Inventory and equipment
+## The party menu { #inventory-and-equipment }
 
 Press **Menu** (<kbd>Shift</kbd>/<kbd>C</kbd>, or Start on a gamepad) while walking
-a level to open the **inventory / equipment** screen — manage gear anywhere, no
-shop trip needed. The party shares a **bag** of items it owns but isn't wearing,
-and here you move gear between that bag and your heroes:
+a level to open the **party menu** — the out-of-battle hub for gear *and* healing,
+so you can patch the party up between fights, no shop or camp needed. Pick a **hero**
+(Up/Down), then **Confirm** to open their action menu:
 
-- Pick a **hero** (Up/Down) and a **slot** — weapon or armor (Left/Right).
-- **Confirm** opens the bag's items that fit that slot; Confirm one to **equip** it,
+### Equip
+
+Manage the hero's gear against the party's shared **bag** of unequipped items:
+
+- Choose the **slot** — weapon or armor (Left/Right) — before opening the menu.
+- **EQUIP** opens the bag's items that fit that slot; Confirm one to **equip** it,
   or choose **(UNEQUIP)** to stow whatever's there.
 - Equipping **swaps**: whatever the hero was wearing goes back to the bag, so gear
   is never lost or duplicated — just moved around the party.
 
 Where does bag gear come from? Buying at a **[shop](shops.md)** equips the new item
 and drops the one it replaces into the bag (rather than discarding it), so your old
-kit is always there to hand down to another hero. The whole bag is
-[saved](#saving) with the rest of your party.
+kit is always there to hand down to another hero.
+
+### Use item / use move
+
+Heal up on the map, without waiting for the next battle:
+
+- **USE ITEM** lists your restorative **[items](items.md)** (potions, ethers) with
+  counts. Pick one, then pick **which ally** it's used on — it restores their HP/MP
+  and spends one from the shared stash. Only restorative items show here; attack and
+  buff items are battle-only.
+- **USE MOVE** lists the healing **[skills](battles.md#skills)** the selected hero
+  knows (like **MEND**). Pick one and a **target ally**; it restores HP and spends
+  the caster's **MP**, exactly as in battle. Moves you can't afford are greyed out.
+
+Each hero's live **HP/MP** is shown in the roster, so you can watch a heal land.
+
+The bag, the item stash, and everyone's HP/MP all ride along in your [save](#saving).
 
 ## Progress and scoring
 
@@ -119,7 +138,7 @@ writes a save after each battle, whenever you leave a level, and after a story
 cutscene, capturing:
 
 - your **party** — members, levels, XP, live HP/MP, equipped gear, the shared
-  [item bag](#inventory-and-equipment), and gold;
+  [item bag](#inventory-and-equipment), your [items](items.md) stash, and gold;
 - which **levels are cleared** (and therefore which are unlocked);
 - your **in-level progress** — the specific demons you've already beaten, so
   quitting halfway through a level doesn't undo the fights you've won;

@@ -18,6 +18,7 @@ They fill the opening **Greenwood** and turn up again on the **Stone Pass**.
 | **Speed** | 8 |
 | **AI** | Basic (always a plain attack on a random hero) |
 | **Rewards** | 4 XP · 3 gold on defeat |
+| **Drops** | [POTION](../items.md) (25%) |
 | **Found in** | Greenwood and Stone Pass |
 
 A slime has no skills and no MP — its **Basic** AI just swings at a random hero every
