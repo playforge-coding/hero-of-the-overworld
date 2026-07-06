@@ -40,7 +40,9 @@ GameData(
                 row_down: 0, row_up: 1, row_right: 2, row_left: 3,
                 frames: 4, fps: 8.0,
             )),
-            skills: ["power_strike", "whirlwind", "mend"],
+            skills: ["power_strike", "mend"],
+            // ROLAND masters his sweeping WHIRLWIND once he's a few fights in.
+            learnset: [LearnedSkill(level: 3, skill: "whirlwind")],
             weapon: Some("iron_sword"),
             armor: Some("leather_armor"),
         ),
@@ -67,7 +69,9 @@ GameData(
                 row_down: 0, row_up: 1, row_right: 2, row_left: 3,
                 frames: 4, fps: 8.0,
             )),
-            skills: ["firebolt", "frost", "mend"],
+            skills: ["firebolt", "mend"],
+            // ELARA's chilling FROST comes with a little more study.
+            learnset: [LearnedSkill(level: 4, skill: "frost")],
             armor: Some("travelers_robe"),
         ),
         // GARETH — a mountain hermit of TRAVELLER'S END and once the king's own
@@ -105,7 +109,10 @@ GameData(
                 row_down: 0, row_up: 1, row_right: 2, row_left: 3,
                 frames: 5, fps: 9.0,
             )),
-            skills: ["quick_slash", "swallow_cut", "mend"],
+            skills: ["quick_slash", "mend"],
+            // GARETH's SWALLOW CUT — a scout's finishing technique — comes early;
+            // recruited mid-game, he already knows it (learnset catches up on join).
+            learnset: [LearnedSkill(level: 2, skill: "swallow_cut")],
             weapon: Some("scouts_edge"),
             armor: Some("scouts_cloak"),
         ),

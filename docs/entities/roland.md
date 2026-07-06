@@ -29,16 +29,17 @@ heal. As the party leader he's the one you steer around the map; a roaming
 
 ## Skills
 
-| Skill | Kind | MP | Target |
-| ----- | ---- | -- | ------ |
-| POWER STRIKE | Physical | 4 | One enemy |
-| WHIRLWIND | Physical | 8 | All enemies |
-| MEND | Heal | 6 | One ally |
+| Skill | Kind | MP | Target | Learned |
+| ----- | ---- | -- | ------ | ------- |
+| POWER STRIKE | Physical | 4 | One enemy | Start |
+| MEND | Heal | 6 | One ally | Start |
+| WHIRLWIND | Physical | 8 | All enemies | **Level 3** |
 
 **POWER STRIKE** is a heavy single-target hit for when one demon needs to fall now;
-**WHIRLWIND** sweeps a whole pack of demons at once (great against a duo or trio);
-**MEND** tops up a wounded ally in a pinch. See [Battles](../battles.md#skills) for
-how each is resolved.
+**MEND** tops up a wounded ally in a pinch; and once Roland hits **level 3** he
+learns **WHIRLWIND**, which sweeps a whole pack of demons at once (great against a
+duo or trio). See [Battles](../battles.md#skills) for how each is resolved and
+[Levelling up](../gameplay.md#levelling-up) for how moves are unlocked.
 
 ## Gear
 

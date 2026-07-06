@@ -45,16 +45,17 @@ level-1 straggler you have to grind back up.
 
 ## Skills
 
-| Skill | Kind | MP | Target |
-| ----- | ---- | -- | ------ |
-| QUICK SLASH | Physical | 3 | One enemy |
-| SWALLOW CUT | Physical | 7 | All enemies |
-| MEND | Heal | 6 | One ally |
+| Skill | Kind | MP | Target | Learned |
+| ----- | ---- | -- | ------ | ------- |
+| QUICK SLASH | Physical | 3 | One enemy | Start |
+| MEND | Heal | 6 | One ally | Start |
+| SWALLOW CUT | Physical | 7 | All enemies | **Level 2** |
 
 **QUICK SLASH** is a cheap, spammable single strike — fitting the quickest blade in
-the party; **SWALLOW CUT** is a flowing sweep that flits between every foe (great
-against a pack); **MEND** lets him patch a wounded ally in a pinch. See
-[Battles](../battles.md#skills) for how each is resolved.
+the party; **MEND** lets him patch a wounded ally in a pinch; and **SWALLOW CUT**, a
+flowing sweep that flits between every foe (great against a pack), is learned at
+**level 2**. Since Gareth is recruited late, he joins already knowing it. See
+[Battles](../battles.md#skills) and [Levelling up](../gameplay.md#levelling-up).
 
 ## Gear
 

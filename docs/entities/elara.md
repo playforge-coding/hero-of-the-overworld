@@ -29,15 +29,16 @@ most battles fall quickly.
 
 ## Skills
 
-| Skill | Kind | MP | Target |
-| ----- | ---- | -- | ------ |
-| FIREBOLT | Magical | 6 | One enemy |
-| FROST | Magical | 12 | All enemies |
-| MEND | Heal | 6 | One ally |
+| Skill | Kind | MP | Target | Learned |
+| ----- | ---- | -- | ------ | ------- |
+| FIREBOLT | Magical | 6 | One enemy | Start |
+| MEND | Heal | 6 | One ally | Start |
+| FROST | Magical | 12 | All enemies | **Level 4** |
 
-**FIREBOLT** is a hard single-target nuke off her high magic; **FROST** hits every
-demon at once (a duo or trio can be softened or finished in one cast); **MEND** lets
-her double as a healer. See [Battles](../battles.md#skills).
+**FIREBOLT** is a hard single-target nuke off her high magic; **MEND** lets her
+double as a healer; and at **level 4** she learns **FROST**, which hits every demon
+at once (a duo or trio can be softened or finished in one cast). See
+[Battles](../battles.md#skills) and [Levelling up](../gameplay.md#levelling-up).
 
 ## Gear
 

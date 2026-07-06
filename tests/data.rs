@@ -35,6 +35,23 @@ fn all_references_resolve() {
                 c.id
             );
         }
+        // Every level-unlocked skill must resolve, and be learned past level 1
+        // (a level-1 unlock belongs in `skills`, not the learnset).
+        for ls in &c.learnset {
+            assert!(
+                reg.skill(&ls.skill).is_some(),
+                "character {} learnset skill '{}' missing",
+                c.id,
+                ls.skill
+            );
+            assert!(
+                ls.level > 1,
+                "character {} learns '{}' at level {} — level-1 skills go in `skills`",
+                c.id,
+                ls.skill,
+                ls.level
+            );
+        }
     }
     for e in &reg.data.enemies {
         for s in &e.skills {
@@ -562,7 +579,7 @@ fn recruits_join_at_party_level() {
     let mut party = Party::from_registry(&reg);
 
     // Push the starting party up several levels.
-    party.grant_xp(1000);
+    party.grant_xp(&reg, 1000);
     let party_level = party.level();
     assert!(party_level > 1, "party should have leveled up");
 
@@ -593,8 +610,11 @@ fn xp_grants_levels_and_growth() {
     let atk_before = party.members[0].stats.attack;
     let hp_before = party.members[0].stats.max_hp;
 
-    let leveled = party.grant_xp(1000);
-    assert!(leveled.contains(&0), "member 0 should have leveled up");
+    let leveled = party.grant_xp(&reg, 1000);
+    assert!(
+        leveled.iter().any(|e| e.member == 0),
+        "member 0 should have leveled up"
+    );
     assert!(party.members[0].level > 1);
     assert!(
         party.members[0].stats.attack > atk_before,
@@ -603,6 +623,66 @@ fn xp_grants_levels_and_growth() {
     assert!(
         party.members[0].stats.max_hp > hp_before,
         "max hp should grow"
+    );
+}
+
+/// Characters unlock skills as they level up: a member starts without their
+/// learnset moves, gains them on reaching the unlock level (reported back), and a
+/// mid-game recruit brought up to the party's level arrives already knowing them.
+#[test]
+fn levelling_unlocks_skills() {
+    let reg = registry();
+
+    // Pick any character with a learnset and its earliest unlock.
+    let (cid, unlock_level, unlock_skill) = reg
+        .data
+        .characters
+        .iter()
+        .find_map(|c| {
+            c.learnset
+                .iter()
+                .min_by_key(|l| l.level)
+                .map(|l| (c.id.clone(), l.level, l.skill.clone()))
+        })
+        .expect("some character should have a learnset to exercise");
+
+    // A fresh, level-1 party member does not yet know the gated skill...
+    let mut party = Party::default();
+    assert!(party.recruit(&reg, &cid));
+    let idx = party.members.len() - 1;
+    assert!(
+        !party.members[idx].skills.contains(&unlock_skill),
+        "{unlock_skill} should be locked at level 1"
+    );
+
+    // ...but earns it on reaching the unlock level, and it's reported as learned.
+    let mut announced = false;
+    while party.members[idx].level < unlock_level {
+        for ev in party.grant_xp(&reg, 1000) {
+            if ev.member == idx && ev.learned.contains(&unlock_skill) {
+                announced = true;
+            }
+        }
+    }
+    assert!(
+        party.members[idx].skills.contains(&unlock_skill),
+        "{unlock_skill} should be known at level {unlock_level}"
+    );
+    assert!(announced, "learning {unlock_skill} should be reported");
+
+    // A recruit joining an already-high-level party arrives knowing it outright.
+    let mut veteran = Party::default();
+    // Level an initial member well past the unlock so the party level is high.
+    veteran.recruit(&reg, &reg.data.starting_party[0]);
+    while veteran.level() < unlock_level {
+        veteran.grant_xp(&reg, 1000);
+    }
+    assert!(veteran.recruit(&reg, &cid));
+    let late = veteran.members.len() - 1;
+    assert!(
+        veteran.members[late].skills.contains(&unlock_skill),
+        "a recruit at level {} should already know {unlock_skill}",
+        veteran.level()
     );
 }
 
@@ -635,7 +715,7 @@ fn enemies_scale_to_party_level() {
     // The party's level is the highest member's level.
     let mut party = Party::from_registry(&reg);
     assert_eq!(party.level(), 1);
-    party.grant_xp(1000);
+    party.grant_xp(&reg, 1000);
     assert!(party.level() > 1, "party level tracks the leader's growth");
 }
 

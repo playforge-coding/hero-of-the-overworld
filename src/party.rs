@@ -5,7 +5,19 @@
 //! just pushing/removing entries. Battle code iterates whatever is here, so a
 //! second or third character assisting in battle needs no special-casing.
 
-use crate::data::{BattlerSprite, EquipSlot, ItemEffect, Registry, SkillKind, Stats};
+use crate::data::{BattlerSprite, CharacterDef, EquipSlot, ItemEffect, Registry, SkillKind, Stats};
+
+/// One level a member gained from an XP award, together with any skills that
+/// level unlocked — enough for the battle-victory report to announce both the
+/// level and every newly learned move.
+pub struct LevelUp {
+    /// Index into [`Party::members`].
+    pub member: usize,
+    /// The level reached.
+    pub level: i32,
+    /// Skill ids newly learned on reaching this level (empty if none).
+    pub learned: Vec<String>,
+}
 
 /// Outcome of using a healing move or item from the overworld (the inventory
 /// screen), enough for the UI to report what happened without re-deriving it.
@@ -46,10 +58,11 @@ pub struct PartyMember {
 }
 
 impl PartyMember {
-    /// Build a fresh member from a character definition at full health.
+    /// Build a fresh member from a character definition at full health, knowing
+    /// its starting skills plus anything its learnset already unlocks at level 1.
     pub fn from_def(reg: &Registry, id: &str) -> Option<Self> {
         let def = reg.character(id)?;
-        Some(Self {
+        let mut m = Self {
             def_id: def.id.clone(),
             name: def.name.clone(),
             stats: def.stats.clone(),
@@ -61,11 +74,29 @@ impl PartyMember {
             armor: def.armor.clone(),
             level: 1,
             xp: 0,
-        })
+        };
+        m.learn_skills_for_level(def);
+        Some(m)
     }
 
     pub fn is_alive(&self) -> bool {
         self.hp > 0
+    }
+
+    /// Learn every skill `def`'s learnset unlocks at or below this member's
+    /// current level that they don't already know, returning the ids newly
+    /// learned. Idempotent (already-known skills are skipped), so it's safe to
+    /// call after any level change — a fresh level-up, a mid-game recruit brought
+    /// up to party level, or a save reloaded at a higher level.
+    pub fn learn_skills_for_level(&mut self, def: &CharacterDef) -> Vec<String> {
+        let mut learned = Vec::new();
+        for entry in &def.learnset {
+            if entry.level <= self.level && !self.skills.contains(&entry.skill) {
+                self.skills.push(entry.skill.clone());
+                learned.push(entry.skill.clone());
+            }
+        }
+        learned
     }
 
     /// Apply a consumable item's **restorative** effect to this member outside of
@@ -95,8 +126,11 @@ impl PartyMember {
     /// unchanged — enemies don't gain speed with level either, so leveling it
     /// would skew turn order. This is the single source of the growth curve,
     /// shared by [`Party::grant_xp`] (earning a level in battle) and
-    /// [`Party::recruit`] (bringing a new hero up to the party's level).
-    fn level_up(&mut self) {
+    /// [`Party::recruit`] (bringing a new hero up to the party's level). Returns
+    /// any skills the new level unlocks (see [`learn_skills_for_level`]).
+    ///
+    /// [`learn_skills_for_level`]: Self::learn_skills_for_level
+    fn level_up(&mut self, def: &CharacterDef) -> Vec<String> {
         self.level += 1;
         self.stats.max_hp += 12;
         self.stats.max_mp += 3;
@@ -105,6 +139,7 @@ impl PartyMember {
         self.stats.magic += 1;
         self.hp = self.stats.max_hp;
         self.mp = self.stats.max_mp;
+        self.learn_skills_for_level(def)
     }
 }
 
@@ -145,19 +180,21 @@ impl Party {
     /// so the level target is 1.
     pub fn recruit(&mut self, reg: &Registry, id: &str) -> bool {
         let target_level = self.level();
-        match PartyMember::from_def(reg, id) {
-            Some(mut m) => {
-                while m.level < target_level {
-                    m.level_up();
-                }
-                self.members.push(m);
-                true
-            }
-            None => {
-                log::warn!("recruit failed: unknown character '{id}'");
-                false
-            }
+        let Some(def) = reg.character(id) else {
+            log::warn!("recruit failed: unknown character '{id}'");
+            return false;
+        };
+        let Some(mut m) = PartyMember::from_def(reg, id) else {
+            return false;
+        };
+        // Grow up to the party's level, learning each level's skills on the way —
+        // so a hero recruited mid-game arrives knowing everything their level
+        // grants, not just their starting kit.
+        while m.level < target_level {
+            m.level_up(def);
         }
+        self.members.push(m);
+        true
     }
 
     pub fn any_alive(&self) -> bool {
@@ -257,23 +294,39 @@ impl Party {
         }
     }
 
-    /// Award XP to living members and grant a simple level-up. Returns members
-    /// that gained a level (by index) for UI feedback.
-    pub fn grant_xp(&mut self, amount: i32) -> Vec<usize> {
-        let mut leveled = Vec::new();
-        for (i, m) in self.members.iter_mut().enumerate() {
-            if !m.is_alive() {
+    /// Award XP to living members, applying each level-up's stat growth and any
+    /// skills the new level unlocks. Returns one [`LevelUp`] per level gained (in
+    /// order) so the caller can report both the level and the learned moves.
+    pub fn grant_xp(&mut self, reg: &Registry, amount: i32) -> Vec<LevelUp> {
+        let mut events = Vec::new();
+        for i in 0..self.members.len() {
+            if !self.members[i].is_alive() {
                 continue;
             }
+            // The character def (its learnset) comes from the registry, disjoint
+            // from the mutable party, so both borrows coexist. An unknown def still
+            // banks the XP but can't grow or teach.
+            let Some(def) = reg.character(&self.members[i].def_id) else {
+                self.members[i].xp += amount;
+                continue;
+            };
+            let m = &mut self.members[i];
             m.xp += amount;
-            let needed = m.level * 20;
-            while m.xp >= needed {
+            loop {
+                let needed = m.level * 20;
+                if m.xp < needed {
+                    break;
+                }
                 m.xp -= needed;
-                m.level_up();
-                leveled.push(i);
+                let learned = m.level_up(def);
+                events.push(LevelUp {
+                    member: i,
+                    level: m.level,
+                    learned,
+                });
             }
         }
-        leveled
+        events
     }
 
     /// Add `count` of consumable item `id` to the stash, stacking onto an existing

@@ -65,6 +65,13 @@ speed with level either, so raising it would skew turn order. Fallen heroes earn
 no XP from that fight, so
 keeping everyone alive pays off.
 
+Levelling up can also **unlock new [skills](battles.md#skills)**: heroes learn
+some of their moves only on reaching a certain level (ROLAND earns his sweeping
+WHIRLWIND at level 3, ELARA her FROST at level 4). A newly learned move is called
+out on the victory report (**… LEARNED …**) and is usable from the next fight on.
+A hero [recruited](#your-party) mid-game joins at the party's level already knowing
+everything that level grants.
+
 ### Enemies scale with you
 
 So the world doesn't fall behind your growth, **roaming enemies scale to your

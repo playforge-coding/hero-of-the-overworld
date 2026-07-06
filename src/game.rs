@@ -135,6 +135,13 @@ impl Game {
             m.stats.speed = sm.speed;
             m.weapon = sm.weapon.clone();
             m.armor = sm.armor.clone();
+            // Skills aren't saved — they're rebuilt from the def. `from_def` taught
+            // the level-1 kit; now that the saved level is set, teach everything the
+            // learnset unlocks up to it so a reloaded hero keeps the moves they'd
+            // earned.
+            if let Some(def) = self.reg.character(&sm.def_id) {
+                m.learn_skills_for_level(def);
+            }
             self.party.members.push(m);
         }
         // `cleared` always matches the current level count; copy what overlaps.
@@ -566,7 +573,7 @@ impl Game {
         let scene = match outcome {
             BattleOutcome::Victory { xp, gold, drops } => {
                 self.party.gold += gold;
-                let leveled = self.party.grant_xp(xp);
+                let leveled = self.party.grant_xp(&self.reg, xp);
                 let mut lines = vec![format!("GAINED {xp} XP  {gold} GOLD")];
                 // Fold in any item drops the fallen enemies yielded.
                 for id in &drops {
@@ -578,9 +585,22 @@ impl Game {
                         .unwrap_or_else(|| id.clone());
                     lines.push(format!("FOUND {name}"));
                 }
-                for i in &leveled {
-                    if let Some(m) = self.party.members.get(*i) {
-                        lines.push(format!("{} REACHED LV {}", m.name, m.level));
+                // Report each level gained, and any skill it unlocked.
+                for ev in &leveled {
+                    let who = self
+                        .party
+                        .members
+                        .get(ev.member)
+                        .map(|m| m.name.clone())
+                        .unwrap_or_default();
+                    lines.push(format!("{who} REACHED LV {}", ev.level));
+                    for id in &ev.learned {
+                        let skill = self
+                            .reg
+                            .skill(id)
+                            .map(|s| s.name.clone())
+                            .unwrap_or_else(|| id.clone());
+                        lines.push(format!("{who} LEARNED {skill}"));
                     }
                 }
                 Scene::Report {

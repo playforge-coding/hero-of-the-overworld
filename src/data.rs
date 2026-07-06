@@ -333,6 +333,16 @@ pub struct TimingWindow {
     pub good: f32,
 }
 
+/// A skill a character learns on reaching a given level (see
+/// [`CharacterDef::learnset`]). Levelling up to `level` teaches `skill`.
+#[derive(Clone, Debug, Deserialize)]
+pub struct LearnedSkill {
+    /// The level at which the skill is unlocked.
+    pub level: i32,
+    /// Skill id (into [`GameData::skills`]) taught at that level.
+    pub skill: String,
+}
+
 /// A playable party character definition.
 #[derive(Clone, Debug, Deserialize)]
 pub struct CharacterDef {
@@ -345,9 +355,17 @@ pub struct CharacterDef {
     /// more forgiving fighter (see [`TimingWindow`]).
     #[serde(default)]
     pub timing: Option<TimingWindow>,
-    /// Skill ids this character knows (in addition to the basic Attack).
+    /// Skill ids this character knows from the start (in addition to the basic
+    /// Attack). Skills unlocked later live in [`learnset`](Self::learnset).
     #[serde(default)]
     pub skills: Vec<String>,
+    /// Skills unlocked as this character levels up: each entry teaches its skill
+    /// once the character reaches (or is recruited at) its `level`. Distinct from
+    /// the always-known [`skills`](Self::skills). Pure data — a new progression is
+    /// a RON edit, no engine change, the same extensibility contract the rest of
+    /// the model follows.
+    #[serde(default)]
+    pub learnset: Vec<LearnedSkill>,
     /// Starting equipment, as ids into `equipment`. Both optional.
     #[serde(default)]
     pub weapon: Option<String>,

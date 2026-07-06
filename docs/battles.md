@@ -93,6 +93,12 @@ CLAW and FIREBALL belong to the [demon](entities/demon.md); REAP to the
 [dragon](entities/dragon.md). Slimes, crabs and gargoyles have no skills — they only
 ever use a basic attack.)
 
+A hero doesn't necessarily start with every skill above: some are **unlocked by
+[levelling up](gameplay.md#levelling-up)**. Roland learns WHIRLWIND at level 3 and
+Elara learns FROST at level 4, for instance — the move joins their command menu the
+moment they earn it (and the victory report announces it). Each hero page lists
+which of their skills are learned and when.
+
 ## Status effects
 
 Some skills leave a lingering **status** on their target that ticks at the end of

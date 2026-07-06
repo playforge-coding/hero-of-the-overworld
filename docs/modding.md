@@ -70,7 +70,10 @@ CharacterDef(
         idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
         attack: AnimClip(row: 7, first_col: 0, frames: 5, fps: 14.0),
     ),
-    skills: ["firebolt", "frost", "mend"],
+    skills: ["firebolt", "mend"],       // known from the start
+    learnset: [                          // unlocked as they level up (optional)
+        LearnedSkill(level: 4, skill: "frost"),
+    ],
     // armor: Some("travelers_robe"),   // optional starting gear (see below)
     // timing: Some(TimingWindow(perfect: 0.09, good: 0.20)),  // optional
 ),
@@ -80,6 +83,14 @@ Then either list its `id` in `starting_party` so it begins in the party, or add
 it via a cutscene `Recruit` step (below). The battle scene iterates the whole
 party, so a second or third hero fights with **no engine changes**. A character
 can also start with a `weapon` and/or `armor` — see [Add equipment](#add-equipment).
+
+The optional **`learnset`** unlocks skills as the hero **levels up**: each entry
+teaches its `skill` (an id from the [skills](#add-a-skill) list) once the hero
+reaches that `level`. Skills in `skills` are known from level 1; put anything
+gated behind a level in `learnset` (its `level` must be **> 1**). Learning is
+announced on the victory report, and a hero [recruited](#add-a-cutscene) mid-game
+arrives at the party's level already knowing everything it grants — so a late
+recruit isn't stuck with only their starting kit.
 
 The optional **`timing`** widens (or tightens) that hero's
 [timed-hit window](battles.md#action-timing-strikes-and-blocks) — the *same* window
@@ -352,10 +363,11 @@ CutsceneDef(
 ## Check your work
 
 The fast test suite parses the data file and cross-checks every reference — that
-each skill, enemy, encounter, texture, cutscene, shop, item, and drop id resolves,
-that shop wares and keeper placements are valid, that item effects and enemy drops
-point at real statuses/items at sane odds, and that every level's screens are
-linked and traversable. Run it after editing:
+each skill (including a character's `learnset`), enemy, encounter, texture,
+cutscene, shop, item, and drop id resolves, that shop wares and keeper placements
+are valid, that item effects and enemy drops point at real statuses/items at sane
+odds, and that every level's screens are linked and traversable. It also exercises
+level-up skill unlocks. Run it after editing:
 
 ```sh
 cargo test --test data
