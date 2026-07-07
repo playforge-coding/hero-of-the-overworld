@@ -14,22 +14,24 @@ slow, punishing wall of HP that lumbers after you and hammers with a two-fisted
 
 | Stat | Value |
 |---|---|
-| **HP** | 96 |
+| **HP** | 150 |
 | **MP** | 0 |
-| **Attack** | 25 |
-| **Defense** | 13 |
+| **Attack** | 34 |
+| **Defense** | 19 |
 | **Magic** | 0 |
-| **Speed** | 8 |
+| **Speed** | 9 |
 | **AI** | Random (mixes BRUTE SLAM with plain swings) |
-| **Rewards** | 30 XP · 24 gold on defeat |
+| **Rewards** | 48 XP · 40 gold on defeat |
 | **Drops** | [MIGHT TONIC](../items.md) (18%) · [HI-POTION](../items.md) (12%) |
 | **Found in** | Charred Depths (the deeper chambers) |
 
-An orc brute is the Charred Depths' anchor: high HP and defense make it a chore to
-crack, and its **BRUTE SLAM** hits harder than anything else in the underworld's
-opening level. But at speed 8 it acts **late** in the round and **crawls** on the map
-(slower than the player, like a [gargoyle](gargoyle.md)) — so you can sidestep one you
-would rather not fight, and in battle you often get a full turn in before it swings.
+An orc brute is the Charred Depths' anchor and the toughest regular foe in the game:
+at 150 HP behind a defense of 19 it is a genuine wall, and its **BRUTE SLAM** hits
+harder than anything short of a boss. The deep chambers muster them **two and three
+abreast**, so a room of brutes is a war of attrition. But at speed 9 it still acts
+**late** in the round and **crawls** on the map (slower than the player, like a
+[gargoyle](gargoyle.md)) — so you can sidestep one you would rather not fight, and in
+battle you often get a full turn in before it swings.
 
 ## Skills
 
@@ -46,9 +48,12 @@ and pour damage in on the turns it hasn't acted yet.
 | Encounter | Enemies | Where |
 | --------- | ------- | ----- |
 | `orc_solo` | 1 orc brute | Charred Depths (the nest, the galleries) |
-| `orc_duo` | 2 orc brutes | Charred Depths (the deep hall) |
+| `orc_duo` | 2 orc brutes | Charred Depths (the orc pit, the deep halls) |
+| `orc_trio` | 3 orc brutes | Charred Depths (the deep warren, the guardian's hall) |
 | `orc_goblins` | 1 orc brute + 1 [club goblin](club_goblin.md) + 1 [archer goblin](archer_goblin.md) | Charred Depths (deeper chambers) |
-| `demon_orcs` | 1 [demon](demon.md) + 1 orc brute + 1 [club goblin](club_goblin.md) | Charred Depths (the depths' guardian) |
+| `demon_orc` | 1 [demon](demon.md) + 1 orc brute | Charred Depths (the chasm walk, the bone gallery) |
+| `demon_orcs` | 1 [demon](demon.md) + 1 orc brute + 1 [club goblin](club_goblin.md) | Charred Depths (the antechamber) |
+| `demon_guard` | 1 [demon](demon.md) + 2 orc brutes | Charred Depths (the depths' guardian) |
 
 ## Appearance
 

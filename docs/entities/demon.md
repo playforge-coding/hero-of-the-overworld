@@ -55,6 +55,11 @@ group, area skills like Roland's **WHIRLWIND** or Elara's **FROST** earn their M
 the overworld you can also just **outrun** them: you move faster than a demon, so you
 can slip past one you'd rather not fight.
 
+Demons also lead the underworld's warbands in the **Charred Depths**, flanked by
+[orc brutes](orc_brute.md) and [goblins](club_goblin.md): `demon_orc` (1 demon + 1
+orc), `demon_orcs` (1 demon + 1 orc + 1 club goblin), and the depths' guardian
+`demon_guard` (1 demon + 2 orcs).
+
 ## Appearance
 
 The demon uses the `demon` sprite sheet (a 6×8 grid of 16×16 frames): directional

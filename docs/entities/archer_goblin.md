@@ -13,20 +13,20 @@ surviving the volley on the way in.
 
 | Stat | Value |
 |---|---|
-| **HP** | 34 |
+| **HP** | 46 |
 | **MP** | 0 |
-| **Attack** | 14 |
-| **Defense** | 6 |
+| **Attack** | 20 |
+| **Defense** | 9 |
 | **Magic** | 0 |
-| **Speed** | 14 |
+| **Speed** | 16 |
 | **AI** | Random (mixes ARROW SHOT with plain swings) |
-| **Rewards** | 15 XP · 11 gold on defeat |
+| **Rewards** | 24 XP · 18 gold on defeat |
 | **Drops** | [POTION](../items.md) (20%) |
 | **Found in** | Charred Depths (screened by club goblins) |
 
-At speed 14 an archer goblin acts before most of your party, so its arrow often lands
-first. It is the **priority target** in any goblin pack: kill the archers early and
-the clubbers become a straightforward brawl.
+At speed 16 an archer goblin acts before nearly all of your party, so its arrow almost
+always lands first. It is the **priority target** in any goblin pack: kill the archers
+early and the clubbers become a straightforward brawl.
 
 ## Skills
 
