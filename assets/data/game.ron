@@ -364,6 +364,103 @@ GameData(
                 ItemDrop(item: "might_tonic", chance: 0.15),
             ],
         ),
+        // ------ UNDERWORLD denizens: the GOBLIN and ORC families -------------
+        // The war's prisoners, remade by the dark of the underworld. The GOBLINS
+        // were indoctrinated into demon society and loosed to swarm the CHARRED
+        // DEPTHS; the hulking ORCS are the same prisoners the change hit hardest.
+        //
+        // CLUB GOBLIN: the goblins' front line — small, quick, and numerous, they
+        // rush in and hammer with a crude CLUB SMASH. Individually weak, but they
+        // come in packs (and often with an archer covering them). All three new
+        // sheets share the demon's layout: walk rows 0-3 (down/up/right/left),
+        // attack rows 4-7 (down/up/right/left).
+        EnemyDef(
+            id: "club_goblin",
+            name: "CLUB GOBLIN",
+            stats: Stats(max_hp: 42, max_mp: 0, attack: 16, defense: 7, magic: 0, speed: 13),
+            sprite: BattlerSprite(
+                texture: "club_goblin",
+                frame_w: 16, frame_h: 16,
+                draw_w: 46.0, draw_h: 46.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 5.0),
+                attack: AnimClip(row: 4, first_col: 0, frames: 3, fps: 9.0),
+            ),
+            overworld: Some(OverworldWalk(
+                texture: "club_goblin",
+                frame_w: 16, frame_h: 16,
+                draw_w: 20.0, draw_h: 20.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 4, fps: 8.0,
+            )),
+            skills: ["club_smash"],
+            ai: Random,
+            xp: 14,
+            gold: 10,
+            drops: [ItemDrop(item: "potion", chance: 0.22)],
+        ),
+        // ARCHER GOBLIN: the goblins' skirmisher — a glass cannon that looses a
+        // piercing ARROW SHOT from range (its Random AI mixes the shot with plain
+        // swings). Thin on HP and defense, so it folds fast once you reach it.
+        EnemyDef(
+            id: "archer_goblin",
+            name: "ARCHER GOBLIN",
+            stats: Stats(max_hp: 34, max_mp: 0, attack: 14, defense: 6, magic: 0, speed: 14),
+            sprite: BattlerSprite(
+                texture: "archer_goblin",
+                frame_w: 16, frame_h: 16,
+                draw_w: 46.0, draw_h: 46.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 5.0),
+                attack: AnimClip(row: 4, first_col: 0, frames: 3, fps: 8.0),
+            ),
+            overworld: Some(OverworldWalk(
+                texture: "archer_goblin",
+                frame_w: 16, frame_h: 16,
+                draw_w: 20.0, draw_h: 20.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 4, fps: 8.0,
+            )),
+            skills: ["arrow_shot"],
+            ai: Random,
+            xp: 15,
+            gold: 11,
+            drops: [ItemDrop(item: "potion", chance: 0.20)],
+        ),
+        // ORC BRUTE: the prisoners the underworld twisted into hulking beasts.
+        // A slow, heavy wall of muscle — high HP and a punishing BRUTE SLAM — that
+        // lumbers after you on the map (easy to sidestep, like a gargoyle). Some
+        // were freed only under heavy guard; here in the depths there is no guard.
+        EnemyDef(
+            id: "orc_brute",
+            name: "ORC BRUTE",
+            stats: Stats(max_hp: 96, max_mp: 0, attack: 25, defense: 13, magic: 0, speed: 8),
+            sprite: BattlerSprite(
+                texture: "orc_brute",
+                frame_w: 16, frame_h: 16,
+                draw_w: 58.0, draw_h: 58.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 3.0),
+                attack: AnimClip(row: 4, first_col: 0, frames: 5, fps: 9.0),
+            ),
+            overworld: Some(OverworldWalk(
+                texture: "orc_brute",
+                frame_w: 16, frame_h: 16,
+                draw_w: 24.0, draw_h: 24.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 5, fps: 6.0,
+            )),
+            skills: ["brute_slam"],
+            ai: Random,
+            xp: 30,
+            gold: 24,
+            // Hulking and ponderous — far slower than the player.
+            overworld_speed: Some(22.0),
+            drops: [
+                ItemDrop(item: "might_tonic", chance: 0.18),
+                ItemDrop(item: "hi_potion",   chance: 0.12),
+            ],
+        ),
     ],
 
     skills: [
@@ -471,6 +568,28 @@ GameData(
             id: "final_cut", name: "FINAL CUT",
             description: "A flawless killing stroke that finds the fatal gap.",
             mp_cost: 10, power: 250, kind: Physical, target: OneEnemy,
+        ),
+        // ------ UNDERWORLD: the goblin and orc families ---------------------
+        // The club goblins' crude but heavy swing. Free, so they lean on it.
+        SkillDef(
+            id: "club_smash", name: "CLUB SMASH",
+            description: "A goblin's crude club brought down on one foe.",
+            mp_cost: 0, power: 130, kind: Physical, target: OneEnemy,
+        ),
+        // The archer goblins' shot: a piercing arrow that flies to its mark and
+        // ignores a timed block (as with every ranged/piercing blow).
+        SkillDef(
+            id: "arrow_shot", name: "ARROW SHOT",
+            description: "A goblin's loosed arrow strikes one foe from afar.",
+            mp_cost: 0, power: 120, kind: Physical, target: OneEnemy,
+            unblockable: true,
+            anim: Projectile(texture: "arrow"),   // looses an arrow at the target
+        ),
+        // The orc brutes' hammering overhead — slow to wind up, brutal to land.
+        SkillDef(
+            id: "brute_slam", name: "BRUTE SLAM",
+            description: "A hulking orc's two-fisted slam crashes down on one foe.",
+            mp_cost: 0, power: 170, kind: Physical, target: OneEnemy,
         ),
     ],
 
@@ -668,6 +787,16 @@ GameData(
         EncounterDef(id: "knight_skeletons",  enemies: ["dark_knight", "skeleton", "skeleton"]),
         EncounterDef(id: "knight_demon",      enemies: ["dark_knight", "demon"]),
         EncounterDef(id: "knight_guard",      enemies: ["dark_knight", "dark_knight", "skeleton"]),
+        // UNDERWORLD — the CHARRED DEPTHS. Goblin packs (clubbers screening their
+        // archers) fill the upper halls; orc brutes anchor the deeper chambers,
+        // and the demons that dragged the prisoners down still hold the depths.
+        EncounterDef(id: "goblin_pair",   enemies: ["club_goblin", "archer_goblin"]),
+        EncounterDef(id: "goblin_pack",   enemies: ["club_goblin", "club_goblin", "archer_goblin"]),
+        EncounterDef(id: "archer_duo",    enemies: ["archer_goblin", "archer_goblin"]),
+        EncounterDef(id: "orc_solo",      enemies: ["orc_brute"]),
+        EncounterDef(id: "orc_goblins",   enemies: ["orc_brute", "club_goblin", "archer_goblin"]),
+        EncounterDef(id: "orc_duo",       enemies: ["orc_brute", "orc_brute"]),
+        EncounterDef(id: "demon_orcs",    enemies: ["demon", "orc_brute", "club_goblin"]),
     ],
 
     // ------------------------------------------------------------------------
@@ -1186,6 +1315,10 @@ GameData(
             start_screen: 0, start: (2, 5),
             ground: Some("dark_floor"),
             wall: Some("dark_wall"),
+            // Felling the dragon tears open the gate the advisor used: the portal
+            // cutscene draws the party down into the UNDERWORLD (CHARRED DEPTHS),
+            // which then stands unlocked on the world map.
+            clear_cutscene: Some("underworld_portal"),
             screens: [
                 ScreenDef(
                     map: [
@@ -1317,6 +1450,128 @@ GameData(
                 ),
             ],
         ),
+        // CHARRED DEPTHS — the first level of the UNDERWORLD, unlocked once the
+        // DEMON FORTRESS falls (the portal cutscene draws the party down here).
+        // A warren of scorched flagstone: goblin packs screen the upper halls,
+        // orc brutes anchor the deeper chambers, and the demons that dragged the
+        // prisoners down still hold the depths. Charred-stone floor, dark ramparts.
+        LevelDef(
+            id: "charreddepths", name: "CHARRED DEPTHS",
+            node: (6, 2),
+            start_screen: 0, start: (3, 5),
+            ground: Some("charred_stone"),
+            wall: Some("dark_wall"),
+            intro_cutscene: Some("charreddepths_intro"),
+            screens: [
+                // The mouth of the underworld: a broad, rubble-strewn cavern.
+                ScreenDef(
+                    map: [
+                        "####################",
+                        "#..................#",
+                        "#...RR........RR...#",
+                        "#..................#",
+                        "#...................",
+                        "#...................",
+                        "#...................",
+                        "#.....RR....RR.....#",
+                        "#..................#",
+                        "#..................#",
+                        "####################",
+                    ],
+                    east: Some(1),
+                    spawns: [
+                        SpawnDef(col: 9,  row: 5, encounter: "goblin_pack"),
+                        SpawnDef(col: 14, row: 8, encounter: "goblin_pair"),
+                    ],
+                ),
+                // The crossing: north into the goblin nest, or east into the depths.
+                ScreenDef(
+                    map: [
+                        "#########...########",
+                        "#..................#",
+                        "#...##......##.....#",
+                        "#..................#",
+                        "....................",
+                        "....................",
+                        "....................",
+                        "#..................#",
+                        "#...##......##.....#",
+                        "#..................#",
+                        "####################",
+                    ],
+                    north: Some(2), east: Some(3), west: Some(0),
+                    spawns: [
+                        SpawnDef(col: 9,  row: 5, encounter: "archer_duo"),
+                        SpawnDef(col: 15, row: 8, encounter: "goblin_pack"),
+                    ],
+                ),
+                // The goblin nest: a dead-end chamber thick with clubbers and archers.
+                ScreenDef(
+                    map: [
+                        "####################",
+                        "#..................#",
+                        "#..RR..........RR..#",
+                        "#..................#",
+                        "#......R....R......#",
+                        "#..................#",
+                        "#......R....R......#",
+                        "#..................#",
+                        "#..RR..........RR..#",
+                        "#..................#",
+                        "#########...########",
+                    ],
+                    south: Some(1),
+                    spawns: [
+                        SpawnDef(col: 9,  row: 5, encounter: "goblin_pack"),
+                        SpawnDef(col: 14, row: 7, encounter: "orc_solo"),
+                    ],
+                ),
+                // The twisting galleries, where the first orc brutes lumber.
+                ScreenDef(
+                    map: [
+                        "####################",
+                        "#...#.....#.....#..#",
+                        "#...#..#..#..#..#..#",
+                        "#...#..#..#..#..#..#",
+                        "....#..#..#..#..#...",
+                        "....#..#..#..#..#...",
+                        "....#..#..#..#..#...",
+                        "#...#..#..#..#..#..#",
+                        "#...#..#..#..#..#..#",
+                        "#......#.....#.....#",
+                        "####################",
+                    ],
+                    east: Some(4), west: Some(1),
+                    spawns: [
+                        SpawnDef(col: 5,  row: 5, encounter: "orc_solo"),
+                        SpawnDef(col: 12, row: 5, encounter: "orc_goblins"),
+                    ],
+                ),
+                // The deep hall: the demons that opened the way hold it still.
+                ScreenDef(
+                    map: [
+                        "####################",
+                        "#..................#",
+                        "#...##......##.....#",
+                        "#..................#",
+                        "...................#",
+                        "...................#",
+                        "...................#",
+                        "#..................#",
+                        "#...##......##.....#",
+                        "#..................#",
+                        "####################",
+                    ],
+                    west: Some(3),
+                    spawns: [
+                        SpawnDef(col: 5,  row: 3, encounter: "orc_duo"),
+                        SpawnDef(col: 14, row: 5, encounter: "orc_goblins"),
+                        // The depths' guardian: a demon flanked by its remade thralls.
+                        SpawnDef(col: 9,  row: 5, encounter: "demon_orcs"),
+                    ],
+                ),
+            ],
+        ),
     ],
 
     // ------------------------------------------------------------------------
@@ -1373,6 +1628,39 @@ GameData(
                 Recruit(character: "hermit"),
                 Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
                     text: "THEN LEAD ON, SCOUT. NO ONE KNOWS THE ROAD TO THE FORTRESS BETTER THAN YOU."),
+            ],
+        ),
+        // Plays once the DEMON FORTRESS is cleared (its `clear_cutscene`): the
+        // dragon falls, the advisor's gate tears open, and the party steps through
+        // into the UNDERWORLD. Afterwards the CHARRED DEPTHS stands unlocked on the
+        // world map, so there is no need to return to the fortress to descend.
+        CutsceneDef(
+            id: "underworld_portal",
+            steps: [
+                Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+                    text: "THE DRAGON FALLS - BUT THE AIR STILL BURNS. WHAT IS THAT TEAR IN THE DARK?"),
+                Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+                    text: "THE GATE. THIS IS WHERE THE ADVISOR THREW THE WORLD OPEN AND LET THE HORDE POUR UP."),
+                Say(speaker: Some("ELARA"), portrait: Some("mage"),
+                    text: "IT LEADS DOWN - INTO THE UNDERWORLD ITSELF. WHERE THE PRISONERS WERE DRAGGED. WHERE THE ROT BEGINS."),
+                Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+                    text: "THEN THAT IS WHERE WE FINISH IT. INTO THE PORTAL - TOGETHER."),
+                Say(speaker: None, portrait: None,
+                    text: "THE PORTAL FLARES AND SWALLOWS THE PARTY - AND SPITS THEM OUT ONTO CHARRED STONE, DEEP BELOW THE WORLD."),
+            ],
+        ),
+        // Plays on first entry to the CHARRED DEPTHS (its `intro_cutscene`).
+        CutsceneDef(
+            id: "charreddepths_intro",
+            steps: [
+                Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+                    text: "SO THIS IS THE UNDERWORLD. CHARRED STONE AS FAR AS THE TORCHLIGHT REACHES."),
+                Say(speaker: Some("ELARA"), portrait: Some("mage"),
+                    text: "THE CHARRED DEPTHS. THE PRISONERS WERE CAST DOWN HERE - AND THE DARK REMADE THEM FAST."),
+                Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+                    text: "GOBLINS FROM THE ONES IT BROKE AND LOOSED. ORCS FROM THE ONES IT TWISTED WHOLE. WATCH THE ARCHERS - THEY STRIKE FROM RANGE."),
+                Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+                    text: "THEY WERE OUR OWN, ONCE. WE END WHAT WAS DONE TO THEM - AND WHOEVER ORDERED IT."),
             ],
         ),
     ],

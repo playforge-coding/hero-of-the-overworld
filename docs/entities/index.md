@@ -47,12 +47,18 @@ preserve the turn order.
 | [Demon](demon.md) | 68 | 30 | 18 | 9 | 16 | 10 | 16 XP · 12 gold | Greenwood (guardian), Traveller's End, Demon Fortress |
 | [Dark Knight](dark_knight.md) | 100 | 16 | 22 | 16 | 4 | 15 | 34 XP · 28 gold | Traveller's End |
 | [Dragon](dragon.md) | 340 | 80 | 26 | 17 | 24 | 11 | 150 XP · 120 gold | Demon Fortress (boss) |
+| [Club Goblin](club_goblin.md) | 42 | 0 | 16 | 7 | 0 | 13 | 14 XP · 10 gold | Charred Depths |
+| [Archer Goblin](archer_goblin.md) | 34 | 0 | 14 | 6 | 0 | 14 | 15 XP · 11 gold | Charred Depths |
+| [Orc Brute](orc_brute.md) | 96 | 0 | 25 | 13 | 0 | 8 | 30 XP · 24 gold | Charred Depths |
 
 Each level fields its own foes: **slimes** swarm the Greenwood (with a lone demon
 guarding its end), **gargoyles** hold the Stone Pass, the long climb of **Traveller's
 End** throws **crabs**, **skeletons** and mounted **[dark knights](dark_knight.md)**
 at you (with stray demons up from below), and **demon** packs fill the Demon Fortress
-— where a lone **[dragon](dragon.md)** boss waits in the depths. Enemies are placed as
-roaming overworld sprites that chase you and start a battle on contact — see [The
-Overworld](../world.md#roaming-enemies). The dragon's fight plays a dedicated **boss
-theme** in place of the usual battle music.
+— where a lone **[dragon](dragon.md)** boss waits in the depths. Beyond it, in the
+underworld's **Charred Depths**, the war's remade prisoners lie in wait: the
+**[goblin](club_goblin.md) family** ([clubbers](club_goblin.md) and
+[archers](archer_goblin.md)) and the hulking **[orc brutes](orc_brute.md)**. Enemies
+are placed as roaming overworld sprites that chase you and start a battle on contact —
+see [The Overworld](../world.md#roaming-enemies). The dragon's fight plays a dedicated
+**boss theme** in place of the usual battle music.

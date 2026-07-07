@@ -16,7 +16,7 @@ level's name beneath it.
 
 - **Move** hops the cursor to the nearest marker in that direction.
 - **Confirm** enters the highlighted level — if it's unlocked.
-- A marker is **red** while the level still holds demons and turns **green with a
+- A marker is **red** while the level still holds foes and turns **green with a
   star** once you've cleared it. A **CLEARED x/y** tally sits in the corner.
 - A **grey marker with an X** is still **locked**.
 
@@ -27,15 +27,16 @@ open; each later one stays locked (and can't be entered) until the level before
 it is fully cleared. Selecting a locked level shows *"CLEAR THE PREVIOUS LEVEL
 FIRST"* instead of the usual prompt, so the world opens up as you win.
 
-The bundled world has four levels — and the Demon Fortress is not the last
-stop, only the deepest reached so far:
+The bundled world has five levels across two realms — the surface, and the
+**underworld** beneath it, reached once the Demon Fortress falls:
 
 | Level | Screens | Enemies | Notes |
 | ----- | ------- | ------- | ----- |
 | **GREENWOOD** | 5 | [Slime](entities/slime.md) swarms + a lone [demon](entities/demon.md) guardian | The opening level: a straightforward forest walk with some winding parts, flowing east then bending north into the deep wood. Clearing it triggers the cutscene where ELARA joins. |
 | **STONE PASS** | 5 | [Gargoyle](entities/gargoyle.md) patrols + a slime pack | A straight rocky descent (screens stacked north–south) that ends in a **boulder maze** you must snake through. Unlocks after Greenwood. |
 | **TRAVELLER'S END** | 12 | [Crabs](entities/mountain_crab.md), [skeletons](entities/skeleton.md), [gargoyles](entities/gargoyle.md), mounted [dark knights](entities/dark_knight.md) + stray [demons](entities/demon.md) | The **longest trek** in the game: a switchbacking climb up a stony mountain range, grass and pines giving way to bare scree and boneyards. Foes escalate the higher you go — crabs and slimes at the foot, skeletons and gargoyles on the shelves, dark knights and demons holding the storm-lashed summit. Unlocks after Stone Pass. |
-| **DEMON FORTRESS** | 6 | [Demon](entities/demon.md) packs (duos and trios) + a [dragon](entities/dragon.md) boss | The toughest so far — a **very mazelike** warren of dark-brick corridors: a gatehouse into a crossing that branches to a dead-end cell block or deeper east through twisting galleries to the dragon's lair. Unlocks after Traveller's End. |
+| **DEMON FORTRESS** | 6 | [Demon](entities/demon.md) packs (duos and trios) + a [dragon](entities/dragon.md) boss | A **very mazelike** warren of dark-brick corridors: a gatehouse into a crossing that branches to a dead-end cell block or deeper east through twisting galleries to the dragon's lair. Felling the dragon opens the advisor's **portal** and carries the party down into the underworld. Unlocks after Traveller's End. |
+| **CHARRED DEPTHS** | 5 | [Club](entities/club_goblin.md) & [archer goblins](entities/archer_goblin.md), [orc brutes](entities/orc_brute.md) + [demons](entities/demon.md) | The **first level of the underworld** — a warren of scorched flagstone. Goblin packs (clubbers screening their archers) hold the upper halls, orc brutes anchor the deeper chambers, and a demon flanked by its remade thralls guards the depths. Unlocks after the Demon Fortress — a **[portal cutscene](story.md)** takes you there, and it stands open on the map from then on. |
 
 ## Screens
 
@@ -62,7 +63,8 @@ period after arriving stops a demon from instantly pouncing on you.
 | Barricade | `#` | ⛔ solid |
 
 Each level sets its own **base ground** (grassy Greenwood, stony Stone Pass and
-Traveller's End, dark-tiled Demon Fortress), drawn under everything; trees, rocks,
+Traveller's End, dark-tiled Demon Fortress, scorched **charred stone** in the
+underworld's Charred Depths), drawn under everything; trees, rocks,
 water and barricades are props on top of it that block movement. A **grass patch**
 (`G`) is the exception that goes the other way — a *walkable* tuft of greenery
 drawn over the base, which is how Traveller's End dots its bare stone with patches
@@ -74,7 +76,9 @@ Each screen can hold **roaming enemies**, placed at spawn points and tied to an
 [encounter](battles.md). Each level fields its own kind — [slime](entities/slime.md)
 swarms in the Greenwood, [gargoyle](entities/gargoyle.md) sentinels on the Stone
 Pass, [demon](entities/demon.md) packs — and a lurking [dragon](entities/dragon.md)
-boss — in the Demon Fortress (see the [Bestiary](entities/index.md)). They wander
+boss — in the Demon Fortress, and the [goblin](entities/club_goblin.md) and
+[orc](entities/orc_brute.md) families down in the underworld's Charred Depths (see the
+[Bestiary](entities/index.md)). They wander
 near home until you come within their **aggro radius**, then **chase** you —
 routing *around* trees, rocks and barricades rather than snagging on them, so
 there's no hiding behind a boulder in the Stone Pass maze. Touch one and its

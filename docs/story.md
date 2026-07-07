@@ -90,16 +90,26 @@ to drive out.
     **different timeline.**
 
 In the story of *Survival Cubed*, no one rises to answer the betrayal in time. The
-demons are left to pour up unchecked, the prisoners rot in the underworld until it
-**mutates them into orcs**, the truth is forgotten, and a hero only arrives **decades
-later**, into an overworld already ruined and half-possessed.
+demons are left to pour up unchecked, the truth is forgotten, and a hero only arrives
+**decades later**, into an overworld already ruined and half-possessed.
 
 Hero of the Overworld is the timeline where the reckoning comes **at once.** A
 young knight is thrown into the invasion the very day it starts, a wizard finds him
 before the world is lost, and the fight to unmask the traitor and throw the demons
 back begins immediately — not after a generation of ruin.
 
-Because Roland answers the call now, the long, rotting aftermath that *Survival
-Cubed* is built on **never comes to pass in this timeline.** The two games share a
-beginning; they do not share an ending. This is the road not taken — the one where
-the overworld got its hero on the first day instead of the last.
+But some of the damage was already done, and could not be undone. The underworld's
+**change works fast** — far faster than any rescue could reach the dungeons. The
+prisoners cast down into the dark were **remade almost at once**: the ones it broke
+and indoctrinated into demon society were loosed as **goblins**; the ones it twisted
+whole were made into hulking **orcs** (a few of them later released to the surface,
+but only under the army's heavy watch). By the time Roland fought his way down to
+them, those prisoners were **already lost** — the same mutation *Survival Cubed*
+remembers, only here it is a fresh wound rather than an old scar.
+
+What Roland *did* save was the **surface.** Because he answered the call on the first
+day, he threw the demons back and spared **most of the overworld** the long, rotting
+aftermath that *Survival Cubed* is built on. The two games share a beginning; they do
+not share an ending. This is the road not taken — the one where the overworld got its
+hero on the first day instead of the last, and lost the underworld but held the world
+above.

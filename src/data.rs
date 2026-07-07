@@ -784,12 +784,20 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "mountain_crab" => include_bytes!("../assets/textures/entities/monsters/mountain_crab.png"),
         "skeleton" => include_bytes!("../assets/textures/entities/monsters/skeleton.png"),
         "dark_knight" => include_bytes!("../assets/textures/entities/monsters/dark_knight.png"),
+        // UNDERWORLD denizens: the goblin and orc families of the CHARRED DEPTHS.
+        // Prisoners of the war remade by the dark — clubbers and archers among the
+        // goblins, hulking brutes among the orcs.
+        "club_goblin" => include_bytes!("../assets/textures/entities/monsters/club_goblin.png"),
+        "archer_goblin" => include_bytes!("../assets/textures/entities/monsters/archer_goblin.png"),
+        "orc_brute" => include_bytes!("../assets/textures/entities/monsters/orc_brute.png"),
         "starter_sword" => include_bytes!("../assets/textures/items/starter_sword.png"),
         "starter_gear" => include_bytes!("../assets/textures/items/starter_gear.png"),
         // Generic pouch icon shared by consumable items until they get bespoke art.
         "item_bag" => include_bytes!("../assets/textures/items/item_bag.png"),
         // Projectile art for `AttackAnim::Projectile` skills (fireball, flame breath).
         "fireball" => include_bytes!("../assets/textures/entities/animation_helpers/fireball.png"),
+        // The archer goblins' loosed arrow.
+        "arrow" => include_bytes!("../assets/textures/entities/animation_helpers/arrow.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
         "water" => include_bytes!("../assets/textures/tiles/water.png"),
         "tree" => include_bytes!("../assets/textures/tiles/tree.png"),
@@ -802,6 +810,8 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "stone" => include_bytes!("../assets/textures/tiles/stone.png"),
         "dark_floor" => include_bytes!("../assets/textures/tiles/dark_tile_0.png"),
         "dark_wall" => include_bytes!("../assets/textures/tiles/dark_wall.png"),
+        // Scorched flagstones of the UNDERWORLD's CHARRED DEPTHS.
+        "charred_stone" => include_bytes!("../assets/textures/tiles/charred_stone.png"),
         _ => return None,
     })
 }

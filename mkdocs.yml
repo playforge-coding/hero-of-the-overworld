@@ -80,5 +80,8 @@ nav:
       - Demon: entities/demon.md
       - Dark Knight: entities/dark_knight.md
       - Dragon: entities/dragon.md
+      - Club Goblin: entities/club_goblin.md
+      - Archer Goblin: entities/archer_goblin.md
+      - Orc Brute: entities/orc_brute.md
   - Extending the Game: modding.md
   - Credits: credits.md
