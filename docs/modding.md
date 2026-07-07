@@ -388,16 +388,23 @@ editing:
 cargo test --test data
 ```
 
-## Developer skipping (debug builds only)
+## Developer skipping & resetting (debug builds only)
 
 Testing content deep in the game — a late level, the underworld, a level-clear
-cutscene — is tedious if you must clear everything before it first. In a **debug
-build** (`cargo run`, i.e. *not* `--release`), the hidden <kbd>Tab</kbd> hotkey lets
-a developer skip ahead:
+cutscene — is tedious if you must clear everything before it first, and replaying a
+level you have already beaten is worse (its enemies stay defeated, so you walk an
+empty map). In a **debug build** (`cargo run`, i.e. *not* `--release`), a pair of
+hidden hotkeys let a developer skip ahead and reset levels at will:
 
 - **On the world map** — highlight a level marker and press <kbd>Tab</kbd> to mark it
   **cleared**, which unlocks the next one. Tab your way forward to open any level (all
   the way to the underworld's Charred Depths), then enter it as usual.
+- **On the world map** — highlight a level marker and press <kbd>R</kbd> to **reset**
+  it to its untouched state, so you can **replay it fresh**: its cleared flag is
+  dropped, every defeated enemy respawns, and its intro and clear cutscenes are
+  forgotten so they play again on re-entry. Handy for retuning a level (e.g. after
+  editing an encounter) and walking straight back through it. This is the exact
+  inverse of the <kbd>Tab</kbd> skip.
 - **In a battle** — press <kbd>Tab</kbd> to **win instantly**. The fight resolves as a
   real victory: the encounter's full XP, gold, and rolled item drops are awarded, the
   roaming enemy clears from the map, and if it was the last foe the level's clear
@@ -405,7 +412,7 @@ a developer skip ahead:
   encounter, to clear it (and trigger things like the Demon Fortress → underworld
   portal cutscene) without actually fighting.
 
-This is gated behind `#[cfg(debug_assertions)]`, so it is **compiled out of
+These are gated behind `#[cfg(debug_assertions)]`, so they are **compiled out of
 `--release` builds entirely** — a shipped game keeps the normal linear progression
-and players cannot skip levels or fights. Both screens show a small *"DEV: TAB …"*
+and players cannot skip, reset, or auto-win. Both screens show a small *"DEV: …"*
 hint in debug builds as a reminder.

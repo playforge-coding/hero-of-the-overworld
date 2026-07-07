@@ -281,6 +281,37 @@ impl Game {
         }
     }
 
+    /// **DEV-ONLY.** Reset level `i` to its untouched state so it can be replayed
+    /// fresh: clear its cleared flag, drop its defeated-enemy progress (so every
+    /// foe respawns on re-entry), and forget its intro/clear cutscenes (so they
+    /// play again). If that level happens to be loaded, drop it too. The caller
+    /// saves afterwards. Compiled out of release builds along with its only caller.
+    #[cfg(debug_assertions)]
+    fn reset_level(&mut self, i: usize) {
+        let Some(level) = self.reg.data.levels.get(i) else {
+            return;
+        };
+        let id = level.id.clone();
+        let cutscenes: Vec<String> = level
+            .intro_cutscene
+            .iter()
+            .chain(level.clear_cutscene.iter())
+            .cloned()
+            .collect();
+        if let Some(done) = self.cleared.get_mut(i) {
+            *done = false;
+        }
+        self.level_progress.remove(&id);
+        for cs in cutscenes {
+            self.played_cutscenes.remove(&cs);
+        }
+        // If this level is the loaded one, drop it so a stale runtime can't write
+        // its progress back on the next save/exit.
+        if self.current_level == i {
+            self.level = None;
+        }
+    }
+
     /// Build a cutscene by id if it exists and hasn't played yet (marking it
     /// played). Returns `None` for unknown or already-seen cutscenes.
     fn build_cutscene(&mut self, id: &str, renderer: &mut Renderer) -> Option<Cutscene> {
@@ -431,6 +462,17 @@ impl Game {
             if let Some(done) = self.cleared.get_mut(self.map_cursor) {
                 *done = true;
             }
+            self.save();
+            return Scene::Map;
+        }
+        // DEV-ONLY level reset: wipe the highlighted level back to its untouched
+        // state — un-cleared, every enemy respawned, its intro/clear cutscenes
+        // forgotten — so a developer can walk back in and replay it fresh after
+        // tuning it. The inverse of the skip above; likewise compiled out of
+        // release builds. See [`input::dev_reset_pressed`].
+        #[cfg(debug_assertions)]
+        if crate::input::dev_reset_pressed() {
+            self.reset_level(self.map_cursor);
             self.save();
             return Scene::Map;
         }
@@ -739,10 +781,11 @@ impl Game {
             1.0,
             color::rgb(150, 210, 160),
         );
-        // DEV-ONLY hint for the hidden level-skip hotkey (compiled out of release).
+        // DEV-ONLY hint for the hidden level-skip / reset hotkeys (compiled out of
+        // release). TAB marks the highlighted level cleared; R resets it to replay.
         #[cfg(debug_assertions)]
         r.draw_text_centered(
-            "DEV: TAB SKIPS LEVEL",
+            "DEV: TAB SKIPS · R RESETS LEVEL",
             virtual_w() / 2.0,
             3.0,
             1.0,

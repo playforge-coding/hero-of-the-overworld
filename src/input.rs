@@ -134,6 +134,17 @@ pub fn dev_skip_pressed() -> bool {
     is_key_pressed(KeyCode::Tab)
 }
 
+/// **DEV-ONLY** hidden hotkey (R) used by the world map to reset the highlighted
+/// level: it clears the level's cleared flag and defeated-enemy progress and
+/// forgets its cutscenes, so a developer can walk back in and **replay it fresh**
+/// (every foe respawned, the intro playing again) after tuning it. The mirror of
+/// [`dev_skip_pressed`]. Read raw, outside the logical [`Button`] mapping, and
+/// compiled out of `--release` builds, so a shipped game has no such reset.
+#[cfg(debug_assertions)]
+pub fn dev_reset_pressed() -> bool {
+    is_key_pressed(KeyCode::R)
+}
+
 /// Read the current keyboard state into a logical [`Input`], using macroquad's
 /// own press-edge latching for `pressed`.
 fn read_keyboard() -> Input {
