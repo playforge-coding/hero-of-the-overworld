@@ -20,7 +20,7 @@ use std::collections::HashMap;
 
 use crate::data::{
     AttackAnim, BattlerSprite, EnemyAi, ItemDrop, Registry, SkillDef, SkillKind, Stats, StatusDef,
-    TargetKind,
+    TargetKind, ToolDef,
 };
 use crate::input::{Button, Controllers, Input};
 use crate::party::{ItemStack, Party};
@@ -135,6 +135,11 @@ struct Battler {
     /// Consumable items this (enemy) battler may drop when the fight is won.
     /// Empty for heroes.
     drops: Vec<ItemDrop>,
+    /// If set, this (enemy) battler is a **tool** (a ballista, …): it never takes
+    /// its own turn, is fired by the *aware* foes beside it, and crumbles once none
+    /// remain to work it (see [`ToolDef`] and [`Battle::crumble_orphan_tools`]).
+    /// `None` for heroes and ordinary enemies.
+    tool: Option<ToolDef>,
     home: Vec2,
     offset: Vec2,
     flash: f32,
@@ -632,6 +637,7 @@ impl Battle {
                 xp: 0,
                 gold: 0,
                 drops: Vec::new(),
+                tool: None,
                 home,
                 offset: Vec2::ZERO,
                 flash: 0.0,
@@ -685,6 +691,7 @@ impl Battle {
                 xp: def.xp * scale / 100,
                 gold: def.gold * scale / 100,
                 drops: def.drops.clone(),
+                tool: def.tool.clone(),
                 home,
                 offset: Vec2::ZERO,
                 flash: 0.0,
@@ -752,6 +759,40 @@ impl Battle {
 
     fn enemies_alive(&self) -> bool {
         !self.living(Side::Enemy).is_empty()
+    }
+
+    /// Whether any **aware** enemy is still standing — a living foe that is not
+    /// itself a [tool](ToolDef). These are the ones who work the tools; once the
+    /// last of them falls, every tool crumbles (see [`crumble_orphan_tools`]).
+    fn aware_enemies_alive(&self) -> bool {
+        self.battlers
+            .iter()
+            .any(|b| b.side == Side::Enemy && b.alive() && b.tool.is_none())
+    }
+
+    /// A living tool an aware enemy could operate this turn, if any. Picks the
+    /// first one on the field (encounters rarely field more than a single engine).
+    fn available_tool(&self) -> Option<usize> {
+        self.battlers
+            .iter()
+            .position(|b| b.side == Side::Enemy && b.alive() && b.tool.is_some())
+    }
+
+    /// Crumble every tool left with no aware enemy to work it. Called at each point
+    /// the roster may have changed (after an action, at round start) *before* the
+    /// win check, so felling the last operator ends the fight at once — the
+    /// abandoned engine falls with them. Directly destroyed tools are handled by
+    /// the normal HP path; this only covers the "no one left to fire it" case.
+    fn crumble_orphan_tools(&mut self) {
+        if self.aware_enemies_alive() {
+            return;
+        }
+        for b in &mut self.battlers {
+            if b.side == Side::Enemy && b.alive() && b.tool.is_some() {
+                b.hp = 0;
+                b.flash = 0.4; // a beat of feedback as it falls apart
+            }
+        }
     }
 
     /// Living battlers matching a skill's target kind, from `actor`'s view.
@@ -931,6 +972,10 @@ impl Battle {
     /// Open a fresh round: clear defends, rebuild the speed-ordered turn list of
     /// every living battler, and hand control to whoever moves first.
     fn begin_round(&mut self, rng: &mut Rng, reg: &Registry) -> State {
+        // A tail-of-round status tick may have felled the last operator; crumble
+        // any now-abandoned tool before the win check so the round doesn't open on
+        // a lone, unworkable engine.
+        self.crumble_orphan_tools();
         // A tail-of-round status tick may have wiped a side, so check before
         // opening a new round.
         if let Some(win) = self.battle_over() {
@@ -943,9 +988,11 @@ impl Battle {
         // rolls an initiative of its effective speed plus a small jitter, so the
         // swift usually act first but the exact order shifts round to round and
         // near-equal units trade the lead. Rolls are done once per unit here (not
-        // inside the sort) so every entry keeps a single stable initiative.
+        // inside the sort) so every entry keeps a single stable initiative. Tools
+        // are inert — they never take a turn — so they sit out the order entirely
+        // (and don't skew the field's average speed).
         let living: Vec<usize> = (0..self.battlers.len())
-            .filter(|&i| self.battlers[i].alive())
+            .filter(|&i| self.battlers[i].alive() && self.battlers[i].tool.is_none())
             .collect();
         // "Relatively fast" is measured against the field's average speed: the
         // further a unit sits above it, the better its odds of a bonus turn.
@@ -989,6 +1036,9 @@ impl Battle {
     /// Resolve the state after one unit's action: end the fight if a side is
     /// wiped, otherwise pass the turn to the next unit.
     fn after_action(&mut self, rng: &mut Rng, reg: &Registry) -> State {
+        // If that action fell the last aware enemy, the tool it left behind has no
+        // one to work it — crumble it now so victory lands immediately.
+        self.crumble_orphan_tools();
         if let Some(win) = self.battle_over() {
             return State::Result { win, timer: 1.6 };
         }
@@ -1004,6 +1054,9 @@ impl Battle {
             self.turn_idx += 1;
             if !self.battlers[actor].alive() {
                 continue; // fell earlier this round — skip its turn
+            }
+            if self.battlers[actor].tool.is_some() {
+                continue; // a tool never acts on its own — the aware foes work it
             }
             return match self.battlers[actor].side {
                 Side::Hero => State::Command(Command {
@@ -1216,6 +1269,25 @@ impl Battle {
     }
 
     fn plan_enemy(&self, enemy: usize, rng: &mut Rng, reg: &Registry) -> Action {
+        // Operating a tool takes priority: an aware foe may spend its turn working
+        // a ballista (or the like) beside it, firing the tool's skill *from the
+        // tool* (it is the actor, so it animates and its stats drive the shot).
+        if let Some(tool) = self.available_tool() {
+            let tdef = self.battlers[tool].tool.clone().expect("available_tool");
+            if rng.chance(tdef.operate_chance) {
+                if let Some(def) = reg.skill(&tdef.skill) {
+                    let targets = self.pick_targets(tool, def.target, rng);
+                    if !targets.is_empty() {
+                        return Action {
+                            actor: tool,
+                            kind: ActionKind::Skill(def.id.clone()),
+                            targets,
+                        };
+                    }
+                }
+            }
+        }
+
         let b = &self.battlers[enemy];
         // Random AI may use a skill; Basic always attacks.
         let use_skill = matches!(b.ai, EnemyAi::Random) && !b.skills.is_empty();

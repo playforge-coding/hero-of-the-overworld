@@ -83,5 +83,6 @@ nav:
       - Club Goblin: entities/club_goblin.md
       - Archer Goblin: entities/archer_goblin.md
       - Orc Brute: entities/orc_brute.md
+      - Ballista: entities/ballista.md
   - Extending the Game: modding.md
   - Credits: credits.md

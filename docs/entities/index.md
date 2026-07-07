@@ -47,9 +47,10 @@ preserve the turn order.
 | [Demon](demon.md) | 68 | 30 | 18 | 9 | 16 | 10 | 16 XP · 12 gold | Greenwood (guardian), Traveller's End, Demon Fortress |
 | [Dark Knight](dark_knight.md) | 100 | 16 | 22 | 16 | 4 | 15 | 34 XP · 28 gold | Traveller's End |
 | [Dragon](dragon.md) | 340 | 80 | 26 | 17 | 24 | 11 | 150 XP · 120 gold | Demon Fortress (boss) |
-| [Club Goblin](club_goblin.md) | 42 | 0 | 16 | 7 | 0 | 13 | 14 XP · 10 gold | Charred Depths |
-| [Archer Goblin](archer_goblin.md) | 34 | 0 | 14 | 6 | 0 | 14 | 15 XP · 11 gold | Charred Depths |
-| [Orc Brute](orc_brute.md) | 96 | 0 | 25 | 13 | 0 | 8 | 30 XP · 24 gold | Charred Depths |
+| [Club Goblin](club_goblin.md) | 58 | 0 | 22 | 11 | 0 | 14 | 22 XP · 16 gold | Charred Depths |
+| [Archer Goblin](archer_goblin.md) | 46 | 0 | 20 | 9 | 0 | 16 | 24 XP · 18 gold | Charred Depths |
+| [Orc Brute](orc_brute.md) | 150 | 0 | 34 | 19 | 0 | 9 | 48 XP · 40 gold | Charred Depths |
+| [Ballista](ballista.md) | 160 | 0 | 24 | 18 | 0 | 3 | 30 XP · 22 gold | Traveller's End, Charred Depths |
 
 Each level fields its own foes: **slimes** swarm the Greenwood (with a lone demon
 guarding its end), **gargoyles** hold the Stone Pass, the long climb of **Traveller's
@@ -62,3 +63,9 @@ underworld's **Charred Depths**, the war's remade prisoners lie in wait: the
 are placed as roaming overworld sprites that chase you and start a battle on contact —
 see [The Overworld](../world.md#roaming-enemies). The dragon's fight plays a dedicated
 **boss theme** in place of the usual battle music.
+
+Not every foe is a creature: the **[ballista](ballista.md)** is a **[tool
+enemy](../battles.md#tool-enemies)** — an inert siege engine worked by the foes
+beside it, hammering the party with heavy **BOLT**s until you fell its crew (at
+which point it crumbles) or smash the engine itself. It holds the shelves of
+Traveller's End and the deep emplacements of the Charred Depths.

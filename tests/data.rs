@@ -115,6 +115,44 @@ fn all_references_resolve() {
     }
 }
 
+/// Tool enemies (ballistae and future siege engines) are well-formed: the skill
+/// they fire resolves, their operate chance is a valid probability, and every
+/// encounter that fields one also fields at least one *aware* (non-tool) foe to
+/// work it — a tool with no crew crumbles instantly, so a lone-tool encounter is
+/// a content bug. Guards the tool-enemy extensibility contract.
+#[test]
+fn tool_enemy_references_resolve() {
+    let reg = registry();
+
+    let is_tool = |eid: &str| reg.enemy(eid).is_some_and(|e| e.tool.is_some());
+
+    for e in &reg.data.enemies {
+        let Some(tool) = &e.tool else { continue };
+        assert!(
+            reg.skill(&tool.skill).is_some(),
+            "tool enemy {} fires unknown skill '{}'",
+            e.id,
+            tool.skill
+        );
+        assert!(
+            (0.0..=1.0).contains(&tool.operate_chance),
+            "tool enemy {} has an out-of-range operate_chance {}",
+            e.id,
+            tool.operate_chance
+        );
+    }
+
+    for enc in &reg.data.encounters {
+        if enc.enemies.iter().any(|eid| is_tool(eid)) {
+            assert!(
+                enc.enemies.iter().any(|eid| !is_tool(eid)),
+                "encounter {} fields a tool with no aware crew to work it",
+                enc.id
+            );
+        }
+    }
+}
+
 #[test]
 fn levels_are_valid_and_linked() {
     let reg = registry();

@@ -89,6 +89,7 @@ The bundled skills:
 | TRAMPLE | Physical | 8 | All enemies | A dark knight's warhorse tramples the party |
 | FLAME BREATH | Magical | 10 | All enemies | The [dragon's](entities/dragon.md) gout of fire — inflicts **BURN** |
 | TAIL SWIPE | Physical | 0 | One enemy | The dragon's crushing tail sweep |
+| BOLT | Physical | 0 | One enemy | The [ballista's](entities/ballista.md) heavy siege shot — fired by the foes working it |
 
 (POWER STRIKE / WHIRLWIND / SUNDER are Roland's; FIREBOLT / FROST / MEND are Elara's;
 QUICK SLASH / SWALLOW CUT / FINAL CUT are Gareth's; CLAW and FIREBALL belong to the
@@ -260,6 +261,29 @@ Each enemy has an AI setting:
   use this.
 - **Random** — mixes in its skills (the demon uses this, so it sometimes leads with
   CLAW or a burning FIREBALL).
+
+## Tool enemies
+
+Some foes aren't fighters at all but **tools** — inert battlefield engines like the
+**[ballista](entities/ballista.md)** — that only ever appear **alongside other
+enemies**. A tool:
+
+- **never takes its own turn.** Instead, the **aware** enemies fighting beside it
+  (any living, non-tool foe) can spend *their* turn to **work it**, loosing its
+  attack at your party. The ballista's **BOLT** hits hard and fires **from the
+  ballista itself**, so the engine's own stats drive the damage no matter who cranks
+  it.
+- **can be attacked directly** like any enemy — but it's built to weather fire, so
+  destroying it takes real commitment.
+- **crumbles the moment no aware enemy is left to work it.** Cut down its whole crew
+  and the abandoned engine falls apart on its own — you don't have to grind through
+  its HP if you'd rather kill the operators.
+
+So a ballista emplacement is a **priorities puzzle**: race to silence the crew, tank
+and [block](#action-timing-strikes-and-blocks) the bolts while you burn the engine
+down, or split the difference. A tool is pure data (a `tool` field on an
+[enemy](modding.md#add-an-enemy-and-an-encounter)), so new siege engines are a
+content edit — see **[Extending the Game](modding.md)**.
 
 ## Winning and losing
 

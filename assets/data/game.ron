@@ -461,6 +461,37 @@ GameData(
                 ItemDrop(item: "hi_potion",   chance: 0.12),
             ],
         ),
+        // ------ TOOL enemies: inert engines worked by the foes beside them ------
+        // BALLISTA: a siege engine wheeled into the passes of TRAVELLER'S END and
+        // the CHARRED DEPTHS. It never acts on its own; an aware foe spends a turn
+        // to crank and loose a heavy BOLT (fired from the ballista, so its own high
+        // attack drives the damage). Tanky enough to weather direct fire — but once
+        // the last enemy working it falls, it has no crew and crumbles on its own.
+        // Never leads an encounter (it has no overworld sprite); place it *after*
+        // its crew so the roaming map sprite stays that of a real foe.
+        // ballista.png is one row of 16x16 frames: attack cols 0-2 (the loose),
+        // then idle cols 3-6.
+        EnemyDef(
+            id: "ballista",
+            name: "BALLISTA",
+            stats: Stats(max_hp: 160, max_mp: 0, attack: 24, defense: 18, magic: 0, speed: 3),
+            sprite: BattlerSprite(
+                texture: "ballista",
+                frame_w: 16, frame_h: 16,
+                draw_w: 52.0, draw_h: 52.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 3, frames: 4, fps: 3.0),
+                attack: AnimClip(row: 0, first_col: 0, frames: 3, fps: 6.0),
+            ),
+            ai: Basic,
+            xp: 30,
+            gold: 22,
+            drops: [ItemDrop(item: "hi_potion", chance: 0.20)],
+            // The tool behaviour: aware foes strongly prefer to work the engine,
+            // loosing its BOLT on most of their turns while it stands (they only
+            // fall back to their own attacks now and then).
+            tool: Some(ToolDef(skill: "ballista_bolt", operate_chance: 0.8)),
+        ),
     ],
 
     skills: [
@@ -590,6 +621,15 @@ GameData(
             id: "brute_slam", name: "BRUTE SLAM",
             description: "A hulking orc's two-fisted slam crashes down on one foe.",
             mp_cost: 0, power: 170, kind: Physical, target: OneEnemy,
+        ),
+        // The BALLISTA's shot: a heavy bolt loosed from the siege engine when an
+        // aware foe works it. It hits hard, but a hero can still read the shot and
+        // time a block — the counterplay to a weapon you can also just destroy.
+        SkillDef(
+            id: "ballista_bolt", name: "BOLT",
+            description: "A heavy siege bolt loosed at one foe. It hits hard.",
+            mp_cost: 0, power: 200, kind: Physical, target: OneEnemy,
+            anim: Projectile(texture: "bolt"),   // looses a bolt at the target
         ),
     ],
 
@@ -787,6 +827,10 @@ GameData(
         EncounterDef(id: "knight_skeletons",  enemies: ["dark_knight", "skeleton", "skeleton"]),
         EncounterDef(id: "knight_demon",      enemies: ["dark_knight", "demon"]),
         EncounterDef(id: "knight_guard",      enemies: ["dark_knight", "dark_knight", "skeleton"]),
+        // A ballista dug in on the shelves, its crew loosing bolts down the pass.
+        // Fell the crew (or the engine) to stop the fire; abandoned, it crumbles.
+        EncounterDef(id: "ballista_nest",     enemies: ["dark_knight", "skeleton", "ballista"]),
+        EncounterDef(id: "ballista_crew",     enemies: ["skeleton", "skeleton", "ballista"]),
         // UNDERWORLD — the CHARRED DEPTHS. Goblin packs (clubbers screening their
         // archers) fill the upper halls; orc brutes anchor the deeper chambers,
         // and the demons that dragged the prisoners down still hold the depths.
@@ -802,6 +846,9 @@ GameData(
         EncounterDef(id: "demon_orcs",    enemies: ["demon", "orc_brute", "club_goblin"]),
         // The depths' last guard: a demon flanked by two remade orc thralls.
         EncounterDef(id: "demon_guard",   enemies: ["demon", "orc_brute", "orc_brute"]),
+        // A ballista emplacement in the deep halls, goblins and an orc working it.
+        EncounterDef(id: "ballista_battery", enemies: ["orc_brute", "archer_goblin", "ballista"]),
+        EncounterDef(id: "ballista_pit",     enemies: ["club_goblin", "archer_goblin", "ballista"]),
     ],
 
     // ------------------------------------------------------------------------
@@ -1263,7 +1310,7 @@ GameData(
                     north: Some(10), west: Some(8),
                     spawns: [
                         SpawnDef(col: 10, row: 5, encounter: "knight_duo"),
-                        SpawnDef(col: 7, row: 4, encounter: "demon_duo"),
+                        SpawnDef(col: 7, row: 4, encounter: "ballista_crew"),
                     ],
                 ),
                 // The storm-lashed saddle, held by knight and demon.
@@ -1305,7 +1352,7 @@ GameData(
                     west: Some(10),
                     spawns: [
                         SpawnDef(col: 10, row: 5, encounter: "knight_guard"),
-                        SpawnDef(col: 7, row: 4, encounter: "knight_solo"),
+                        SpawnDef(col: 7, row: 4, encounter: "ballista_nest"),
                         SpawnDef(col: 13, row: 6, encounter: "demon_duo"),
                     ],
                 ),
@@ -1593,7 +1640,7 @@ GameData(
                     east: Some(6), south: Some(4),
                     spawns: [
                         SpawnDef(col: 9,  row: 5, encounter: "orc_duo"),
-                        SpawnDef(col: 5,  row: 8, encounter: "orc_solo"),
+                        SpawnDef(col: 5,  row: 8, encounter: "ballista_battery"),
                     ],
                 ),
                 // The chasm walk: a narrow crossing where a demon prowls the pack.
@@ -1635,7 +1682,7 @@ GameData(
                     north: Some(8), west: Some(6),
                     spawns: [
                         SpawnDef(col: 9,  row: 5, encounter: "demon_orc"),
-                        SpawnDef(col: 5,  row: 8, encounter: "orc_duo"),
+                        SpawnDef(col: 5,  row: 8, encounter: "ballista_pit"),
                     ],
                 ),
                 // The deep warren: three orc brutes wall the passage east.

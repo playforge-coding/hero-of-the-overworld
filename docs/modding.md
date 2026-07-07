@@ -306,6 +306,36 @@ the encounter works the same:
 EncounterDef(id: "dragon_boss", enemies: ["dragon"], boss: true),
 ```
 
+### Make it a tool enemy
+
+Give an enemy a `tool` field and it becomes an inert **[tool
+enemy](battles.md#tool-enemies)** — a siege engine (like the
+[ballista](entities/ballista.md)) that never takes its own turn. Instead, the
+**aware** foes beside it (any living, non-tool enemy) can spend a turn to **work
+it**, firing its `skill` at the party *from the tool itself* — so the tool's own
+`stats` drive the shot. The moment no aware enemy is left to work it, the tool
+**crumbles** on its own; until then it can be attacked and destroyed directly, so
+tools are usually built tanky.
+
+```ron
+EnemyDef(
+    id: "ballista", name: "BALLISTA",
+    stats: Stats(max_hp: 160, max_mp: 0, attack: 24, defense: 18, magic: 0, speed: 3),
+    sprite: BattlerSprite( /* ... */ ),   // its own sheet; no `overworld` — tools don't roam
+    xp: 30, gold: 22,
+    tool: Some(ToolDef(
+        skill: "ballista_bolt",   // an id from the skills list — what it fires
+        operate_chance: 0.8,      // 0.0–1.0: how often an aware foe works it on its turn
+    )),
+),
+```
+
+The whole inert / operated / crumbles-when-abandoned behaviour comes for free — a
+new engine (a cannon, a catapult, …) is just another `EnemyDef` with a `tool` and
+its own fired skill, **no engine change**. Always place a tool in encounters
+**alongside real foes** (and never as the encounter's first enemy, since it has no
+overworld sprite) — a tool with no crew crumbles the instant the fight starts.
+
 ## Add a level
 
 A `LevelDef` is a marker on the world map plus a set of connected **screens**.

@@ -152,7 +152,9 @@ armor with stat bonuses, crit /
 accuracy / evasion, and descriptions — heroes and enemies equip them by id), **items**
 (consumables with a target and a composable effect — heal / damage / restore MP / inflict
 a status — used in battle, bought or dropped), **enemies** (stats, skills, AI, XP/gold
-rewards, and a chance-based item **drop** table), **encounters** (named groups of enemies),
+rewards, a chance-based item **drop** table, and an optional **tool** marker that turns a
+foe into an inert siege engine like the ballista — worked by the enemies beside it and
+crumbling once none remain), **encounters** (named groups of enemies),
 **levels** (a map marker plus a set of connected ASCII-tile screens with enemy spawns and
 shop entrances), **shops** (a keeper, a facing/exit wall, and priced wares — gear or items),
 and **cutscenes** (scripted dialogue lines and recruits).

@@ -416,6 +416,28 @@ pub enum EnemyAi {
     Random,
 }
 
+/// Turns an enemy into a **tool**: an inert battlefield engine (a ballista, a
+/// cannon, …) that never takes its own turn. Instead the *aware* enemies fighting
+/// alongside it can spend a turn to **operate** it, loosing its [`skill`](Self::skill)
+/// at the party — a heavy shot fired from the tool itself. The moment no aware
+/// enemy is left to work it, the tool crumbles on its own; until then it just sits
+/// there and can be destroyed directly (tools are typically tanky).
+///
+/// This is the extension point for tool enemies: a new siege engine is a pure data
+/// entry — give an [`EnemyDef`] a `tool` and it inherits the whole inert /
+/// operated / crumbles-when-abandoned behaviour, with its own sprite, HP, and
+/// fired skill. No engine change.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ToolDef {
+    /// Skill id (into [`GameData::skills`]) fired when an aware enemy operates the
+    /// tool. Damage is driven by the *tool's* own stats (it is the actor), so a
+    /// ballista fires with the same force whoever cranks it.
+    pub skill: String,
+    /// Probability, `0.0..=1.0`, that an aware enemy chooses to operate the tool on
+    /// its turn (instead of acting normally). Rolled per aware enemy per turn.
+    pub operate_chance: f32,
+}
+
 /// One chance-based item drop from an enemy. Rolled once per defeated enemy when
 /// a battle is won; a successful roll adds the item to the party's stash.
 #[derive(Clone, Debug, Deserialize)]
@@ -459,6 +481,11 @@ pub struct EnemyDef {
     /// drop nothing.
     #[serde(default)]
     pub drops: Vec<ItemDrop>,
+    /// Marks this enemy as a **tool** — an inert engine (a ballista, …) worked by
+    /// the *aware* foes beside it rather than acting on its own. See [`ToolDef`].
+    /// Absent for ordinary enemies.
+    #[serde(default)]
+    pub tool: Option<ToolDef>,
 }
 
 /// One line of a shop's stock: an equipment id and what it costs. Buying it in
@@ -790,6 +817,8 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "club_goblin" => include_bytes!("../assets/textures/entities/monsters/club_goblin.png"),
         "archer_goblin" => include_bytes!("../assets/textures/entities/monsters/archer_goblin.png"),
         "orc_brute" => include_bytes!("../assets/textures/entities/monsters/orc_brute.png"),
+        // The BALLISTA: a siege engine tool, worked by the foes fighting beside it.
+        "ballista" => include_bytes!("../assets/textures/entities/monsters/ballista.png"),
         "starter_sword" => include_bytes!("../assets/textures/items/starter_sword.png"),
         "starter_gear" => include_bytes!("../assets/textures/items/starter_gear.png"),
         // Generic pouch icon shared by consumable items until they get bespoke art.
@@ -798,6 +827,8 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "fireball" => include_bytes!("../assets/textures/entities/animation_helpers/fireball.png"),
         // The archer goblins' loosed arrow.
         "arrow" => include_bytes!("../assets/textures/entities/animation_helpers/arrow.png"),
+        // The ballista's loosed bolt.
+        "bolt" => include_bytes!("../assets/textures/entities/animation_helpers/bolt.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
         "water" => include_bytes!("../assets/textures/tiles/water.png"),
         "tree" => include_bytes!("../assets/textures/tiles/tree.png"),
