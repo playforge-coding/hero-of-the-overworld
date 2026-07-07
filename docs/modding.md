@@ -387,3 +387,25 @@ editing:
 ```sh
 cargo test --test data
 ```
+
+## Developer skipping (debug builds only)
+
+Testing content deep in the game — a late level, the underworld, a level-clear
+cutscene — is tedious if you must clear everything before it first. In a **debug
+build** (`cargo run`, i.e. *not* `--release`), the hidden <kbd>Tab</kbd> hotkey lets
+a developer skip ahead:
+
+- **On the world map** — highlight a level marker and press <kbd>Tab</kbd> to mark it
+  **cleared**, which unlocks the next one. Tab your way forward to open any level (all
+  the way to the underworld's Charred Depths), then enter it as usual.
+- **In a battle** — press <kbd>Tab</kbd> to **win instantly**. The fight resolves as a
+  real victory: the encounter's full XP, gold, and rolled item drops are awarded, the
+  roaming enemy clears from the map, and if it was the last foe the level's clear
+  cutscene still fires. So you can walk a level, tapping <kbd>Tab</kbd> through each
+  encounter, to clear it (and trigger things like the Demon Fortress → underworld
+  portal cutscene) without actually fighting.
+
+This is gated behind `#[cfg(debug_assertions)]`, so it is **compiled out of
+`--release` builds entirely** — a shipped game keeps the normal linear progression
+and players cannot skip levels or fights. Both screens show a small *"DEV: TAB …"*
+hint in debug builds as a reminder.

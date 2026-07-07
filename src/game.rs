@@ -421,6 +421,19 @@ impl Game {
                 self.move_map_cursor(dir);
             }
         }
+        // DEV-ONLY level skipping: mark the highlighted level cleared so the next
+        // one unlocks, letting a developer jump ahead (all the way to the
+        // underworld) without playing through. The entire block is compiled out of
+        // release builds via `debug_assertions`, so a shipped game keeps the normal
+        // linear gate and players cannot skip progression. See [`input::dev_skip_pressed`].
+        #[cfg(debug_assertions)]
+        if crate::input::dev_skip_pressed() {
+            if let Some(done) = self.cleared.get_mut(self.map_cursor) {
+                *done = true;
+            }
+            self.save();
+            return Scene::Map;
+        }
         if input.pressed(Button::Confirm) && self.unlocked(self.map_cursor) {
             self.current_level = self.map_cursor;
             // Restore this level's saved progress (beaten demons) if any.
@@ -725,6 +738,15 @@ impl Game {
             3.0,
             1.0,
             color::rgb(150, 210, 160),
+        );
+        // DEV-ONLY hint for the hidden level-skip hotkey (compiled out of release).
+        #[cfg(debug_assertions)]
+        r.draw_text_centered(
+            "DEV: TAB SKIPS LEVEL",
+            virtual_w() / 2.0,
+            3.0,
+            1.0,
+            color::rgb(120, 130, 150),
         );
 
         let levels = &self.reg.data.levels;

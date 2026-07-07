@@ -122,6 +122,18 @@ impl Input {
     }
 }
 
+/// **DEV-ONLY** hidden hotkey (Tab) used by the world map to skip levels, so a
+/// developer can advance through the game without grinding. Reads the raw key
+/// directly — deliberately *outside* the normal logical [`Button`] mapping so it
+/// can't be bound to a pad or triggered by ordinary play.
+///
+/// The whole function is compiled out of `--release` builds (`debug_assertions`
+/// is off there), so the skip simply does not exist in a shipped game.
+#[cfg(debug_assertions)]
+pub fn dev_skip_pressed() -> bool {
+    is_key_pressed(KeyCode::Tab)
+}
+
 /// Read the current keyboard state into a logical [`Input`], using macroquad's
 /// own press-edge latching for `pressed`.
 fn read_keyboard() -> Input {

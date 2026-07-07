@@ -825,6 +825,18 @@ impl Battle {
         reg: &Registry,
         dt: f32,
     ) -> Option<BattleOutcome> {
+        // DEV-ONLY: instantly win the fight, awarding the encounter's full spoils
+        // (XP, gold, and rolled drops) exactly as a real victory would — so the map
+        // enemy clears, rewards land, and any level-clear cutscene still fires. Lets
+        // a developer blow past encounters while testing. Compiled out of release
+        // builds via `debug_assertions`, so players cannot skip fights. Shares the
+        // hidden `Tab` hotkey with the world map's level skip.
+        #[cfg(debug_assertions)]
+        if crate::input::dev_skip_pressed() {
+            let (xp, gold, drops) = self.spoils(rng);
+            return Some(BattleOutcome::Victory { xp, gold, drops });
+        }
+
         // Advance per-battler visual timers.
         for b in &mut self.battlers {
             b.idle.update(dt);
@@ -2093,6 +2105,10 @@ impl Battle {
                 );
             }
         }
+
+        // DEV-ONLY hint for the hidden instant-win hotkey (compiled out of release).
+        #[cfg(debug_assertions)]
+        r.draw_text("DEV: TAB WINS", 4.0, 4.0, 1.0, color::rgb(120, 130, 150));
     }
 
     fn draw_battler(&self, r: &mut Renderer, i: usize) {
