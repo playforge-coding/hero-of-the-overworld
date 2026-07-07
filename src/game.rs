@@ -312,6 +312,35 @@ impl Game {
         }
     }
 
+    /// **DEV-ONLY.** The XP the party would earn by clearing every enemy in level
+    /// `i` — the sum of each spawn's encounter, each enemy's XP **scaled to the
+    /// party's current level** exactly as real battle spoils are (see
+    /// [`crate::data::enemy_scale`]). The map's dev level-skip grants this so a
+    /// skipped level still advances the party roughly as far as actually playing
+    /// it would, keeping later-level testing realistic. (A single-scale snapshot,
+    /// so it doesn't model levelling *mid-clear* — close enough for a dev tool.)
+    #[cfg(debug_assertions)]
+    fn level_clear_xp(&self, i: usize) -> i32 {
+        let Some(level) = self.reg.data.levels.get(i) else {
+            return 0;
+        };
+        let scale = crate::data::enemy_scale(self.party.level());
+        let mut xp = 0;
+        for screen in &level.screens {
+            for spawn in &screen.spawns {
+                let Some(enc) = self.reg.encounter(&spawn.encounter) else {
+                    continue;
+                };
+                for eid in &enc.enemies {
+                    if let Some(e) = self.reg.enemy(eid) {
+                        xp += e.xp * scale / 100;
+                    }
+                }
+            }
+        }
+        xp
+    }
+
     /// Build a cutscene by id if it exists and hasn't played yet (marking it
     /// played). Returns `None` for unknown or already-seen cutscenes.
     fn build_cutscene(&mut self, id: &str, renderer: &mut Renderer) -> Option<Cutscene> {
@@ -454,13 +483,24 @@ impl Game {
         }
         // DEV-ONLY level skipping: mark the highlighted level cleared so the next
         // one unlocks, letting a developer jump ahead (all the way to the
-        // underworld) without playing through. The entire block is compiled out of
-        // release builds via `debug_assertions`, so a shipped game keeps the normal
-        // linear gate and players cannot skip progression. See [`input::dev_skip_pressed`].
+        // underworld) without playing through. To keep the skipped-ahead party
+        // realistic for testing, also grant the XP that clearing the level's
+        // enemies would have earned (scaled to the party's level, like real
+        // spoils) — so a developer arrives at the next region roughly the level
+        // they'd actually be. Only awarded the first time the level flips to
+        // cleared, so mashing Tab doesn't stack XP. The entire block is compiled
+        // out of release builds via `debug_assertions`, so a shipped game keeps
+        // the normal linear gate and players cannot skip progression. See
+        // [`input::dev_skip_pressed`].
         #[cfg(debug_assertions)]
         if crate::input::dev_skip_pressed() {
+            let newly_cleared = !self.cleared.get(self.map_cursor).copied().unwrap_or(true);
             if let Some(done) = self.cleared.get_mut(self.map_cursor) {
                 *done = true;
+            }
+            if newly_cleared {
+                let xp = self.level_clear_xp(self.map_cursor);
+                self.party.grant_xp(&self.reg, xp);
             }
             self.save();
             return Scene::Map;
@@ -782,10 +822,11 @@ impl Game {
             color::rgb(150, 210, 160),
         );
         // DEV-ONLY hint for the hidden level-skip / reset hotkeys (compiled out of
-        // release). TAB marks the highlighted level cleared; R resets it to replay.
+        // release). TAB marks the highlighted level cleared and grants its clear
+        // XP; R resets it to replay.
         #[cfg(debug_assertions)]
         r.draw_text_centered(
-            "DEV: TAB SKIPS · R RESETS LEVEL",
+            "DEV: TAB SKIPS (+XP) · R RESETS LEVEL",
             virtual_w() / 2.0,
             3.0,
             1.0,
