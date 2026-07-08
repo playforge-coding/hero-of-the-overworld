@@ -51,6 +51,13 @@ preserve the turn order.
 | [Archer Goblin](archer_goblin.md) | 46 | 0 | 20 | 9 | 0 | 16 | 24 XP · 18 gold | Charred Depths |
 | [Orc Brute](orc_brute.md) | 150 | 0 | 34 | 19 | 0 | 9 | 48 XP · 40 gold | Charred Depths |
 | [Ballista](ballista.md) | 160 | 0 | 24 | 18 | 0 | 3 | 30 XP · 22 gold | Traveller's End, Charred Depths |
+| [Demon Elite](demon_elite.md) | 140 | 34 | 30 | 14 | 18 | 11 | 40 XP · 34 gold | Unplaced (dev fight menu) |
+| [Minotaur](minotaur.md) | 240 | 50 | 30 | 18 | 20 | 10 | 90 XP · 70 gold | Unplaced (dev fight menu, boss theme) |
+
+The last two — the **[demon elite](demon_elite.md)** and the **[minotaur](minotaur.md)**
+miniboss — are **defined but not yet placed** in any level. They're playable now
+through the **[developer fight menu](../modding.md#the-developer-menu-f1)**, waiting
+to be dropped into a future region.
 
 Each level fields its own foes: **slimes** swarm the Greenwood (with a lone demon
 guarding its end), **gargoyles** hold the Stone Pass, the long climb of **Traveller's

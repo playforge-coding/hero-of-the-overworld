@@ -289,6 +289,11 @@ const CHARGE_END: f32 = 1.1;
 /// The default lunge's end-of-action time (unchanged classic timing).
 const LUNGE_END: f32 = 0.9;
 
+/// How often a [`Random`](EnemyAi::Random) enemy reaches for one of its skills on
+/// its turn (rolled fresh each turn); the rest of the time it throws a plain
+/// attack. High enough that a skilled foe leads with its moves, not its fists.
+const ENEMY_SKILL_CHANCE: f32 = 0.6;
+
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum TimingKind {
     /// A hero's own strike: a well-timed tap *adds* damage (+50% / +100%).
@@ -1291,13 +1296,13 @@ impl Battle {
         let b = &self.battlers[enemy];
         // Random AI may use a skill; Basic always attacks.
         let use_skill = matches!(b.ai, EnemyAi::Random) && !b.skills.is_empty();
-        // Deterministic-ish selection without borrowing the rng here: cast on even
-        // HP, and rotate which known skill by HP so multi-skill foes (e.g. a demon
-        // with FIREBALL and CLAW) mix it up. Falls through to the first affordable
-        // one with a valid target.
-        if use_skill && (b.hp % 2 == 0) {
+        // Roll each turn whether to cast, then start at a random known skill and
+        // take the first affordable one with a live target — so a multi-skill foe
+        // (a demon with FIREBALL/CLAW, the minotaur's three moves) genuinely mixes
+        // them up instead of leaning on any one.
+        if use_skill && rng.chance(ENEMY_SKILL_CHANCE) {
             let n = b.skills.len();
-            let start = (b.hp as usize / 2) % n;
+            let start = rng.index(n).unwrap_or(0);
             for k in 0..n {
                 let Some(def) = reg.skill(&b.skills[(start + k) % n]) else {
                     continue;

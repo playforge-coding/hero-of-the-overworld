@@ -84,5 +84,7 @@ nav:
       - Archer Goblin: entities/archer_goblin.md
       - Orc Brute: entities/orc_brute.md
       - Ballista: entities/ballista.md
+      - Demon Elite: entities/demon_elite.md
+      - Minotaur: entities/minotaur.md
   - Extending the Game: modding.md
   - Credits: credits.md

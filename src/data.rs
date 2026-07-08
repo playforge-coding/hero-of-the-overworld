@@ -802,6 +802,11 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         // bottom rows (6x8: walk rows 0-3, attack rows 4-7).
         "hermit" => include_bytes!("../assets/textures/entities/playables/hermit.png"),
         "demon" => include_bytes!("../assets/textures/entities/monsters/demon.png"),
+        // The DEMON ELITE: the demon's sheet re-drawn in armor, same 6x8 layout.
+        "demon_elite" => include_bytes!("../assets/textures/entities/monsters/demon_elite.png"),
+        // The MINOTAUR miniboss. Demon-style sheet with the walk-LEFT row dropped,
+        // so it's 6x7 (rows 0-2 walk down/up/right, rows 3-6 attack).
+        "minotaur" => include_bytes!("../assets/textures/entities/monsters/minotaur.png"),
         "shopkeeper" => include_bytes!("../assets/textures/entities/npcs/shopkeeper.png"),
         "slime" => include_bytes!("../assets/textures/entities/monsters/slime.png"),
         "gargoyle" => include_bytes!("../assets/textures/entities/monsters/gargoyle.png"),

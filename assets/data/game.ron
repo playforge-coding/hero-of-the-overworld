@@ -461,6 +461,79 @@ GameData(
                 ItemDrop(item: "hi_potion",   chance: 0.12),
             ],
         ),
+        // ------ Future foes: defined and reachable via the dev fight menu, but
+        // not yet placed in any level's spawns. ------
+        // The DEMON ELITE: a demon in war-plate — orc-like brawn bolted onto the
+        // demon's fire. Same abilities as a demon (FIREBALL + CLAW) but far tougher
+        // and harder-hitting. demon_elite.png is the demon's own 6x8 sheet redrawn
+        // in armor, so the frame layout is copied from the demon verbatim.
+        EnemyDef(
+            id: "demon_elite",
+            name: "DEMON ELITE",
+            stats: Stats(max_hp: 140, max_mp: 34, attack: 30, defense: 14, magic: 18, speed: 11),
+            sprite: BattlerSprite(
+                texture: "demon_elite",
+                frame_w: 16, frame_h: 16,
+                draw_w: 58.0, draw_h: 58.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 4.0),
+                attack: AnimClip(row: 4, first_col: 0, frames: 4, fps: 10.0),
+            ),
+            overworld: Some(OverworldWalk(
+                texture: "demon_elite",
+                frame_w: 16, frame_h: 16,
+                draw_w: 22.0, draw_h: 22.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+                frames: 5, fps: 8.0,
+            )),
+            skills: ["fireball", "claw"],
+            ai: Random,
+            xp: 40,
+            gold: 34,
+            drops: [
+                ItemDrop(item: "might_tonic", chance: 0.18),
+                ItemDrop(item: "hi_potion",   chance: 0.12),
+            ],
+        ),
+        // The MINOTAUR: a lumbering miniboss that lowers its horns to GORING CHARGE
+        // a lone hero (a screen-wrapping charge), TRAMPLES the whole party, and
+        // hurls a FIREBALL. Fought in a `boss`-flagged encounter so it plays the
+        // boss theme. minotaur.png is the demon's sheet with the walk-LEFT row
+        // removed, so it's 6x7: rows 0-2 walk down/up/right, rows 3-6 the attack
+        // poses (all shifted up one from the demon's 4-7). With no left-walk row,
+        // the overworld map reuses the right-walk row for leftward movement.
+        EnemyDef(
+            id: "minotaur",
+            name: "MINOTAUR",
+            stats: Stats(max_hp: 240, max_mp: 50, attack: 30, defense: 18, magic: 20, speed: 10),
+            sprite: BattlerSprite(
+                texture: "minotaur",
+                frame_w: 16, frame_h: 16,
+                draw_w: 72.0, draw_h: 72.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 3.0),
+                attack: AnimClip(row: 3, first_col: 0, frames: 4, fps: 9.0),
+            ),
+            overworld: Some(OverworldWalk(
+                texture: "minotaur",
+                frame_w: 16, frame_h: 16,
+                // No walk-LEFT row on this sheet, so left reuses the right-walk row.
+                // The walk rows are 4 frames (not the demon's 5).
+                draw_w: 26.0, draw_h: 26.0,
+                row_down: 0, row_up: 1, row_right: 2, row_left: 2,
+                frames: 4, fps: 6.0,
+            )),
+            skills: ["goring_charge", "trample", "fireball"],
+            ai: Random,
+            xp: 90,
+            gold: 70,
+            // Hulking and ponderous — far slower than the player on the map.
+            overworld_speed: Some(24.0),
+            drops: [
+                ItemDrop(item: "might_tonic", chance: 0.25),
+                ItemDrop(item: "hi_potion",   chance: 0.20),
+            ],
+        ),
         // ------ TOOL enemies: inert engines worked by the foes beside them ------
         // BALLISTA: a siege engine wheeled into the passes of TRAVELLER'S END and
         // the CHARRED DEPTHS. It never acts on its own; an aware foe spends a turn
@@ -579,6 +652,16 @@ GameData(
             description: "The warhorse tramples the whole party underhoof.",
             mp_cost: 8, power: 90, kind: Physical, target: AllEnemies,
             anim: Charge,   // sweeps across the whole party
+        ),
+        // The MINOTAUR's signature: horns down, it barrels through one hero and
+        // off the far edge, wrapping the field back to its post. Piercing, so it
+        // can't be timed-blocked.
+        SkillDef(
+            id: "goring_charge", name: "GORING CHARGE",
+            description: "The minotaur gores a hero, charging clean through.",
+            mp_cost: 6, power: 150, kind: Physical, target: OneEnemy,
+            unblockable: true,
+            anim: Charge,
         ),
         // GARETH's blade-work. Fast and cheap, to match the nimblest hero: a
         // spammable single strike and a darting sweep across a whole pack.
@@ -849,6 +932,10 @@ GameData(
         // A ballista emplacement in the deep halls, goblins and an orc working it.
         EncounterDef(id: "ballista_battery", enemies: ["orc_brute", "archer_goblin", "ballista"]),
         EncounterDef(id: "ballista_pit",     enemies: ["club_goblin", "archer_goblin", "ballista"]),
+        // Future foes, not yet placed in a level — reachable now via the dev fight
+        // menu. The MINOTAUR is `boss`-flagged so it plays the boss theme.
+        EncounterDef(id: "demon_elite_solo", enemies: ["demon_elite"]),
+        EncounterDef(id: "minotaur_boss",    enemies: ["minotaur"], boss: true),
     ],
 
     // ------------------------------------------------------------------------
