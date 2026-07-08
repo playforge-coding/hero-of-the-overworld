@@ -86,6 +86,7 @@ nav:
       - Orc Brute: entities/orc_brute.md
       - Ballista: entities/ballista.md
       - Demon Elite: entities/demon_elite.md
+      - Demon King: entities/demon_king.md
       - Minotaur: entities/minotaur.md
       - The Clones: entities/clones.md
   - Extending the Game: modding.md

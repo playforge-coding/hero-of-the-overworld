@@ -1,0 +1,16 @@
+// Plays on first entry to the DEMON FACILITY (its `intro_cutscene`). The party
+// crosses from the raw underworld into something built — a forge for the demons'
+// elites — and senses the vast thing waiting at its end.
+CutsceneDef(
+    id: "demonfacility_intro",
+    steps: [
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "PAST THE CHARRED DEPTHS - AND THE STONE TURNS TO IRON. THIS PLACE WAS BUILT, NOT BURROWED."),
+        Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+            text: "THE FACILITY. WHERE THE HORDE FORGES ITS ELITES. THE DEMONS HERE ARE NO RABBLE - EVERY ONE IS WAR-PLATED."),
+        Say(speaker: Some("ELARA"), portrait: Some("mage"),
+            text: "AND SOMETHING VAST STIRS AT THE END OF IT. OLDER THAN THE WAR. IT HAS BEEN WATCHING US COME."),
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "THEN WE CUT TO THE HEART OF IT. WHATEVER SITS ON THAT THRONE - WE FACE IT TOGETHER."),
+    ],
+)

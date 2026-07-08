@@ -18,5 +18,5 @@ Meta(
     starting_party: ["swordsman"],
     // Levels in progression order (each unlocks the next). Index-sensitive:
     // screen neighbour links and auto-advance step through this order.
-    levels: ["greenwood", "stonepass", "travellersend", "demonfortress", "charreddepths"],
+    levels: ["greenwood", "stonepass", "travellersend", "demonfortress", "charreddepths", "demonfacility"],
 )

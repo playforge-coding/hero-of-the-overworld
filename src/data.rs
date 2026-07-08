@@ -527,6 +527,12 @@ pub struct EnemyDef {
     /// that hero's shape as it strikes. See [`MimicryDef`]. Absent for ordinary foes.
     #[serde(default)]
     pub mimicry: Option<MimicryDef>,
+    /// Marks this enemy as **invincible**: incoming damage can never drop its HP
+    /// below 1, so it simply cannot be killed. Used for a scripted, unwinnable
+    /// boss (the DEMON KING) whose fight is a story beat, not a contest — the
+    /// party is meant to fall. Absent (false) for every ordinary foe.
+    #[serde(default)]
+    pub invincible: bool,
 }
 
 /// One line of a shop's stock: an equipment id and what it costs. Buying it in
@@ -591,6 +597,19 @@ pub struct EncounterDef {
     /// track. Defaults to false for ordinary encounters.
     #[serde(default)]
     pub boss: bool,
+    /// A cutscene played when the **party is defeated** in this encounter, in
+    /// place of the usual revive-at-camp. Lets a scripted, unwinnable loss (the
+    /// DEMON KING) turn a party wipe into a story beat. Absent for ordinary foes,
+    /// where a wipe just revives the party where they fell.
+    #[serde(default)]
+    pub defeat_cutscene: Option<String>,
+    /// When the party is defeated here, advance the story to the next **chapter**:
+    /// the party is flung back to the surface, the regions they had unlocked fall
+    /// out of reach (they land far away), and the world map moves on. Pairs with
+    /// [`defeat_cutscene`](Self::defeat_cutscene) to script the transition. Absent
+    /// (false) for ordinary encounters. See [`crate::data::LevelDef::chapter`].
+    #[serde(default)]
+    pub defeat_advances_chapter: bool,
 }
 
 /// One roaming enemy placed on the overworld map. When it touches the player it
@@ -677,11 +696,25 @@ pub struct ScreenDef {
     pub west: Option<usize>,
 }
 
+/// Default story chapter for a level: chapter 1, the opening arc. Levels omit the
+/// `chapter` field until a later chapter's regions are authored.
+fn default_chapter() -> u32 {
+    1
+}
+
 /// A level: a marker on the world map screen plus a set of connected screens.
 #[derive(Clone, Debug, Deserialize)]
 pub struct LevelDef {
     pub id: String,
     pub name: String,
+    /// Which story **chapter** this level belongs to. The world map only offers
+    /// the current chapter's regions; clearing the last boss of a chapter (or, for
+    /// the DEMON KING, *losing* to it) advances the party into the next one, at
+    /// which point the previous chapter's levels drop out of reach. Defaults to
+    /// `1`; a level omits it until later chapters exist. See
+    /// [`EncounterDef::defeat_advances_chapter`].
+    #[serde(default = "default_chapter")]
+    pub chapter: u32,
     /// Grid position of this level's marker on the map-select screen.
     pub node: (u32, u32),
     /// Index (into `screens`) of the screen the player enters on.
@@ -992,6 +1025,9 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "demon" => include_bytes!("../assets/textures/entities/monsters/demon.png"),
         // The DEMON ELITE: the demon's sheet re-drawn in armor, same 6x8 layout.
         "demon_elite" => include_bytes!("../assets/textures/entities/monsters/demon_elite.png"),
+        // The DEMON KING: the throne-room boss of the DEMON FACILITY, drawn on the
+        // demon family's 6x8 layout (idle row 0, attack row 4, walk rows 0-3).
+        "demon_king" => include_bytes!("../assets/textures/entities/monsters/demon_king.png"),
         // The MINOTAUR miniboss. Demon-style sheet with the walk-LEFT row dropped,
         // so it's 6x7 (rows 0-2 walk down/up/right, rows 3-6 attack).
         "minotaur" => include_bytes!("../assets/textures/entities/monsters/minotaur.png"),

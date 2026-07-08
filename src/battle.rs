@@ -147,6 +147,9 @@ struct Battler {
     /// `(sprite, texture)` so it can revert when the copied strike ends. `None`
     /// means it is wearing its true form (see [`Battle::wear_disguise`]).
     true_form: Option<(BattlerSprite, TextureHandle)>,
+    /// If set, damage can never drop this battler below 1 HP — it cannot be killed
+    /// (the scripted DEMON KING). See [`crate::data::EnemyDef::invincible`].
+    invincible: bool,
     home: Vec2,
     offset: Vec2,
     flash: f32,
@@ -156,6 +159,16 @@ struct Battler {
 impl Battler {
     fn alive(&self) -> bool {
         self.hp > 0
+    }
+
+    /// The lowest HP damage may bring this battler to: `1` for an **invincible**
+    /// battler (it can never be killed), `0` for everyone else.
+    fn hp_floor(&self) -> i32 {
+        if self.invincible {
+            1
+        } else {
+            0
+        }
     }
 
     fn present(&self) -> bool {
@@ -664,6 +677,7 @@ impl Battle {
                 tool: None,
                 mimicry: None,
                 true_form: None,
+                invincible: false,
                 home,
                 offset: Vec2::ZERO,
                 flash: 0.0,
@@ -720,6 +734,7 @@ impl Battle {
                 tool: def.tool.clone(),
                 mimicry: def.mimicry.clone(),
                 true_form: None,
+                invincible: def.invincible,
                 home,
                 offset: Vec2::ZERO,
                 flash: 0.0,
@@ -1853,7 +1868,7 @@ impl Battle {
                     // apply any status riders (buffs on allies, debuffs on foes).
                     if effect.damage > 0 && self.battlers[tgt].alive() {
                         let b = &mut self.battlers[tgt];
-                        b.hp = (b.hp - effect.damage).max(0);
+                        b.hp = (b.hp - effect.damage).max(b.hp_floor());
                         b.flash = 0.3;
                         Self::push_number(
                             popups,
@@ -2152,7 +2167,7 @@ impl Battle {
         }
 
         let b = &mut self.battlers[target];
-        b.hp = (b.hp - dmg).max(0);
+        b.hp = (b.hp - dmg).max(b.hp_floor());
         b.flash = if is_crit { 0.45 } else { 0.3 };
         let (text, color) = if blocked && dmg == 0 {
             ("BLOCK".to_string(), color::rgb(140, 200, 255))
@@ -2252,7 +2267,7 @@ impl Battle {
             let b = &mut self.battlers[i];
             b.flash = 0.3;
             let (text, popup_color) = if delta > 0 {
-                b.hp = (b.hp - delta).max(0);
+                b.hp = (b.hp - delta).max(b.hp_floor());
                 (format!("{delta}"), color)
             } else {
                 let before = b.hp;

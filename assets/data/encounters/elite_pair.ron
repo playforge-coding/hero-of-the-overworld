@@ -1,0 +1,2 @@
+// A brace of DEMON ELITES — the DEMON FACILITY's rank and file, met two abreast.
+EncounterDef(id: "elite_pair", enemies: ["demon_elite", "demon_elite"])

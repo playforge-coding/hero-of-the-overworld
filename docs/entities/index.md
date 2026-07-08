@@ -44,7 +44,7 @@ preserve the turn order.
 | [Mountain Crab](mountain_crab.md) | 30 | 0 | 11 | 13 | 0 | 5 | 6 XP · 5 gold | Traveller's End |
 | [Skeleton](skeleton.md) | 46 | 8 | 17 | 7 | 2 | 12 | 15 XP · 11 gold | Traveller's End |
 | [Gargoyle](gargoyle.md) | 64 | 0 | 20 | 14 | 0 | 3 | 18 XP · 14 gold | Stone Pass, Traveller's End |
-| [Demon](demon.md) | 68 | 30 | 18 | 9 | 16 | 10 | 16 XP · 12 gold | Greenwood (guardian), Traveller's End, Demon Fortress |
+| [Demon](demon.md) | 68 | 30 | 18 | 9 | 16 | 10 | 16 XP · 12 gold | Greenwood (guardian), Traveller's End, Demon Fortress, Demon Facility |
 | [Dark Knight](dark_knight.md) | 100 | 16 | 22 | 16 | 4 | 15 | 34 XP · 28 gold | Traveller's End |
 | [Dragon](dragon.md) | 340 | 80 | 26 | 17 | 24 | 11 | 150 XP · 120 gold | Demon Fortress (boss) |
 | [Club Goblin](club_goblin.md) | 58 | 0 | 22 | 11 | 0 | 14 | 22 XP · 16 gold | Charred Depths |
@@ -52,17 +52,18 @@ preserve the turn order.
 | [Orc Brute](orc_brute.md) | 150 | 0 | 34 | 19 | 0 | 9 | 48 XP · 40 gold | Charred Depths |
 | [Ballista](ballista.md) | 160 | 0 | 24 | 18 | 0 | 3 | 30 XP · 22 gold | Traveller's End, Charred Depths |
 | [Mimic](mimic.md) | 132 | 40 | 26 | 14 | 24 | 14 | 55 XP · 80 gold | Traveller's End, Demon Fortress, Charred Depths (disguised as chests) |
-| [Demon Elite](demon_elite.md) | 140 | 34 | 30 | 14 | 18 | 11 | 40 XP · 34 gold | Unplaced (dev fight menu) |
+| [Demon Elite](demon_elite.md) | 140 | 34 | 30 | 14 | 18 | 11 | 40 XP · 34 gold | Demon Facility (its rank-and-file patrols) |
+| [Demon King](demon_king.md) | ∞ | 0 | 45 | 30 | 60 | 40 | — (never defeated) | Demon Facility (unwinnable throne-room boss) |
 | [Minotaur](minotaur.md) | 240 | 50 | 30 | 18 | 20 | 10 | 90 XP · 70 gold | Unplaced (dev fight menu, boss theme) |
 | [Dark Roland](clones.md#dark-roland) | 120 | 24 | 22 | 14 | 10 | 12 | 70 XP · 55 gold | Unplaced (mirror-match boss) |
 | [Dark Elara](clones.md#dark-elara) | 78 | 60 | 10 | 9 | 26 | 13 | 68 XP · 55 gold | Unplaced (mirror-match boss) |
 | [Dark Gareth](clones.md#dark-gareth) | 94 | 30 | 20 | 11 | 8 | 21 | 68 XP · 55 gold | Unplaced (mirror-match boss) |
 
-The **[demon elite](demon_elite.md)** and the **[minotaur](minotaur.md)** miniboss are
-**defined but not yet placed** in any level. Nor are the three **[clones](clones.md)** —
-dark stat-mirrors of the party that meet you only in the **mirror-match** boss. All of
-these are playable now through the **[developer fight menu](../modding.md#the-developer-menu-f1)**,
-waiting to be dropped into a future region.
+The **[minotaur](minotaur.md)** miniboss is **defined but not yet placed** in any
+level, and neither are the three **[clones](clones.md)** — dark stat-mirrors of the
+party that meet you only in the **mirror-match** boss. Both are playable now through
+the **[developer fight menu](../modding.md#the-developer-menu-f1)**, waiting to be
+dropped into a future region.
 
 Each level fields its own foes: **slimes** swarm the Greenwood (with a lone demon
 guarding its end), **gargoyles** hold the Stone Pass, the long climb of **Traveller's
@@ -71,13 +72,17 @@ at you (with stray demons up from below), and **demon** packs fill the Demon For
 — where a lone **[dragon](dragon.md)** boss waits in the depths. Beyond it, in the
 underworld's **Charred Depths**, the war's remade prisoners lie in wait: the
 **[goblin](club_goblin.md) family** ([clubbers](club_goblin.md) and
-[archers](archer_goblin.md)) and the hulking **[orc brutes](orc_brute.md)**. Enemies
-are placed as roaming overworld sprites that chase you and start a battle on contact —
-see [The Overworld](../world.md#roaming-enemies). The dragon's fight plays a dedicated
-**boss theme** in place of the usual battle music.
+[archers](archer_goblin.md)) and the hulking **[orc brutes](orc_brute.md)**. Past
+even that, in the iron halls of the **[Demon Facility](../world.md#progression-is-linear)**,
+war-plated **[demon elites](demon_elite.md)** muster two and three abreast, all the
+way down to the throne of the **[Demon King](demon_king.md)** — an unwinnable boss
+whose fight ends Chapter 1. Enemies are placed as roaming overworld sprites that chase
+you and start a battle on contact — see [The Overworld](../world.md#roaming-enemies).
+The dragon's and the Demon King's fights each play a dedicated **boss theme** in place
+of the usual battle music.
 
-The **deep** regions — Traveller's End, the Demon Fortress, and the Charred Depths —
-hide **[mimics](mimic.md)**: powerful ambush predators disguised as
+The **deep** regions — Traveller's End, the Demon Fortress, the Charred Depths, and
+the Demon Facility — hide **[mimics](mimic.md)**: powerful ambush predators disguised as
 [treasure chests](../world.md#chests-and-mimics). A dormant mimic is drawn from the
 very same sprite as a real chest, so you can't tell them apart at a glance; it lies
 still until you stray close, then reveals its teeth and gives chase. In battle it

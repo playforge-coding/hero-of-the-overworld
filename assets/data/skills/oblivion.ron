@@ -1,0 +1,10 @@
+// OBLIVION — the DEMON KING's world-ending sweep. A single gesture that engulfs
+// the whole party at once, hitting so hard it drops any hero in one blow. Costs
+// nothing (the king never tires) and cannot be blocked. This is the move that
+// makes his fight a foregone conclusion — see `enemies/demon_king.ron`.
+SkillDef(
+    id: "oblivion", name: "OBLIVION",
+    description: "The Demon King's annihilating will; sweeps every foe from the world at once.",
+    mp_cost: 0, power: 900, kind: Magical, target: AllEnemies, unblockable: true,
+    anim: Projectile(texture: "fireball"),
+)

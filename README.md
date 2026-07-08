@@ -160,9 +160,12 @@ accuracy / evasion, and descriptions — heroes and enemies equip them by id), *
 a status — used in battle, bought or dropped), **enemies** (stats, skills, AI, XP/gold
 rewards, a chance-based item **drop** table, an optional **tool** marker that turns a
 foe into an inert siege engine like the ballista — worked by the enemies beside it and
-crumbling once none remain — and an optional **mimicry** marker that lets a mimic copy
-the party's last move, wearing that hero's shape as it strikes), **encounters** (named groups of enemies),
-**levels** (a map marker plus a set of connected ASCII-tile screens with enemy spawns, shop
+crumbling once none remain — an optional **mimicry** marker that lets a mimic copy
+the party's last move, wearing that hero's shape as it strikes, and an optional
+**invincible** flag for scripted, unwinnable bosses like the Demon King), **encounters**
+(named groups of enemies, optionally a **boss** fight or one whose **defeat** plays a
+cutscene and advances the story **chapter**), **levels** (a map marker, a **chapter**, and a
+set of connected ASCII-tile screens with enemy spawns, shop
 entrances, **treasure chests**, and disguised **mimics**), **shops** (a keeper, a facing/exit
 wall, and priced wares — gear or items), and **cutscenes** (scripted dialogue lines and
 recruits).

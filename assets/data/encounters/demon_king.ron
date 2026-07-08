@@ -1,0 +1,12 @@
+// The DEMON KING on his throne — the climax of CHAPTER 1. Flagged `boss` for the
+// boss theme, but this fight cannot be won: the king is invincible and wipes the
+// party (see `enemies/demon_king.ron`). Losing is the story: `defeat_cutscene`
+// plays the launch to the surface and `defeat_advances_chapter` carries the party
+// into CHAPTER 2, out of reach of every region they had unlocked.
+EncounterDef(
+    id: "demon_king",
+    enemies: ["demon_king"],
+    boss: true,
+    defeat_cutscene: Some("demon_king_rise"),
+    defeat_advances_chapter: true,
+)

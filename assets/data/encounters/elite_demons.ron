@@ -1,0 +1,2 @@
+// A DEMON ELITE leading a pair of common demons — an officer and its escort.
+EncounterDef(id: "elite_demons", enemies: ["demon_elite", "demon", "demon"])

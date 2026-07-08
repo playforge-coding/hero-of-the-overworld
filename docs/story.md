@@ -80,6 +80,26 @@ That is where your journey begins: at the mouth of the cave, a mentor at your ba
 usurper on the throne, and an overworld crawling with demons that only you seem ready
 to drive out.
 
+## Chapter Two: the throne beneath the world
+
+The road runs downward. Roland throws the demons back across the surface, gathers
+**[Elara](entities/elara.md)** and **[Gareth](entities/gareth.md)** to his side,
+storms the **Demon Fortress**, and follows the advisor's torn-open portal down into
+the underworld itself — through the remade prisoners of the **Charred Depths** and on,
+where the raw stone gives way to **iron**. This is the **Demon Facility**: a
+forge-hall where the horde plates its demons for war, and at the end of it, a throne.
+
+On that throne sits the **[Demon King](entities/demon_king.md)** — and the fight that
+follows is one the party cannot win. He is beyond them: a single gesture of his will
+shatters their blades and hurls them up through stone and sky, spitting them back out
+onto the **surface**, leagues from anywhere they knew. He does not kill them. He
+simply *removes* them, as an afterthought, and returns to whatever he was doing.
+
+That is where **Chapter 1 ends** and **Chapter 2 begins** — the party alive but flung
+far away, the roads they knew leagues behind them, and a new, larger question hanging
+over everything: **why did he let them live?** The regions of Chapter 2 are not built
+**yet**, so the tale pauses here, on that turning.
+
 ## An alternate timeline
 
 !!! note "Before *Survival Cubed*"

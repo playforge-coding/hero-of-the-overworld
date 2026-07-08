@@ -83,6 +83,11 @@ pub struct Game {
     /// cleared, so beating the last foe carries the party straight into the next
     /// region instead of dropping them back on the map. `None` the rest of the time.
     pending_advance: Option<usize>,
+    /// The story **chapter** the party is in (1-based). The world map only offers
+    /// the current chapter's [levels](crate::data::LevelDef::chapter); it starts at
+    /// 1 and ticks up when a chapter-advancing boss is faced (the DEMON KING, whose
+    /// unwinnable fight hurls the party to the surface and into chapter 2). Persisted.
+    chapter: u32,
     scene: Scene,
     time: f32,
     /// How input sources (keyboard, each pad) map to players. Edited on the input
@@ -109,6 +114,7 @@ impl Game {
             map_cursor: 0,
             pending: None,
             pending_advance: None,
+            chapter: 1,
             played_cutscenes: HashSet::new(),
             pending_cutscene: None,
             scene: Scene::Title,
@@ -175,6 +181,7 @@ impl Game {
             keyboard: data.input_keyboard as usize,
             gamepads: data.input_gamepads.iter().map(|&p| p as usize).collect(),
         };
+        self.chapter = data.chapter.max(1);
         self.played_cutscenes = data.played_cutscenes.into_iter().collect();
         // Merge the three per-level bool grids (enemies / chests / mimics), each
         // keyed by level id, back into one `LevelProgress` per level.
@@ -288,6 +295,7 @@ impl Game {
         let data = SaveData {
             gold: self.party.gold,
             members,
+            chapter: self.chapter,
             cleared: self.cleared.clone(),
             played_cutscenes: self.played_cutscenes.iter().cloned().collect(),
             levels,
@@ -751,14 +759,40 @@ impl Game {
         }
     }
 
-    /// Whether level `i` can be entered yet. Progression is linear: the first
-    /// level is always open, and each later one unlocks only once the level
-    /// before it is fully cleared.
+    /// Whether level `i` can be entered yet. A level must belong to the party's
+    /// current [chapter](Self::chapter); within a chapter, progression is linear —
+    /// the first level of the chapter is always open, and each later one unlocks
+    /// only once the previous level *of that same chapter* is fully cleared. Levels
+    /// of a past or future chapter are always locked (the party has moved on from,
+    /// or not yet reached, them).
     fn unlocked(&self, i: usize) -> bool {
-        if i >= self.reg.data.levels.len() {
+        let Some(lv) = self.reg.data.levels.get(i) else {
+            return false;
+        };
+        if lv.chapter != self.chapter {
             return false;
         }
-        i == 0 || self.cleared.get(i - 1).copied().unwrap_or(false)
+        // Gate on the previous level of the same chapter; a chapter's first level
+        // has none and is open from the start.
+        match self.reg.data.levels[..i]
+            .iter()
+            .rposition(|l| l.chapter == lv.chapter)
+        {
+            Some(prev) => self.cleared.get(prev).copied().unwrap_or(false),
+            None => true,
+        }
+    }
+
+    /// Whether the party's current chapter has any levels at all. False once the
+    /// party has advanced past the last authored chapter (the DEMON KING flings
+    /// them into a chapter 2 that has no regions **yet**) — the map then shows a
+    /// "to be continued" state rather than a playable region.
+    fn chapter_has_levels(&self) -> bool {
+        self.reg
+            .data
+            .levels
+            .iter()
+            .any(|l| l.chapter == self.chapter)
     }
 
     /// Move the map selection to the nearest level marker in `dir`.
@@ -883,8 +917,44 @@ impl Game {
                 }
             }
             BattleOutcome::Defeat => {
-                // Wipe out: revive the party so exploration can continue.
+                // Does this encounter script a special defeat (the DEMON KING)? A
+                // wipe here can be a story beat — a cutscene and/or a jump to the
+                // next chapter — rather than the usual revive-at-camp. (A dev-menu
+                // fight has no trigger, so it always takes the ordinary path.)
+                let enc = trigger
+                    .as_ref()
+                    .and_then(|t| self.reg.encounter(&t.encounter));
+                let defeat_cutscene = enc.and_then(|e| e.defeat_cutscene.clone());
+                let advances_chapter = enc.is_some_and(|e| e.defeat_advances_chapter);
+
+                // Whichever path, the party stands back up at full strength.
                 self.party.full_heal();
+
+                if advances_chapter {
+                    // The unwinnable boss hurls the party back to the surface and the
+                    // story turns over: leave the level (they land far from every
+                    // region they'd unlocked), tick the chapter (which re-gates the
+                    // world map — see `unlocked`), and drop straight into the launch
+                    // cutscene, which gives way to the (now chapter-2) map.
+                    self.chapter += 1;
+                    self.level = None;
+                    self.pending_advance = None;
+                    self.map_cursor = self
+                        .reg
+                        .data
+                        .levels
+                        .iter()
+                        .position(|l| l.chapter == self.chapter)
+                        .unwrap_or(0);
+                    let scene = defeat_cutscene
+                        .as_deref()
+                        .and_then(|id| self.build_cutscene(id, renderer))
+                        .map_or(Scene::Map, Scene::Cutscene);
+                    self.save();
+                    return scene;
+                }
+
+                // Ordinary wipe: revive the party so exploration can continue.
                 Scene::Report {
                     win: false,
                     lines: vec!["THE PARTY IS REVIVED AT CAMP".to_string()],
@@ -990,7 +1060,13 @@ impl Game {
         r.set_clear_color(color::rgb(16, 22, 30));
         r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(20, 28, 36));
         r.draw_rect(0.0, 0.0, virtual_w(), 16.0, color::rgba(10, 14, 22, 220));
-        r.draw_text("WORLD MAP", 6.0, 3.0, 1.0, color::rgb(220, 225, 200));
+        r.draw_text(
+            &format!("WORLD MAP · CH {}", self.chapter),
+            6.0,
+            3.0,
+            1.0,
+            color::rgb(220, 225, 200),
+        );
         let cleared_count = self.cleared.iter().filter(|&&c| c).count();
         let prog = format!("CLEARED {}/{}", cleared_count, self.reg.data.levels.len());
         let pw = r.text_width(&prog, 1.0);
@@ -1026,7 +1102,10 @@ impl Game {
         for (i, lv) in levels.iter().enumerate() {
             let p = node_px(lv.node);
             let selected = i == self.map_cursor;
-            let done = self.cleared[i];
+            // A region from another chapter (a cleared chapter-1 level once the
+            // party has been flung into chapter 2) reads as locked/out-of-reach,
+            // never as a green "cleared" marker — the party has moved on from it.
+            let done = lv.chapter == self.chapter && self.cleared[i];
             let unlocked = self.unlocked(i);
             if selected {
                 r.draw_rect_outline(
@@ -1085,8 +1164,19 @@ impl Game {
             r.draw_text(&label, px, VIRTUAL_H - 22.0, 1.0, color::rgb(200, 220, 210));
             px += r.text_width(&label, 1.0) + 10.0;
         }
+        // Once the party has outrun every authored chapter, the map is a cliffhanger:
+        // the regions they knew are out of reach and the next arc isn't built yet.
+        if !self.chapter_has_levels() {
+            r.draw_text_centered(
+                &format!("CHAPTER {} - TO BE CONTINUED...", self.chapter),
+                virtual_w() / 2.0,
+                VIRTUAL_H - 10.0,
+                1.0,
+                color::rgb(230, 200, 140),
+            );
+        }
         // A locked selection can't be entered; say why. Otherwise the controls.
-        if !self.unlocked(self.map_cursor) {
+        else if !self.unlocked(self.map_cursor) {
             r.draw_text_centered(
                 "LOCKED - CLEAR THE PREVIOUS LEVEL FIRST",
                 virtual_w() / 2.0,

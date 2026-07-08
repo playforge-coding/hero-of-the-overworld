@@ -29,8 +29,10 @@ FIRST"* instead of the usual prompt, so the world opens up as you win. And you
 rarely need the map to move forward: clearing a level **carries you straight into
 the next one** (see [Clearing a level](#roaming-enemies) below).
 
-The bundled world has five levels across two realms — the surface, and the
-**underworld** beneath it, reached once the Demon Fortress falls:
+The bundled world has six levels across two realms — the surface, and the
+**underworld** beneath it, reached once the Demon Fortress falls — ending at the
+iron **Demon Facility** deep below, the seat of the horde's power and the climax of
+**[Chapter 1](gameplay.md#chapters)**:
 
 | Level | Screens | Enemies | Notes |
 | ----- | ------- | ------- | ----- |
@@ -39,6 +41,7 @@ The bundled world has five levels across two realms — the surface, and the
 | **TRAVELLER'S END** | 12 | [Crabs](entities/mountain_crab.md), [skeletons](entities/skeleton.md), [gargoyles](entities/gargoyle.md), mounted [dark knights](entities/dark_knight.md) + stray [demons](entities/demon.md) | The **longest trek** in the game: a switchbacking climb up a stony mountain range, grass and pines giving way to bare scree and boneyards. Foes escalate the higher you go — crabs and slimes at the foot, skeletons and gargoyles on the shelves, dark knights and demons holding the storm-lashed summit. Unlocks after Stone Pass. |
 | **DEMON FORTRESS** | 6 | [Demon](entities/demon.md) packs (duos and trios) + a [dragon](entities/dragon.md) boss | A **very mazelike** warren of dark-brick corridors: a gatehouse into a crossing that branches to a dead-end cell block or deeper east through twisting galleries to the dragon's lair. Felling the dragon opens the advisor's **portal** and carries the party down into the underworld. Unlocks after Traveller's End. |
 | **CHARRED DEPTHS** | 11 | [Club](entities/club_goblin.md) & [archer goblins](entities/archer_goblin.md), [orc brutes](entities/orc_brute.md) + [demons](entities/demon.md) | The **first level of the underworld** and the **toughest descent** in the game — a long warren of scorched flagstone that winds ever deeper, its foes escalating like the climb of Traveller's End. Goblin packs (clubbers screening their archers) hold the upper halls, orc brutes wall the middle chambers two and three abreast, and demon-led warbands hold the depths — down to the deep hall's guardian, a demon flanked by two remade orc thralls. Unlocks after the Demon Fortress — a **[portal cutscene](story.md)** takes you there, and it stands open on the map from then on. |
+| **DEMON FACILITY** | 11 | [Demon elites](entities/demon_elite.md) (singly and in packs) + a [Demon King](entities/demon_king.md) boss | The **climax of Chapter 1**: past the Charred Depths the raw stone turns to **iron**, an underground forge-hall where the horde plates its demons for war. A long, winding descent in the mould of the Charred Depths — war-plated elites two and three abreast, a barracks cache guarded by a mimic, a throne-hall guard — ending at the throne of the invincible **[Demon King](entities/demon_king.md)**. That fight **cannot be won**: losing it hurls the party back to the surface and opens **[Chapter 2](gameplay.md#chapters)**. Unlocks after the Charred Depths. |
 
 ## Screens
 
@@ -125,8 +128,8 @@ looted even if you leave and come back, so there's no farming the same box twice
 The Greenwood alone hides a starter purse, an **ether**, and a **[SCOUT'S
 EDGE](equipment.md)** waiting past its lone demon.
 
-But in the **deep** regions — Traveller's End, the Demon Fortress, and the Charred
-Depths — not every chest is treasure. A **[mimic](entities/mimic.md)** sits perfectly
+But in the **deep** regions — Traveller's End, the Demon Fortress, the Charred
+Depths, and the Demon Facility — not every chest is treasure. A **[mimic](entities/mimic.md)** sits perfectly
 still wearing a chest's exact shape — drawn from the **very same sprite**, so from a
 distance there is *no way to tell it from the real thing*. Those regions deliberately
 sit real chests and mimics side by side, so you can never be sure which cache is safe.

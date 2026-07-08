@@ -242,6 +242,69 @@ fn clones_mirror_the_party() {
     );
 }
 
+/// The DEMON KING is the scripted, unwinnable climax of chapter 1: an invincible
+/// boss whose encounter turns a party wipe into a chapter transition. Guards the
+/// whole mechanism — the invincible flag, the lethal kit, and the defeat hooks —
+/// and confirms he is actually placed at the end of the DEMON FACILITY.
+#[test]
+fn demon_king_is_the_unwinnable_chapter_boss() {
+    let reg = registry();
+
+    // The king himself: invincible (cannot be killed) with resolvable skills.
+    let king = reg.enemy("demon_king").expect("missing demon_king enemy");
+    assert!(king.invincible, "the demon king must be invincible");
+    assert!(
+        !king.skills.is_empty(),
+        "the demon king needs an attack kit"
+    );
+    for id in &king.skills {
+        assert!(
+            reg.skill(id).is_some(),
+            "demon king references unknown skill '{id}'"
+        );
+    }
+    // No ordinary foe should be invincible — that flag is the scripted boss's alone.
+    for e in &reg.data.enemies {
+        if e.id != "demon_king" {
+            assert!(!e.invincible, "ordinary enemy '{}' is invincible", e.id);
+        }
+    }
+
+    // The encounter: a boss fight that scripts the defeat into a chapter jump.
+    let enc = reg
+        .encounter("demon_king")
+        .expect("missing demon_king encounter");
+    assert!(enc.boss, "the demon king fight should play the boss theme");
+    assert_eq!(enc.enemies, vec!["demon_king"]);
+    assert!(
+        enc.defeat_advances_chapter,
+        "losing to the demon king must advance the chapter"
+    );
+    let cs = enc
+        .defeat_cutscene
+        .as_deref()
+        .expect("the demon king needs a defeat cutscene");
+    assert!(
+        reg.cutscene(cs).is_some(),
+        "demon king defeat cutscene '{cs}' does not resolve"
+    );
+
+    // Placement: the king stands at the end of the DEMON FACILITY, and nowhere
+    // does an ordinary spawn field this scripted boss.
+    let facility = reg
+        .data
+        .levels
+        .iter()
+        .find(|l| l.id == "demonfacility")
+        .expect("missing demonfacility level");
+    let placed = facility
+        .screens
+        .iter()
+        .flat_map(|s| &s.spawns)
+        .any(|sp| sp.encounter == "demon_king");
+    assert!(placed, "the demon king is not placed in the demon facility");
+}
+
 #[test]
 fn levels_are_valid_and_linked() {
     let reg = registry();

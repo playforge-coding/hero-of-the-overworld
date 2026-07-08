@@ -1,0 +1,3 @@
+// Three DEMON ELITES in war-plate: a wall of armored demon-fire, the facility's
+// heavier patrols.
+EncounterDef(id: "elite_trio", enemies: ["demon_elite", "demon_elite", "demon_elite"])

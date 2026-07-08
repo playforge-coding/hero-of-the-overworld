@@ -383,6 +383,48 @@ the encounter works the same:
 EncounterDef(id: "dragon_boss", enemies: ["dragon"], boss: true),
 ```
 
+### A scripted, unwinnable boss
+
+Some fights are meant to be **lost** — the **[Demon King](entities/demon_king.md)**
+who ends Chapter 1 is invincible and wipes the party on purpose, turning the defeat
+into a story beat. Two pure-data hooks build the whole thing, **no engine change**:
+
+An **`invincible`** enemy can never be brought below 1 HP, so it simply cannot be
+killed:
+
+```ron
+EnemyDef(
+    id: "demon_king", name: "DEMON KING",
+    stats: Stats(max_hp: 9999, max_mp: 0, attack: 45, defense: 30, magic: 60, speed: 40),
+    sprite: BattlerSprite( /* ... */ ),
+    invincible: true,                    // damage can never drop it below 1 HP
+    skills: ["oblivion", "sovereign_smite"],   // a free, unblockable party-wide sweep
+    ai: Random,
+    xp: 0, gold: 0,                      // never defeated, so never paid out
+),
+```
+
+Give it a lethal, party-wide skill (high `power`, `target: AllEnemies`,
+`unblockable: true`) and a `speed` above every hero's, and it will one-shot the team
+before they can act. Then the **encounter** scripts what the loss *means*:
+
+```ron
+EncounterDef(
+    id: "demon_king",
+    enemies: ["demon_king"],
+    boss: true,
+    defeat_cutscene: Some("demon_king_rise"),   // plays on the party wipe...
+    defeat_advances_chapter: true,              // ...then ticks over to the next chapter
+),
+```
+
+- **`defeat_cutscene`** replaces the usual revive-at-camp: when the party is wiped in
+  this encounter, that [cutscene](#add-a-cutscene) plays instead.
+- **`defeat_advances_chapter`** flings the party back to the surface and bumps the
+  game's [chapter](#add-a-level), so every region they'd unlocked falls out of reach
+  and the world map moves on. Pair the two to script a chapter transition; use
+  `defeat_cutscene` alone for a scripted loss that stays in the same chapter.
+
 ### Make it a tool enemy
 
 Give an enemy a `tool` field and it becomes an inert **[tool
@@ -517,6 +559,12 @@ T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T
   alongside its `spawns`.
 - Remember to add the level id to `meta.ron`'s `levels:` list, in the position you
   want it in the progression.
+- `chapter` (optional, defaults to `1`) groups the level into a story **chapter**.
+  The world map only offers the *current* chapter's regions; within a chapter,
+  progression is linear as usual. The party advances a chapter by facing a
+  chapter-advancing boss (see [`defeat_advances_chapter`](#a-scripted-unwinnable-boss)),
+  at which point earlier chapters' levels fall out of reach. All bundled levels are
+  chapter 1; give a new region `chapter: 2` to start building the next arc.
 
 ## Add a cutscene
 

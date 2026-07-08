@@ -1,0 +1,3 @@
+// The throne-hall guard: two DEMON ELITES and a demon barring the last door
+// before the DEMON KING.
+EncounterDef(id: "elite_guard", enemies: ["demon_elite", "demon_elite", "demon"])

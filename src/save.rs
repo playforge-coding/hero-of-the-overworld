@@ -93,9 +93,13 @@ pub struct SaveData {
     /// leniently so pre-chest saves (which lack it) load with no chests looted.
     pub chest_levels: Vec<SavedLevel>,
     /// Per-level slain-mimic grids, same shape as [`chest_levels`](Self::chest_levels):
-    /// `screens[s][m]` = mimic `m` on screen `s` has been beaten. The final
-    /// trailing section, read the same lenient way.
+    /// `screens[s][m]` = mimic `m` on screen `s` has been beaten. A trailing
+    /// section, read the same lenient way.
     pub mimic_levels: Vec<SavedLevel>,
+    /// The story **chapter** the party is in (1-based). The final trailing field;
+    /// absent (a pre-chapter save ends before it) → chapter 1. A `0` here (only a
+    /// default-constructed [`SaveData`] writes that) is normalised to 1 by the game.
+    pub chapter: u32,
 }
 
 // ---- Encoding ---------------------------------------------------------------
@@ -213,6 +217,9 @@ pub fn to_bytes(data: &SaveData) -> Vec<u8> {
     put_levels(&mut out, &data.chest_levels);
     put_levels(&mut out, &data.mimic_levels);
 
+    // Trailing, back-compatibly optional: the story chapter (final field).
+    put_u32(&mut out, data.chapter);
+
     out
 }
 
@@ -252,6 +259,13 @@ impl<'a> Reader<'a> {
         let slice = self.buf.get(self.pos..end)?;
         self.pos = end;
         Some(slice)
+    }
+
+    /// Bytes not yet consumed. Used to tell a *missing* trailing field (nothing
+    /// left → use its default) from one that is *present but truncated* (some
+    /// bytes left, but too few → a corrupt save that must be rejected).
+    fn remaining(&self) -> usize {
+        self.buf.len().saturating_sub(self.pos)
     }
 
     fn u16(&mut self) -> Option<u16> {
@@ -455,6 +469,11 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
     let chest_levels = read_levels(&mut r)?;
     let mimic_levels = read_levels(&mut r)?;
 
+    // The chapter is the final trailing field. Absent (a pre-chapter save ends
+    // before it) → chapter 1; present → read strictly, so a save truncated *within*
+    // this field is rejected rather than silently defaulting.
+    let chapter = if r.remaining() == 0 { 1 } else { r.u32()? };
+
     Some(SaveData {
         gold,
         members,
@@ -468,6 +487,7 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
         items,
         chest_levels,
         mimic_levels,
+        chapter,
     })
 }
 
@@ -633,6 +653,7 @@ mod tests {
                 id: "greenwood".into(),
                 screens: vec![vec![], vec![true]],
             }],
+            chapter: 2,
         }
     }
 
@@ -652,13 +673,14 @@ mod tests {
 
     #[test]
     fn pre_bag_save_loads_with_defaults() {
-        // A save written before the trailing bag + input + items + chest + mimic
-        // sections existed simply ends after `location`. With everything empty
-        // those sections are six zero counts: bag (0) + keyboard (0) + gamepad
-        // count (0) + item count (0) + chest count (0) + mimic count (0) = 24
-        // bytes. Dropping them yields exactly such an older save, which must still
-        // decode — to empty bag, default (all-zero) input, no items, and no looted
-        // chests / slain mimics — rather than failing.
+        // A save written before the trailing bag + input + items + chest + mimic +
+        // chapter sections existed simply ends after `location`. With everything
+        // empty those sections are six zero counts — bag (0) + keyboard (0) +
+        // gamepad count (0) + item count (0) + chest count (0) + mimic count (0) =
+        // 24 bytes — followed by the 4-byte chapter, 28 bytes in all. Dropping them
+        // yields exactly such an older save, which must still decode — to empty bag,
+        // default (all-zero) input, no items, no looted chests / slain mimics, and
+        // chapter 1 — rather than failing.
         let mut data = sample();
         data.bag = Vec::new();
         data.input_keyboard = 0;
@@ -666,8 +688,9 @@ mod tests {
         data.items = Vec::new();
         data.chest_levels = Vec::new();
         data.mimic_levels = Vec::new();
+        data.chapter = 1;
         let bytes = to_bytes(&data);
-        let old = &bytes[..bytes.len() - 24];
+        let old = &bytes[..bytes.len() - 28];
         assert_eq!(from_bytes(old), Some(data));
     }
 

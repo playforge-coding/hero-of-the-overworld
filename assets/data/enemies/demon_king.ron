@@ -1,0 +1,37 @@
+// The DEMON KING: the throne-room "boss" at the end of the DEMON FACILITY — and
+// the first fight in the game you are *meant to lose*. He is flagged `invincible`
+// (damage can never bring him below 1 HP, so he cannot be killed) and hits with
+// OBLIVION, a free, unblockable sweep that one-shots the whole party, plus a
+// single-target SOVEREIGN SMITE. His speed outstrips every hero, so he always acts
+// first. The encounter (`encounters/demon_king.ron`) turns the inevitable wipe
+// into a story beat: the party is hurled to the surface and CHAPTER 2 begins.
+//
+// demon_king.png is drawn on the demon family's 6x8 layout (idle row 0, attack
+// row 4, walk rows 0-3), like the demon and demon elite — just larger in battle.
+EnemyDef(
+    id: "demon_king",
+    name: "DEMON KING",
+    stats: Stats(max_hp: 9999, max_mp: 0, attack: 45, defense: 30, magic: 60, speed: 40),
+    invincible: true,
+    sprite: BattlerSprite(
+        texture: "demon_king",
+        frame_w: 16, frame_h: 16,
+        draw_w: 72.0, draw_h: 72.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 4.0),
+        attack: AnimClip(row: 4, first_col: 0, frames: 4, fps: 10.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "demon_king",
+        frame_w: 16, frame_h: 16,
+        draw_w: 24.0, draw_h: 24.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 5, fps: 8.0,
+    )),
+    skills: ["oblivion", "sovereign_smite"],
+    ai: Random,
+    xp: 0,
+    gold: 0,
+    // Looms on his throne, stirring only as the party draws near.
+    overworld_speed: Some(24.0),
+)

@@ -101,6 +101,27 @@ There's no game over. If every hero is knocked out in a battle, the party is
 **revived at full health "at camp"** and you're returned to the level to try
 again. Losing a fight costs you the attempt, not your progress.
 
+The one exception is a **scripted** defeat. A few boss fights are meant to be
+**lost** — the **[Demon King](entities/demon_king.md)** at the end of the Demon
+Facility is invincible and wipes the party on purpose. Losing there doesn't revive
+you where you fell; it plays a story cutscene and carries you into the next
+**[chapter](#chapters)**.
+
+## Chapters
+
+The story is told in **chapters**, and the world map only ever offers the
+**current chapter's** regions. All six bundled levels belong to **Chapter 1**; you
+clear them in order (see [Progression](world.md#progression-is-linear)) down to the
+Demon Facility.
+
+Facing the **[Demon King](entities/demon_king.md)** there ends Chapter 1 the only
+way it can: he cannot be beaten, and losing to him **flings the party back up to the
+surface**, far from everywhere they'd unlocked. The world map ticks over to
+**Chapter 2** — the header reads `CH 2`, the Chapter 1 regions fall out of reach
+(they're leagues away now), and, since Chapter 2's regions aren't built **yet**, the
+map shows a **"TO BE CONTINUED..."** cliffhanger. Your cleared Chapter 1 progress is
+still [saved](#saving); the story simply pauses there for now.
+
 ## The party menu { #inventory-and-equipment }
 
 Press **Menu** (<kbd>Shift</kbd>/<kbd>C</kbd>, or Start on a gamepad) while walking
@@ -142,7 +163,10 @@ The bag, the item stash, and everyone's HP/MP all ride along in your [save](#sav
 
 Your goal is simply to **clear every level**. The world map shows a running
 **CLEARED x/y** tally, and each level marker turns from red to green with a star
-once you've wiped out its demons.
+once you've wiped out its demons. (The last region of Chapter 1, the Demon Facility,
+is the exception: its [Demon King](entities/demon_king.md) can't be beaten, so it's
+never marked cleared — reaching and losing to him ends the chapter instead. See
+[Chapters](#chapters).)
 
 ## Saving
 
@@ -152,7 +176,8 @@ cutscene, capturing:
 
 - your **party** — members, levels, XP, live HP/MP, equipped gear, the shared
   [item bag](#inventory-and-equipment), your [items](items.md) stash, and gold;
-- which **levels are cleared** (and therefore which are unlocked);
+- which **levels are cleared** (and therefore which are unlocked), and which
+  **[chapter](#chapters)** you've reached;
 - your **in-level progress** — the specific demons you've already beaten, so
   quitting halfway through a level doesn't undo the fights you've won;
 - your **exact position** — the level, screen, and spot you were standing on, so

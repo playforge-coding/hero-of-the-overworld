@@ -9,11 +9,9 @@ orc-like brawn. Where a common demon is already the game's elite threat, the eli
 is what a demon becomes when it straps on armor and steps up to the front line:
 tougher, heavier-hitting, and still able to spend **magic**.
 
-!!! note "Future foe"
-    The demon elite is **defined but not yet placed** in any level's spawns. It is
-    fully playable now through the **[developer fight menu](../modding.md#the-developer-menu-f1)**
-    (press <kbd>F1</kbd> on the world map in a debug build → **FIGHT ENCOUNTER** →
-    `demon_elite_solo`), ready to drop into a future region.
+The demon elite is the rank and file of the **[Demon Facility](../world.md#progression-is-linear)**,
+Chapter 1's final region — where the horde plates its demons for war and fields them
+two and three abreast all the way down to the **[Demon King](demon_king.md)**'s throne.
 
 | Stat | Value |
 |---|---|
@@ -26,7 +24,7 @@ tougher, heavier-hitting, and still able to spend **magic**.
 | **AI** | Random (mixes its skills with plain attacks) |
 | **Rewards** | 40 XP · 34 gold on defeat |
 | **Drops** | [MIGHT TONIC](../items.md) (18%) · [HI-POTION](../items.md) (20%) |
-| **Found in** | Unplaced — reachable via the developer fight menu |
+| **Found in** | Demon Facility (its rank-and-file patrols, singly and in packs) |
 
 Compared with a plain [demon](demon.md), the elite roughly **doubles the HP** and
 carries an **orc-brute-grade attack** (30, up from 18) behind a stiffer defense,
@@ -49,7 +47,11 @@ applies, only more so: **burn it down fast**.
 
 | Encounter | Enemies | Where |
 | --------- | ------- | ----- |
-| `demon_elite_solo` | 1 demon elite | Unplaced (developer fight menu) |
+| `demon_elite_solo` | 1 demon elite | Developer fight menu |
+| `elite_pair` | 2 demon elites | Demon Facility patrols |
+| `elite_trio` | 3 demon elites | Demon Facility heavy patrols |
+| `elite_demons` | 1 demon elite + 2 [demons](demon.md) | Demon Facility (an officer and its escort) |
+| `elite_guard` | 2 demon elites + 1 [demon](demon.md) | Demon Facility (the throne-hall guard) |
 
 ## Appearance
 

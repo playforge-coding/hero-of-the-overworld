@@ -1,0 +1,9 @@
+// SOVEREIGN SMITE — the DEMON KING's single-target hammerblow, for when he
+// deigns to crush one hero at a time. Every bit as lethal as OBLIVION but
+// focused; unblockable, and free like all his power.
+SkillDef(
+    id: "sovereign_smite", name: "SOVEREIGN SMITE",
+    description: "A crushing bolt of the Demon King's contempt, aimed at a single soul.",
+    mp_cost: 0, power: 900, kind: Magical, target: OneEnemy, unblockable: true,
+    anim: Charge,
+)
