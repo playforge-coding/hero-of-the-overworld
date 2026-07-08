@@ -25,7 +25,9 @@ level's name beneath it.
 You must **clear a level to unlock the next one**. The first level is always
 open; each later one stays locked (and can't be entered) until the level before
 it is fully cleared. Selecting a locked level shows *"CLEAR THE PREVIOUS LEVEL
-FIRST"* instead of the usual prompt, so the world opens up as you win.
+FIRST"* instead of the usual prompt, so the world opens up as you win. And you
+rarely need the map to move forward: clearing a level **carries you straight into
+the next one** (see [Clearing a level](#roaming-enemies) below).
 
 The bundled world has five levels across two realms — the surface, and the
 **underworld** beneath it, reached once the Demon Fortress falls:
@@ -95,9 +97,13 @@ its own boss theme.
 - **Lose** and the enemies in that screen retreat to their starting spots, giving
   you room to regroup instead of being fought again on the spot.
 
-Clear every enemy in every screen and the level shows **LEVEL CLEARED!** — press
-**Cancel**/**Menu** to return to the map (now green), which **unlocks the next
-level** to pick.
+Clear every enemy in every screen and the level is done: the victory report leads
+with **"{LEVEL} CLEARED!  ONWARD TO {NEXT}"** and, after any [clear
+cutscene](story.md), the party is **carried straight into the next region** — no trip
+back to the map to pick it. (Clearing the *final* level ends the run instead —
+**"THE OVERWORLD IS SAVED!"** — and leaves you free to return to the map with
+**Cancel**/**Menu**.) Every cleared level still shows green on the map if you visit it,
+and you can always **Cancel**/**Menu** out of a level to the map by hand.
 
 ## Shops
 

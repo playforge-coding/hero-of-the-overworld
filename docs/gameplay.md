@@ -30,9 +30,11 @@ otherwise it reads **BEGIN**.
    mark it **cleared** on the map. Some levels reward a clear with a
    **[cutscene](battles.md#story-and-cutscenes)** — that's how new party members
    join.
-6. **Move on.** Clearing a level **unlocks the next one** on the map (progression
-   is linear — see [Progression](world.md#progression-is-linear)). Return to the
-   map and take it. Clear them all.
+6. **Move on.** Clearing a level **unlocks the next one** and — once the victory
+   report and any clear cutscene finish — **carries the party straight into it**, no
+   trip back to the map required (progression is linear — see
+   [Progression](world.md#progression-is-linear)). Clear them all; the last clear
+   ends the run.
 
 ## Your party
 

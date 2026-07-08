@@ -69,7 +69,7 @@ spend battle winnings on new gear and items. Screens also hide **treasure chests
 for gold, items, and gear — and, in the deep regions, **mimics** drawn from the very same
 chest sprite, so you can't tell them apart until you get close and one springs a fight where
 it hurls fireballs and copies your party's own moves. Clear every demon in a
-level to mark it done on the map and **unlock the next** — progression is linear. Your
+level to **unlock the next** and get **carried straight into it** — progression is linear. Your
 party, clears, per-level progress, and your **exact position in a level** are **saved
 automatically** and resume on the next launch.
 

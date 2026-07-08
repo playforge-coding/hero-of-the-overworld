@@ -78,6 +78,11 @@ pub struct Game {
     /// A cutscene queued to play after the current victory report (e.g. a
     /// character joining once a level is cleared).
     pending_cutscene: Option<Cutscene>,
+    /// The level index to auto-advance into once the clear sequence (victory
+    /// report, then any clear cutscene) finishes. Set when a level is freshly
+    /// cleared, so beating the last foe carries the party straight into the next
+    /// region instead of dropping them back on the map. `None` the rest of the time.
+    pending_advance: Option<usize>,
     scene: Scene,
     time: f32,
     /// How input sources (keyboard, each pad) map to players. Edited on the input
@@ -103,6 +108,7 @@ impl Game {
             has_save: false,
             map_cursor: 0,
             pending: None,
+            pending_advance: None,
             played_cutscenes: HashSet::new(),
             pending_cutscene: None,
             scene: Scene::Title,
@@ -438,11 +444,9 @@ impl Game {
                 Some(CutsceneOutcome::Finished) => {
                     // A cutscene can recruit a new member, so persist afterwards.
                     self.save();
-                    if self.level.is_some() {
-                        Scene::Level
-                    } else {
-                        Scene::Map
-                    }
+                    // A clear cutscene is the tail of a clear sequence — carry on
+                    // into the next level if one is queued.
+                    self.after_clear_sequence(renderer)
                 }
                 None => Scene::Cutscene(cs),
             },
@@ -521,10 +525,12 @@ impl Game {
             } => {
                 timer -= dt;
                 if timer <= 0.0 && input.any_pressed() {
-                    // A queued recruit/story cutscene plays before returning.
+                    // A queued clear/recruit cutscene plays before returning; with
+                    // none, fall through to the clear sequence (which auto-advances
+                    // to the next level when one was just cleared).
                     match self.pending_cutscene.take() {
                         Some(cs) => Scene::Cutscene(cs),
-                        None => Scene::Level,
+                        None => self.after_clear_sequence(renderer),
                     }
                 } else {
                     Scene::Report { win, lines, timer }
@@ -604,35 +610,57 @@ impl Game {
             return Scene::DevTools(DevTools::new(self.party.level(), characters, encounters));
         }
         if input.pressed(Button::Confirm) && self.unlocked(self.map_cursor) {
-            self.current_level = self.map_cursor;
-            // Restore this level's saved progress (beaten demons, looted chests,
-            // slain mimics) if any.
-            let level_id = self.reg.data.levels[self.current_level].id.clone();
-            let progress = self
-                .level_progress
-                .get(&level_id)
-                .cloned()
-                .unwrap_or_default();
-            self.level = Some(Overworld::new(
-                renderer,
-                &mut self.cache,
-                &self.reg,
-                &self.party,
-                self.current_level,
-                &progress,
-            ));
-            // Play the level's intro cutscene the first time it's entered.
-            if let Some(id) = self.reg.data.levels[self.current_level]
-                .intro_cutscene
-                .clone()
-            {
-                if let Some(cs) = self.build_cutscene(&id, renderer) {
-                    return Scene::Cutscene(cs);
-                }
-            }
-            return Scene::Level;
+            return self.enter_level(self.map_cursor, renderer);
         }
         Scene::Map
+    }
+
+    /// Load level `idx` as the active level and return the scene to show: its intro
+    /// cutscene the first time it's entered, otherwise the level itself. Shared by
+    /// picking a level on the map and auto-advancing after a clear.
+    fn enter_level(&mut self, idx: usize, renderer: &mut Renderer) -> Scene {
+        self.current_level = idx;
+        self.map_cursor = idx;
+        // Restore this level's saved progress (beaten demons, looted chests,
+        // slain mimics) if any.
+        let level_id = self.reg.data.levels[idx].id.clone();
+        let progress = self
+            .level_progress
+            .get(&level_id)
+            .cloned()
+            .unwrap_or_default();
+        self.level = Some(Overworld::new(
+            renderer,
+            &mut self.cache,
+            &self.reg,
+            &self.party,
+            idx,
+            &progress,
+        ));
+        // Play the level's intro cutscene the first time it's entered.
+        if let Some(id) = self.reg.data.levels[idx].intro_cutscene.clone() {
+            if let Some(cs) = self.build_cutscene(&id, renderer) {
+                return Scene::Cutscene(cs);
+            }
+        }
+        Scene::Level
+    }
+
+    /// The scene to show once a clear sequence (victory report → any clear
+    /// cutscene) has fully played out. When a level was just cleared this
+    /// **auto-advances** straight into the next region (persisting the jump);
+    /// otherwise it's an ordinary return to the level (or the map if none is live).
+    fn after_clear_sequence(&mut self, renderer: &mut Renderer) -> Scene {
+        if let Some(next) = self.pending_advance.take() {
+            let scene = self.enter_level(next, renderer);
+            self.save();
+            return scene;
+        }
+        if self.level.is_some() {
+            Scene::Level
+        } else {
+            Scene::Map
+        }
     }
 
     fn update_level(&mut self, input: &Input, renderer: &mut Renderer, dt: f32) -> Scene {
@@ -777,6 +805,10 @@ impl Game {
         let trigger = self.pending.take();
         let won = matches!(outcome, BattleOutcome::Victory { .. });
         let mut clear_cutscene = None;
+        // Names for the clear banner: the level just finished, and the next region
+        // the party is being carried into (if any).
+        let mut cleared_name: Option<String> = None;
+        let mut next_name: Option<String> = None;
         if let (Some(level), Some(t)) = (&mut self.level, &trigger) {
             level.resolve_battle(t, won);
             if won && level.all_cleared() {
@@ -784,6 +816,16 @@ impl Game {
                 clear_cutscene = self.reg.data.levels[self.current_level]
                     .clear_cutscene
                     .clone();
+                cleared_name = Some(self.reg.data.levels[self.current_level].name.clone());
+                // Auto-advance: beating the last foe carries the party straight into
+                // the next region (once the report and any clear cutscene finish),
+                // rather than dropping them back on the map. The last level has no
+                // next, so it simply ends the clear on the (now-won) map.
+                let next = self.current_level + 1;
+                if next < self.reg.data.levels.len() {
+                    self.pending_advance = Some(next);
+                    next_name = Some(self.reg.data.levels[next].name.clone());
+                }
             }
         }
         // Queue the level-clear cutscene (e.g. a new ally joining) to play after
@@ -795,7 +837,17 @@ impl Game {
             BattleOutcome::Victory { xp, gold, drops } => {
                 self.party.gold += gold;
                 let leveled = self.party.grant_xp(&self.reg, xp);
-                let mut lines = vec![format!("GAINED {xp} XP  {gold} GOLD")];
+                let mut lines = Vec::new();
+                // Lead with the clear banner when the last foe just fell, naming
+                // where the party is headed next.
+                if let Some(name) = &cleared_name {
+                    lines.push(format!("{name} CLEARED!"));
+                    match &next_name {
+                        Some(next) => lines.push(format!("ONWARD TO {next}")),
+                        None => lines.push("THE OVERWORLD IS SAVED!".to_string()),
+                    }
+                }
+                lines.push(format!("GAINED {xp} XP  {gold} GOLD"));
                 // Fold in any item drops the fallen enemies yielded.
                 for id in &drops {
                     self.party.add_item(id, 1);
