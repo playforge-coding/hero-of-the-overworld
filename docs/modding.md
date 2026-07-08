@@ -5,16 +5,44 @@ comments: true
 # Extending the Game
 
 Almost everything in Hero of the Overworld is **data**, not code. Heroes,
-enemies, skills, encounters, whole levels, and cutscenes all live in a single
-plain-text [RON](https://github.com/ron-rs/ron) file:
+enemies, skills, encounters, whole levels, and cutscenes each live in their own
+plain-text [RON](https://github.com/ron-rs/ron) file, organised by kind under
+`assets/data/`:
 
 ```
-assets/data/game.ron
+assets/data/
+  meta.ron                     # starting party + the level progression order
+  characters/<id>.ron          # one party member per file
+  enemies/<id>.ron             # one enemy per file
+  skills/<id>.ron              # one skill per file
+  statuses/<id>.ron            # burn, might, guard, …
+  equipment/<id>.ron           # weapons & armor
+  items/<id>.ron               # consumables
+  shops/<id>.ron               # shop stock
+  encounters/<id>.ron          # named enemy groups
+  cutscenes/<id>.ron           # scripted dialogue / recruits
+  levels/<id>.ron              # a stage: metadata + its screens (minus tilemaps)
+  maps/<level>/<screen>.csv    # each screen's tile grid, as a CSV
 ```
 
-Editing that file is enough to add party members, enemies, skills, levels, and
-story beats — the battle and overworld systems just iterate whatever they find.
-The one thing that needs a (tiny) code change is genuinely **new art**.
+**Adding content is dropping in a file.** To add an enemy, create
+`enemies/goblin_king.ron` holding one `EnemyDef(…)`; to add a stage, create
+`levels/my_stage.ron` plus a `maps/my_stage/0.csv` per screen. The whole tree is
+embedded into the binary at compile time (via `include_dir`), so a new file is
+picked up on the next `cargo build` — no registration list to maintain, and the
+web build still ships every byte. The one thing that needs a (tiny) code change is
+genuinely **new art** (see below).
+
+!!! note "A few things are ordered, and live in `meta.ron`"
+    Content is looked up by **id**, so the *order* of files within a folder doesn't
+    matter — except **levels**, whose order is the progression (each unlocks the
+    next, and screen links are by index). That order, plus the starting party, is
+    stated explicitly in `meta.ron`. Add a new level id there to slot it into the
+    world.
+
+Each file holds exactly one def, written just as it was in the old single database
+— e.g. `enemies/slime.ron` is one `EnemyDef(…)`. The snippets below show a single
+def; drop each into the matching folder.
 
 ## Textures are embedded by key
 
@@ -228,8 +256,8 @@ Sell it at a shop or drop it from an enemy (below), and see
 ## Add a shop
 
 A **shop** is a store the player enters from the overworld to buy gear. It's two
-data edits: a `ShopDef` in the `shops` list, and a **placement** on a screen so a
-keeper stands there. Buying deducts the price and equips the item — see
+data edits: a `ShopDef` in `shops/<id>.ron`, and a **placement** on a screen (in
+that level's `levels/<id>.ron`) so a keeper stands there. Buying deducts the price and equips the item — see
 **[Shops](shops.md)** for the player-facing flow.
 
 ```ron
@@ -260,7 +288,7 @@ pointing at the shop id:
 
 ```ron
 ScreenDef(
-    map: [ /* ... */ ],
+    // tilemap lives in maps/<level>/<screen>.csv, not here
     spawns: [ /* ... */ ],
     shops: [
         ShopSpawn(col: 5, row: 6, shop: "greenwood_outfitter"),
@@ -282,7 +310,7 @@ a consumable, and equipment at once:
 
 ```ron
 ScreenDef(
-    map: [ /* ... */ ],
+    // tilemap lives in maps/<level>/<screen>.csv, not here
     chests: [
         ChestSpawn(col: 16, row: 3, gold: 30, item: Some("potion")),
         ChestSpawn(col: 3, row: 5, gold: 50, equipment: Some("scouts_edge")),
@@ -304,7 +332,7 @@ whole [roaming-enemy](world.md#roaming-enemies) chase/battle pipeline:
 
 ```ron
 ScreenDef(
-    map: [ /* ... */ ],
+    // tilemap lives in maps/<level>/<screen>.csv, not here
     mimics: [
         MimicSpawn(col: 16, row: 8, encounter: "mimic_solo"),
     ],
@@ -427,19 +455,18 @@ EnemyDef(
 
 ## Add a level
 
-A `LevelDef` is a marker on the world map plus a set of connected **screens**.
-Each screen is an ASCII tile map with enemy **spawns** and links to its
-neighbours. The tile legend:
+A level is **two things**: a `levels/<id>.ron` describing the stage and its
+connected **screens**, and one **CSV tilemap** per screen under
+`maps/<id>/<screen index>.csv`. Finally, add the level's id to the ordered
+`levels:` list in `meta.ron` so it slots into the progression.
 
-| Char | Tile |
-| ---- | ---- |
-| `.` / space | grass (walkable) |
-| `T` | tree (solid) |
-| `R` | rock (solid) |
-| `~` | water (solid) |
-| `#` | barricade (solid) |
+The `levels/<id>.ron` holds a `LevelDef` — a marker on the world map plus the
+screens, each with its enemy **spawns** and links to its neighbours. The screens'
+**tilemaps are not here** (they live in the CSVs), so a screen lists only its
+spawns, shops, chests, and links:
 
 ```ron
+// levels/greenwood.ron
 LevelDef(
     id: "greenwood", name: "GREENWOOD",
     node: (1, 2),                    // marker position on the world map
@@ -447,32 +474,49 @@ LevelDef(
     intro_cutscene: Some("greenwood_intro"),
     clear_cutscene: Some("mage_joins"),
     screens: [
-        ScreenDef(
-            map: [
-                "TTTTTTTTTTTTTTTTTTTT",
-                "T..................T",
-                "T..................",   // gap in the right wall = an east exit
-                "T..................T",
-                "TTTTTTTTTTTTTTTTTTTT",
-            ],
-            east: Some(1),           // walking through that gap flips to screen 1
+        ScreenDef(                   // screen 0 → its map is maps/greenwood/0.csv
+            east: Some(1),           // walking through the east opening flips to screen 1
             spawns: [
                 SpawnDef(col: 11, row: 2, encounter: "demon_solo"),
             ],
         ),
-        // screen 1 ...
+        // screen 1 → maps/greenwood/1.csv …
     ],
 ),
 ```
 
+Each screen's tilemap is a **CSV** where every line is a row and every
+comma-separated cell is one tile character (an empty cell reads as grass). Screen
+`i` in the `screens` list uses `maps/<id>/<i>.csv`. The tile legend:
+
+| Char | Tile |
+| ---- | ---- |
+| `.` (or empty cell) | grass (walkable) |
+| `T` | tree (solid) |
+| `R` | rock (solid) |
+| `~` | water (solid) |
+| `#` | barricade (solid) |
+| `G` | grass patch (walkable greenery over the base ground) |
+
+```
+# maps/greenwood/0.csv  — a gap in the right wall (row 2) is an east exit
+T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T
+T,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,T
+T,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+T,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,T
+T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T
+```
+
 - `node` places the marker; the map cursor moves between markers by direction.
 - `north`/`south`/`east`/`west` are **indices into this level's `screens`**. Leave
-  an opening anywhere in the matching wall so the player can walk through it; on
-  arrival they step out of the opening on the far screen's edge nearest to where
-  they left, so the gaps needn't line up at the mid-point.
+  an opening anywhere in the matching wall (a walkable cell on that edge) so the
+  player can walk through it; on arrival they step out of the opening on the far
+  screen's edge nearest to where they left, so the gaps needn't line up.
 - A roaming enemy takes its on-map look from its encounter's **first** enemy.
 - A screen can also carry `shops`, [`chests`, and `mimics`](#add-a-chest-or-a-mimic)
   alongside its `spawns`.
+- Remember to add the level id to `meta.ron`'s `levels:` list, in the position you
+  want it in the progression.
 
 ## Add a cutscene
 
@@ -549,7 +593,7 @@ move, <kbd>Enter</kbd> to choose, <kbd>Esc</kbd> to back out) with three tools:
   to recruit it on the spot, joining at the party's current level like a normal
   mid-game recruit. Handy for testing a hero's kit without playing to their story
   recruitment. (No dedupe — choosing the same one twice adds two copies.)
-- **Fight encounter** — pick any encounter (`encounters` in the RON) to jump straight
+- **Fight encounter** — pick any encounter (any `encounters/<id>.ron`) to jump straight
   into that battle, boss theme and all. It grants full spoils on victory and drops
   you back on the map afterward, so you can test a fight in isolation.
 

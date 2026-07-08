@@ -1,0 +1,2 @@
+// The depths' last guard: a demon flanked by two remade orc thralls.
+EncounterDef(id: "demon_guard",   enemies: ["demon", "orc_brute", "orc_brute"])

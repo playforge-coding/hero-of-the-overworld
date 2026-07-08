@@ -1,0 +1,2 @@
+// Slime swarms — three to a fight — fill the GREENWOOD.
+EncounterDef(id: "slime_trio", enemies: ["slime", "slime", "slime"])

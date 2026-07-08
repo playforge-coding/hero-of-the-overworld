@@ -29,6 +29,10 @@ glam = "0.33.2"
 log = "0.4.33"
 ron = "0.12.2"
 serde = { version = "1.0.228", features = ["derive"] }
+# Embeds the whole `assets/data` content tree (per-entity RON files + CSV
+# tilemaps) into the binary at compile time, so the split database still ships
+# inside the native binary and the wasm bundle with no runtime filesystem.
+include_dir = "0.7.4"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 dirs = "6.0.0"

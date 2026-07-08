@@ -1,0 +1,7 @@
+CutsceneDef(
+    id: "greenwood_intro",
+    steps: [
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "THE GREENWOOD SWARMS WITH SLIMES - AND A DEMON LURKS DEEP WITHIN."),
+    ],
+)

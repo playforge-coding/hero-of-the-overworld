@@ -1,0 +1,6 @@
+ItemDef(
+    id: "guard_salve", name: "GUARD SALVE",
+    description: "A hardening balm. Raises DEFENSE for a few rounds.",
+    price: 50, target: OneAlly,
+    effect: ItemEffect(inflicts: ["guard"]),
+)

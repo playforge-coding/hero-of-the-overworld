@@ -1,0 +1,38 @@
+// Dark knights: the mounted lords of the pass and the elite threat of
+// TRAVELLER'S END. Fast (a charging warhorse acts early), heavily armed
+// with a CAVALRY LANCE, and able to LANCE CHARGE one hero or TRAMPLE the
+// whole party. dark_knight.png is a 4x12 sheet of 32x32 frames, three
+// rows per facing (walk, walk, attack): down 0-2, right 3-5, left 6-8,
+// up 9-11. The right-facing walk/attack rows serve as the battle idle/
+// swing (flipped to face the party, as with every enemy).
+EnemyDef(
+    id: "dark_knight",
+    name: "DARK KNIGHT",
+    stats: Stats(max_hp: 100, max_mp: 16, attack: 22, defense: 16, magic: 4, speed: 15),
+    sprite: BattlerSprite(
+        texture: "dark_knight",
+        frame_w: 32, frame_h: 32,
+        draw_w: 78.0, draw_h: 78.0,
+        faces_left: false,
+        idle:   AnimClip(row: 3, first_col: 0, frames: 4, fps: 5.0),
+        attack: AnimClip(row: 5, first_col: 0, frames: 4, fps: 10.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "dark_knight",
+        frame_w: 32, frame_h: 32,
+        draw_w: 28.0, draw_h: 28.0,
+        row_down: 0, row_up: 9, row_right: 3, row_left: 6,
+        frames: 4, fps: 6.0,
+    )),
+    skills: ["lance_charge", "trample"],
+    weapon: Some("cavalry_lance"),
+    ai: Random,
+    xp: 34,
+    gold: 28,
+    // Mounted and swift — nearly runs the player down; keep moving.
+    overworld_speed: Some(48.0),
+    drops: [
+        ItemDrop(item: "hi_potion",   chance: 0.25),
+        ItemDrop(item: "might_tonic", chance: 0.15),
+    ],
+)

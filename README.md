@@ -85,7 +85,7 @@ the window, so game code never deals with real pixels or DPI.
 | Module | Responsibility |
 | --- | --- |
 | [`src/renderer.rs`](src/renderer.rs) | thin macroquad wrapper: a virtual-resolution sprite/rect/text draw queue, aspect-adaptive width, letterboxed |
-| [`src/data.rs`](src/data.rs) | the RON file format + indexed registries (the content DB) |
+| [`src/data.rs`](src/data.rs) | content file formats, the split-file loader, + indexed registries |
 | [`src/party.rs`](src/party.rs) | the persistent, extensible party (HP/MP/XP carried between battles) + the shared gear bag and consumable-item stash |
 | [`src/inventory.rs`](src/inventory.rs) | the out-of-battle party menu: equip/unequip gear, plus use healing items & moves on the map |
 | [`src/input_config.rs`](src/input_config.rs) | the controls screen: map keyboard/gamepads to players for local co-op |
@@ -118,10 +118,12 @@ tiny atlas.
 
 ## Extending the game (data-only)
 
-All content lives in [`assets/data/game.ron`](assets/data/game.ron). To add a **new party
-member** or **enemy** you usually only edit that file. A character can use its own sprite
-sheet (the bundled mage, ELARA, has her own purple `mage.png`) or reuse and recolour an
-existing one with a `tint`:
+All content lives under [`assets/data/`](assets/data), **one file per entity** —
+`enemies/<id>.ron`, `skills/<id>.ron`, `levels/<id>.ron`, and so on, with each stage's
+tilemaps as `maps/<level>/<screen>.csv` (see the [modding guide](docs/modding.md)). To add
+a **new party member** or **enemy** you usually just drop in one file. A character can use
+its own sprite sheet (the bundled mage, ELARA, has her own purple `mage.png`) or reuse and
+recolour an existing one with a `tint` — `characters/mage.ron`:
 
 ```ron
 CharacterDef(
@@ -185,8 +187,8 @@ Tiles (`grass`, `water`, `tree`, `rock`, `barricade`) are their own 16×16 PNGs 
 
 Two layers:
 
-**1. Fast data/logic tests** — run on every `cargo test`, no display needed. They validate the
-RON parses, every skill/enemy/encounter/texture/cutscene/shop/item/drop cross-reference
+**1. Fast data/logic tests** — run on every `cargo test`, no display needed. They validate that
+every content file parses, every skill/enemy/encounter/texture/cutscene/shop/item/drop cross-reference
 resolves, that every level's screens are linked and traversable, that shop wares and keeper
 placements are valid, that chest loot and mimic encounters resolve on standable ground, that
 the shop interior/buy logic behaves (gear *and* items), and that the party mechanics (build,
@@ -227,7 +229,11 @@ They need a display (X11 here) and the `libX11`/`libXtst` runtime libs. What the
 
 ```
 assets/
-  data/game.ron                     # the content database
+  data/                             # the content database, one file per entity
+    meta.ron                        #   starting party + level progression order
+    characters/ enemies/ skills/    #   … statuses/ equipment/ items/ shops/
+    encounters/ cutscenes/ levels/  #   one <id>.ron per def
+    maps/<level>/<screen>.csv       #   each stage's tilemaps as CSV
   textures/entities/playables/...   # party sprite sheets
   textures/entities/monsters/...    # enemy sprite sheets
   textures/entities/npcs/...        # shopkeeper + other NPC sprites

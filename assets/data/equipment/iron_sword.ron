@@ -1,0 +1,6 @@
+EquipmentDef(
+    id: "iron_sword", name: "IRON SWORD",
+    description: "Standard-issue soldier's blade.",
+    slot: Weapon, icon: "starter_sword",
+    mods: StatMods(attack: 6), crit: 6, accuracy: 4,
+)

@@ -1,0 +1,8 @@
+SkillDef(
+    id: "flame_breath", name: "FLAME BREATH",
+    description: "A dragon's roaring gout of fire; sears and burns every foe.",
+    mp_cost: 10, power: 135, kind: Magical, target: AllEnemies,
+    inflicts: ["burn"], unblockable: true,
+    // Fans a fireball out at every party member at once.
+    anim: Projectile(texture: "fireball"),
+)

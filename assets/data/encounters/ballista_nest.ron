@@ -1,0 +1,3 @@
+// A ballista dug in on the shelves, its crew loosing bolts down the pass.
+// Fell the crew (or the engine) to stop the fire; abandoned, it crumbles.
+EncounterDef(id: "ballista_nest",     enemies: ["dark_knight", "skeleton", "ballista"])

@@ -1,0 +1,39 @@
+// The MINOTAUR: a lumbering miniboss that lowers its horns to GORING CHARGE
+// a lone hero (a screen-wrapping charge), TRAMPLES the whole party, and
+// hurls a FIREBALL. Fought in a `boss`-flagged encounter so it plays the
+// boss theme. minotaur.png is the demon's sheet with the walk-LEFT row
+// removed, so it's 6x7: rows 0-2 walk down/up/right, rows 3-6 the attack
+// poses (all shifted up one from the demon's 4-7). With no left-walk row,
+// the overworld map reuses the right-walk row for leftward movement.
+EnemyDef(
+    id: "minotaur",
+    name: "MINOTAUR",
+    stats: Stats(max_hp: 240, max_mp: 50, attack: 30, defense: 18, magic: 20, speed: 10),
+    sprite: BattlerSprite(
+        texture: "minotaur",
+        frame_w: 16, frame_h: 16,
+        draw_w: 72.0, draw_h: 72.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 3.0),
+        attack: AnimClip(row: 3, first_col: 0, frames: 4, fps: 9.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "minotaur",
+        frame_w: 16, frame_h: 16,
+        // No walk-LEFT row on this sheet, so left reuses the right-walk row.
+        // The walk rows are 4 frames (not the demon's 5).
+        draw_w: 26.0, draw_h: 26.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 2,
+        frames: 4, fps: 6.0,
+    )),
+    skills: ["goring_charge", "trample", "fireball"],
+    ai: Random,
+    xp: 90,
+    gold: 70,
+    // Hulking and ponderous — far slower than the player on the map.
+    overworld_speed: Some(24.0),
+    drops: [
+        ItemDrop(item: "might_tonic", chance: 0.25),
+        ItemDrop(item: "hi_potion",   chance: 0.20),
+    ],
+)

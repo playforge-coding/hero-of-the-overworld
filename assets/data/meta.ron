@@ -1,0 +1,22 @@
+// ============================================================================
+// Hero of the Overworld — game data
+// ----------------------------------------------------------------------------
+// This RON file is the whole content database. To add a new party member or
+// enemy, add an entry here (and register its texture key in src/data.rs).
+// No engine/battle code needs to change.
+//
+// Sprite sheets are 16x16 grids. Animation clips select a `row` and a run of
+// `frames` starting at `first_col`, played at `fps`.
+//   swordsman.png : 5 cols x 12 rows. rows 0-3 = walk down/up/right/left,
+//                   rows 4-7 = attack down/up/right/left.
+//   mage.png      : 6 cols x 8 rows. rows 0-3 = walk down/up/right/left
+//                   (4 frames), rows 4-7 = cast down/up/LEFT/RIGHT (5 frames;
+//                   note the cast rows swap left/right vs. the walk rows).
+//   demon.png     : 6 cols x 8 rows.
+// ============================================================================
+Meta(
+    starting_party: ["swordsman"],
+    // Levels in progression order (each unlocks the next). Index-sensitive:
+    // screen neighbour links and auto-advance step through this order.
+    levels: ["greenwood", "stonepass", "travellersend", "demonfortress", "charreddepths"],
+)

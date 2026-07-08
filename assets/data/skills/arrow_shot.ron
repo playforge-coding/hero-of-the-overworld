@@ -1,0 +1,9 @@
+// The archer goblins' shot: a piercing arrow that flies to its mark and
+// ignores a timed block (as with every ranged/piercing blow).
+SkillDef(
+    id: "arrow_shot", name: "ARROW SHOT",
+    description: "A goblin's loosed arrow strikes one foe from afar.",
+    mp_cost: 0, power: 120, kind: Physical, target: OneEnemy,
+    unblockable: true,
+    anim: Projectile(texture: "arrow"),   // looses an arrow at the target
+)

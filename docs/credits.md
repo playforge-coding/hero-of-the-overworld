@@ -11,7 +11,8 @@ Thank you to their authors and maintainers.
 | ----- | ---- |
 | [macroquad](https://crates.io/crates/macroquad) | Window, GL rendering, input, text, and audio — native (OpenGL) and web (WebGL) |
 | [glam](https://crates.io/crates/glam) | Vector / matrix math |
-| [ron](https://crates.io/crates/ron) + [serde](https://crates.io/crates/serde) | Parsing the `game.ron` content database |
+| [ron](https://crates.io/crates/ron) + [serde](https://crates.io/crates/serde) | Parsing the per-entity RON content files |
+| [include_dir](https://crates.io/crates/include_dir) | Baking the whole `assets/data` content tree into the binary at compile time |
 | [log](https://crates.io/crates/log) + [env_logger](https://crates.io/crates/env_logger) | Logging |
 | [image](https://crates.io/crates/image) | Loading screenshots in the end-to-end test suite |
 | [rustautogui](https://crates.io/crates/rustautogui) | Driving the real window in the end-to-end test suite |

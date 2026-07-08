@@ -1,0 +1,2 @@
+// Gargoyle patrols hold STONE PASS.
+EncounterDef(id: "gargoyle_solo", enemies: ["gargoyle"])

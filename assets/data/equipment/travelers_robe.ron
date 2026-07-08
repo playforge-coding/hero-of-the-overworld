@@ -1,0 +1,6 @@
+EquipmentDef(
+    id: "travelers_robe", name: "TRAVELER'S ROBE",
+    description: "Light, enchanted travel cloth.",
+    slot: Armor, icon: "starter_gear",
+    mods: StatMods(defense: 3, magic: 2), evasion: 8,
+)

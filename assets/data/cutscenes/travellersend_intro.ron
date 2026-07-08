@@ -1,0 +1,11 @@
+CutsceneDef(
+    id: "travellersend_intro",
+    steps: [
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "TRAVELLER'S END - THE LAST MOUNTAIN PASS BEFORE THE DEMON FORTRESS."),
+        Say(speaker: Some("ELARA"), portrait: Some("mage"),
+            text: "CRABS AND SKELETONS ARE THE LEAST OF IT. THE DARK KNIGHTS RIDE THESE HEIGHTS."),
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "THEN WE CLIMB - AND WE DO NOT STOP UNTIL WE REACH THE SUMMIT."),
+    ],
+)

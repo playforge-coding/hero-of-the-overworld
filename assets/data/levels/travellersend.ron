@@ -1,0 +1,121 @@
+// TRAVELLER'S END — the longest trek in the game: a switchbacking climb
+// up a stony mountain range (12 screens), grass and pines giving way to
+// bare scree and boneyards. Crabs and slimes at the foot, skeletons and
+// gargoyles on the shelves, and the mounted DARK KNIGHTS (with stray
+// demons up from the fortress below) holding the storm-lashed summit.
+// Sits between STONE PASS and the DEMON FORTRESS in the climb.
+LevelDef(
+    id: "travellersend", name: "TRAVELLER'S END",
+    node: (3, 2),
+    start_screen: 0, start: (2, 5),
+    ground: Some("stone"),
+    intro_cutscene: Some("travellersend_intro"),
+    clear_cutscene: Some("gareth_joins"),
+    screens: [
+        // The trailhead: grassy slopes at the foot of the range.
+        ScreenDef(
+            east: Some(1),
+            spawns: [
+                SpawnDef(col: 7, row: 5, encounter: "crab_pair"),
+                SpawnDef(col: 12, row: 8, encounter: "crab_trio"),
+            ],
+        ),
+        // The path bends up into the rocks.
+        ScreenDef(
+            north: Some(2), west: Some(0),
+            spawns: [
+                SpawnDef(col: 10, row: 5, encounter: "crab_trio"),
+                SpawnDef(col: 7, row: 6, encounter: "slime_trio"),
+            ],
+        ),
+        // A boulder-strewn shelf; the first skeletons stir here.
+        ScreenDef(
+            south: Some(1), east: Some(3),
+            spawns: [
+                SpawnDef(col: 10, row: 5, encounter: "skeleton_duo"),
+                SpawnDef(col: 14, row: 5, encounter: "crab_pair"),
+            ],
+            // Two chests side by side on the shelf — one a genuine cache,
+            // the other a mimic. Reaching for the wrong one starts a fight.
+            chests: [
+                ChestSpawn(col: 14, row: 4, gold: 60, item: Some("hi_potion")),
+            ],
+            mimics: [
+                MimicSpawn(col: 16, row: 4, encounter: "mimic_solo"),
+            ],
+        ),
+        // A switchback climb guarded by a lone gargoyle.
+        ScreenDef(
+            north: Some(4), west: Some(2),
+            spawns: [
+                SpawnDef(col: 10, row: 4, encounter: "skeleton_duo"),
+                SpawnDef(col: 14, row: 5, encounter: "gargoyle_solo"),
+            ],
+        ),
+        // A windswept ledge lined with hardy pines.
+        ScreenDef(
+            south: Some(3), east: Some(5),
+            spawns: [
+                SpawnDef(col: 9, row: 4, encounter: "skeleton_trio"),
+                SpawnDef(col: 16, row: 6, encounter: "crab_trio"),
+            ],
+        ),
+        // A narrow gap between two ribs of stone.
+        ScreenDef(
+            north: Some(6), west: Some(4),
+            spawns: [
+                SpawnDef(col: 10, row: 7, encounter: "skeleton_duo"),
+                SpawnDef(col: 16, row: 5, encounter: "gargoyle_duo"),
+            ],
+        ),
+        // The high scree, where the dark knights first patrol.
+        ScreenDef(
+            south: Some(5), east: Some(7),
+            spawns: [
+                SpawnDef(col: 9, row: 4, encounter: "knight_solo"),
+                SpawnDef(col: 5, row: 6, encounter: "skeleton_trio"),
+            ],
+        ),
+        // The knights' watch - an open bowl ringed with rock.
+        ScreenDef(
+            north: Some(8), west: Some(6),
+            spawns: [
+                SpawnDef(col: 9, row: 5, encounter: "knight_solo"),
+                SpawnDef(col: 14, row: 3, encounter: "gargoyle_duo"),
+            ],
+        ),
+        // A bleak boneyard; a demon has wandered up from below.
+        ScreenDef(
+            south: Some(7), east: Some(9),
+            spawns: [
+                SpawnDef(col: 10, row: 5, encounter: "knight_skeletons"),
+                SpawnDef(col: 7, row: 7, encounter: "demon_solo"),
+            ],
+        ),
+        // The last climb before the summit saddle.
+        ScreenDef(
+            north: Some(10), west: Some(8),
+            spawns: [
+                SpawnDef(col: 10, row: 5, encounter: "knight_duo"),
+                SpawnDef(col: 7, row: 4, encounter: "ballista_crew"),
+            ],
+        ),
+        // The storm-lashed saddle, held by knight and demon.
+        ScreenDef(
+            south: Some(9), east: Some(11),
+            spawns: [
+                SpawnDef(col: 10, row: 4, encounter: "knight_demon"),
+                SpawnDef(col: 7, row: 6, encounter: "demon_duo"),
+            ],
+        ),
+        // TRAVELLER'S END: the far summit, and its grim last guard.
+        ScreenDef(
+            west: Some(10),
+            spawns: [
+                SpawnDef(col: 10, row: 5, encounter: "knight_guard"),
+                SpawnDef(col: 7, row: 4, encounter: "ballista_nest"),
+                SpawnDef(col: 13, row: 6, encounter: "demon_duo"),
+            ],
+        ),
+    ],
+)

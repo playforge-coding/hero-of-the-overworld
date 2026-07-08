@@ -1,0 +1,36 @@
+// Stone sentinels of STONE PASS. They hit like a landslide (via the
+// STONE FISTS weapon) but are ponderously slow — last to act in battle
+// and easy to outrun on the map — and their crude swings miss often
+// (the weapon carries a big accuracy penalty). gargoyle.png shares the
+// demon's 6x8 layout: rows 0-3 walk, rows 4-7 attack.
+EnemyDef(
+    id: "gargoyle",
+    name: "GARGOYLE",
+    stats: Stats(max_hp: 64, max_mp: 0, attack: 20, defense: 14, magic: 0, speed: 3),
+    sprite: BattlerSprite(
+        texture: "gargoyle",
+        frame_w: 16, frame_h: 16,
+        draw_w: 62.0, draw_h: 62.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 3.0),
+        attack: AnimClip(row: 4, first_col: 0, frames: 4, fps: 7.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "gargoyle",
+        frame_w: 16, frame_h: 16,
+        draw_w: 24.0, draw_h: 24.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 5, fps: 5.0,
+    )),
+    skills: [],
+    weapon: Some("stone_fists"),
+    ai: Basic,
+    xp: 18,
+    gold: 14,
+    // Lumbering: far slower than the player, so easy to dodge on the map.
+    overworld_speed: Some(18.0),
+    drops: [
+        ItemDrop(item: "ether",       chance: 0.20),
+        ItemDrop(item: "guard_salve", chance: 0.10),
+    ],
+)

@@ -1,0 +1,10 @@
+// The MINOTAUR's signature: horns down, it barrels through one hero and
+// off the far edge, wrapping the field back to its post. Piercing, so it
+// can't be timed-blocked.
+SkillDef(
+    id: "goring_charge", name: "GORING CHARGE",
+    description: "The minotaur gores a hero, charging clean through.",
+    mp_cost: 6, power: 150, kind: Physical, target: OneEnemy,
+    unblockable: true,
+    anim: Charge,
+)

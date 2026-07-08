@@ -1,0 +1,7 @@
+// GARETH's blade-work. Fast and cheap, to match the nimblest hero: a
+// spammable single strike and a darting sweep across a whole pack.
+SkillDef(
+    id: "quick_slash", name: "QUICK SLASH",
+    description: "A darting cut, drawn and returned in a blink.",
+    mp_cost: 3, power: 150, kind: Physical, target: OneEnemy,
+)

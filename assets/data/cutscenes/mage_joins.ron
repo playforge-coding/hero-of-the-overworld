@@ -1,0 +1,12 @@
+CutsceneDef(
+    id: "mage_joins",
+    steps: [
+        Say(speaker: Some("???"), portrait: Some("mage"),
+            text: "HOLD! YOU CLEARED THE GREENWOOD ALONE?"),
+        Say(speaker: Some("ELARA"), portrait: Some("mage"),
+            text: "I AM ELARA, A WANDERING MAGE. YOUR CAUSE IS MINE NOW."),
+        Recruit(character: "mage"),
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "GLAD TO HAVE YOUR FIRE AT MY BACK, ELARA."),
+    ],
+)

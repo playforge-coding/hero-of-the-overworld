@@ -1,0 +1,34 @@
+// ORC BRUTE: the prisoners the underworld twisted into hulking beasts.
+// A slow, heavy wall of muscle — high HP and a punishing BRUTE SLAM — that
+// lumbers after you on the map (easy to sidestep, like a gargoyle). Some
+// were freed only under heavy guard; here in the depths there is no guard.
+EnemyDef(
+    id: "orc_brute",
+    name: "ORC BRUTE",
+    stats: Stats(max_hp: 150, max_mp: 0, attack: 34, defense: 19, magic: 0, speed: 9),
+    sprite: BattlerSprite(
+        texture: "orc_brute",
+        frame_w: 16, frame_h: 16,
+        draw_w: 58.0, draw_h: 58.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 3.0),
+        attack: AnimClip(row: 4, first_col: 0, frames: 5, fps: 9.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "orc_brute",
+        frame_w: 16, frame_h: 16,
+        draw_w: 24.0, draw_h: 24.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 5, fps: 6.0,
+    )),
+    skills: ["brute_slam"],
+    ai: Random,
+    xp: 48,
+    gold: 40,
+    // Hulking and ponderous — far slower than the player.
+    overworld_speed: Some(22.0),
+    drops: [
+        ItemDrop(item: "might_tonic", chance: 0.18),
+        ItemDrop(item: "hi_potion",   chance: 0.12),
+    ],
+)

@@ -1,0 +1,4 @@
+// UNDERWORLD — the CHARRED DEPTHS. Goblin packs (clubbers screening their
+// archers) fill the upper halls; orc brutes anchor the deeper chambers,
+// and the demons that dragged the prisoners down still hold the depths.
+EncounterDef(id: "goblin_pair",   enemies: ["club_goblin", "archer_goblin"])

@@ -1,0 +1,2 @@
+// A ballista emplacement in the deep halls, goblins and an orc working it.
+EncounterDef(id: "ballista_battery", enemies: ["orc_brute", "archer_goblin", "ballista"])

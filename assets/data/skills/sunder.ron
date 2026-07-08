@@ -1,0 +1,7 @@
+// ROLAND's capstone (his last learned move, replacing the shared MEND):
+// a devastating single-target cleave, mightier than POWER STRIKE.
+SkillDef(
+    id: "sunder", name: "SUNDER",
+    description: "A crushing overhead cleave that splits a foe's guard.",
+    mp_cost: 12, power: 245, kind: Physical, target: OneEnemy,
+)

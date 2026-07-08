@@ -1,0 +1,2 @@
+// Demons: the lone GREENWOOD guardian, and the packs in the DEMON FORTRESS.
+EncounterDef(id: "demon_solo", enemies: ["demon"])

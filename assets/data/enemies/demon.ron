@@ -1,0 +1,33 @@
+// The demons are now the elite threat, held back in the DEMON FORTRESS (plus a
+// lone one guarding the end of GREENWOOD). FIREBALL leaves the target
+// BURNING for three rounds, so they punish a drawn-out fight.
+EnemyDef(
+    id: "demon",
+    name: "DEMON",
+    stats: Stats(max_hp: 68, max_mp: 30, attack: 18, defense: 9, magic: 16, speed: 10),
+    sprite: BattlerSprite(
+        texture: "demon",
+        frame_w: 16, frame_h: 16,
+        draw_w: 56.0, draw_h: 56.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 4.0),
+        attack: AnimClip(row: 4, first_col: 0, frames: 4, fps: 10.0),
+    ),
+    // Overworld walk: rows 0-3 are walk down/up/right/left, 5 frames each
+    // (the 6th column is empty). Attack poses live in rows 4-7.
+    overworld: Some(OverworldWalk(
+        texture: "demon",
+        frame_w: 16, frame_h: 16,
+        draw_w: 22.0, draw_h: 22.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 5, fps: 8.0,
+    )),
+    skills: ["fireball", "claw"],
+    ai: Random,
+    xp: 16,
+    gold: 12,
+    drops: [
+        ItemDrop(item: "might_tonic", chance: 0.15),
+        ItemDrop(item: "hi_potion",   chance: 0.10),
+    ],
+)

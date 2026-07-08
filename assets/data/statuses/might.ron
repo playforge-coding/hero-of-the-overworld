@@ -1,0 +1,9 @@
+// Buff statuses granted by consumable items (a stat_mods shift for a few
+// rounds). These are how items "change stats" / "defend" — see the items
+// section below, and ItemEffect::inflicts in src/data.rs.
+StatusDef(
+    id: "might", name: "MIGHT",
+    duration: 3,
+    stat_mods: StatMods(attack: 8),
+    tint: Some((255, 120, 120)),
+)

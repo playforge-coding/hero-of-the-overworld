@@ -45,8 +45,8 @@ reserve. Keep everyone topped up with **MEND**, and clear burns before they pile
 | --------- | ------- | ----- |
 | `dragon_boss` | 1 dragon (`boss`) | Guarding the depths of the Demon Fortress |
 
-The `dragon_boss` encounter is flagged **`boss`** in
-[`assets/data/game.ron`](../modding.md), which is what makes its battle play the
+The `dragon_boss` encounter is flagged **`boss`** in its
+[`assets/data/encounters/dragon_boss.ron`](../modding.md), which is what makes its battle play the
 boss theme instead of the normal one. On the overworld the dragon roams at a
 steady pace — you *can* slip past it, but the fortress is only cleared once every
 foe, the dragon included, is beaten.

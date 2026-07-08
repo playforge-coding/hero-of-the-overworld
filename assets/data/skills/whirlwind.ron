@@ -1,0 +1,5 @@
+SkillDef(
+    id: "whirlwind", name: "WHIRLWIND",
+    description: "A spinning slash that hits every foe.",
+    mp_cost: 8, power: 95, kind: Physical, target: AllEnemies,
+)

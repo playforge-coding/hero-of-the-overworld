@@ -1,0 +1,8 @@
+// A gargoyle's fists: brutal power, but so clumsy they whiff constantly
+// (the accuracy penalty is what makes gargoyles "prone to missing").
+EquipmentDef(
+    id: "stone_fists", name: "STONE FISTS",
+    description: "Crushing stone knuckles; heavy and clumsy.",
+    slot: Weapon, icon: "starter_sword",
+    mods: StatMods(attack: 18), crit: 12, accuracy: -34,
+)

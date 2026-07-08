@@ -1,0 +1,29 @@
+// Weak swarm fodder. Slimes come three at a time; individually harmless,
+// but a pack can whittle you down. slime.png is a 6x4 sheet: rows 0-3 are
+// the walk cycles (down/up/right/left); it has no separate attack rows, so
+// the "attack" clip just reuses the walk row played faster (a quick hop).
+EnemyDef(
+    id: "slime",
+    name: "SLIME",
+    stats: Stats(max_hp: 22, max_mp: 0, attack: 8, defense: 4, magic: 0, speed: 8),
+    sprite: BattlerSprite(
+        texture: "slime",
+        frame_w: 16, frame_h: 16,
+        draw_w: 40.0, draw_h: 40.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 4.0),
+        attack: AnimClip(row: 0, first_col: 0, frames: 4, fps: 10.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "slime",
+        frame_w: 16, frame_h: 16,
+        draw_w: 18.0, draw_h: 18.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 4, fps: 8.0,
+    )),
+    skills: [],
+    ai: Basic,
+    xp: 4,
+    gold: 3,
+    drops: [ItemDrop(item: "potion", chance: 0.25)],
+)

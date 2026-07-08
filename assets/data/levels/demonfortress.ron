@@ -1,0 +1,73 @@
+// DEMON FORTRESS — a very mazelike warren of dark-brick corridors: a
+// gatehouse into a crossing that branches to a dead-end cell block or
+// deeper east through twisting galleries to the dragon's lair.
+LevelDef(
+    id: "demonfortress", name: "DEMON FORTRESS",
+    node: (5, 1),
+    start_screen: 0, start: (2, 5),
+    ground: Some("dark_floor"),
+    wall: Some("dark_wall"),
+    // Felling the dragon tears open the gate the advisor used: the portal
+    // cutscene draws the party down into the UNDERWORLD (CHARRED DEPTHS),
+    // which then stands unlocked on the world map.
+    clear_cutscene: Some("underworld_portal"),
+    screens: [
+        ScreenDef(
+            // The gatehouse: wind through the comb to the east door.
+            east: Some(1),
+            spawns: [
+                SpawnDef(col: 2, row: 5, encounter: "demon_duo"),
+                SpawnDef(col: 11, row: 5, encounter: "demon_trio"),
+            ],
+        ),
+        ScreenDef(
+            // The crossing: north into the cells, or east deeper in.
+            north: Some(2), east: Some(3), west: Some(0),
+            spawns: [
+                SpawnDef(col: 3, row: 5, encounter: "demon_duo"),
+                SpawnDef(col: 17, row: 5, encounter: "demon_duo"),
+            ],
+        ),
+        ScreenDef(
+            // The cell block: a dead-end warren to the north. Its far corners
+            // hold a genuine cache — and a mimic squatting among the cells.
+            south: Some(1),
+            spawns: [
+                SpawnDef(col: 3, row: 3, encounter: "demon_trio"),
+                SpawnDef(col: 16, row: 5, encounter: "demon_duo"),
+            ],
+            chests: [
+                ChestSpawn(col: 16, row: 1, gold: 90, item: Some("hi_potion")),
+            ],
+            mimics: [
+                MimicSpawn(col: 3, row: 1, encounter: "mimic_solo"),
+            ],
+        ),
+        ScreenDef(
+            // The twisting galleries, pressing ever east.
+            east: Some(4), west: Some(1),
+            spawns: [
+                SpawnDef(col: 2, row: 5, encounter: "demon_trio"),
+                SpawnDef(col: 11, row: 5, encounter: "demon_duo"),
+            ],
+        ),
+        ScreenDef(
+            // The antechamber: a last knot before the throne room.
+            east: Some(5), west: Some(3),
+            spawns: [
+                SpawnDef(col: 2, row: 5, encounter: "demon_trio"),
+                SpawnDef(col: 12, row: 5, encounter: "demon_trio"),
+            ],
+        ),
+        ScreenDef(
+            // The dragon's lair: a grand pillared hall at the heart.
+            west: Some(4),
+            spawns: [
+                SpawnDef(col: 6, row: 3, encounter: "demon_trio"),
+                SpawnDef(col: 15, row: 7, encounter: "demon_duo"),
+                // The DRAGON, lurking at the deepest point of the fortress.
+                SpawnDef(col: 9, row: 5, encounter: "dragon_boss"),
+            ],
+        ),
+    ],
+)

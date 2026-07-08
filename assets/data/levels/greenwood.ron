@@ -1,0 +1,63 @@
+// GREENWOOD — a straightforward forest walk with some winding parts,
+// flowing east then bending north into the deep wood.
+LevelDef(
+    id: "greenwood", name: "GREENWOOD",
+    node: (0, 2),
+    start_screen: 0, start: (2, 5),
+    intro_cutscene: Some("greenwood_intro"),
+    clear_cutscene: Some("mage_joins"),
+    screens: [
+        ScreenDef(
+            east: Some(1),
+            spawns: [
+                SpawnDef(col: 12, row: 5, encounter: "slime_trio"),
+            ],
+            // The OUTFITTER's stall, right by where you start.
+            shops: [
+                ShopSpawn(col: 5, row: 6, shop: "greenwood_outfitter"),
+            ],
+            // A starter chest tucked in the northeast corner.
+            chests: [
+                ChestSpawn(col: 16, row: 3, gold: 30, item: Some("potion")),
+            ],
+        ),
+        ScreenDef(
+            east: Some(2), west: Some(0),
+            spawns: [
+                SpawnDef(col: 4, row: 5, encounter: "slime_trio"),
+                SpawnDef(col: 15, row: 5, encounter: "slime_trio"),
+            ],
+        ),
+        ScreenDef(
+            // The trail bends north around the pond.
+            north: Some(3), west: Some(1),
+            spawns: [
+                SpawnDef(col: 6, row: 5, encounter: "slime_trio"),
+                SpawnDef(col: 14, row: 4, encounter: "slime_trio"),
+            ],
+            chests: [
+                ChestSpawn(col: 16, row: 4, gold: 40, item: Some("ether")),
+            ],
+        ),
+        ScreenDef(
+            south: Some(2), east: Some(4),
+            spawns: [
+                SpawnDef(col: 5, row: 5, encounter: "slime_trio"),
+                SpawnDef(col: 15, row: 6, encounter: "slime_trio"),
+            ],
+        ),
+        ScreenDef(
+            west: Some(3),
+            spawns: [
+                SpawnDef(col: 10, row: 5, encounter: "slime_trio"),
+                // The lone demon guarding the end of the GREENWOOD.
+                SpawnDef(col: 14, row: 4, encounter: "demon_solo"),
+            ],
+            // The wood's reward: a real chest holding a SCOUT'S EDGE, past
+            // the lone demon. (The deep regions are where chests bite back.)
+            chests: [
+                ChestSpawn(col: 3, row: 5, gold: 50, equipment: Some("scouts_edge")),
+            ],
+        ),
+    ],
+)

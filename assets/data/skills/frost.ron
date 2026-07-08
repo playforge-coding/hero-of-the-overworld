@@ -1,0 +1,6 @@
+SkillDef(
+    id: "frost", name: "FROST",
+    description: "A biting frost that chills all foes.",
+    mp_cost: 12, power: 115, kind: Magical, target: AllEnemies,
+    unblockable: true,
+)

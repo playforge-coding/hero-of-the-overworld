@@ -1,0 +1,30 @@
+// Skeletons: restless undead of the high boneyards. Middling all-round
+// fighters that swing a REAP with their Random AI. skeleton.png shares
+// the swordsman's 5x12 layout exactly: rows 0-3 walk down/up/right/left,
+// rows 4-7 attack down/up/right/left — so, like ROLAND, the walk-right
+// row reads as idle and the attack-right row (6) is the battle swing.
+EnemyDef(
+    id: "skeleton",
+    name: "SKELETON",
+    stats: Stats(max_hp: 46, max_mp: 8, attack: 17, defense: 7, magic: 2, speed: 12),
+    sprite: BattlerSprite(
+        texture: "skeleton",
+        frame_w: 16, frame_h: 16,
+        draw_w: 46.0, draw_h: 46.0,
+        faces_left: false,
+        idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+        attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 12.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "skeleton",
+        frame_w: 16, frame_h: 16,
+        draw_w: 20.0, draw_h: 20.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 4, fps: 8.0,
+    )),
+    skills: ["reap"],
+    ai: Random,
+    xp: 15,
+    gold: 11,
+    drops: [ItemDrop(item: "bomb", chance: 0.22)],
+)

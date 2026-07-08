@@ -1,0 +1,9 @@
+// The BALLISTA's shot: a heavy bolt loosed from the siege engine when an
+// aware foe works it. It hits hard, but a hero can still read the shot and
+// time a block — the counterplay to a weapon you can also just destroy.
+SkillDef(
+    id: "ballista_bolt", name: "BOLT",
+    description: "A heavy siege bolt loosed at one foe. It hits hard.",
+    mp_cost: 0, power: 200, kind: Physical, target: OneEnemy,
+    anim: Projectile(texture: "bolt"),   // looses a bolt at the target
+)

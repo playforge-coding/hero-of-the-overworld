@@ -1,0 +1,32 @@
+// ------ CLONE enemies: shadow-mirrors of the party ---------------------
+// A dark double of each hero — identical stats, sprite, gear, and full
+// skill set, to the number, but sworn to the other side. Each borrows its
+// hero's own battle sheet under a shadowy violet tint, so a mirror reads
+// apart from the real hero across the field. Straight stat-clones — plain
+// Random-AI foes, no special engine behaviour. Unused in any level for now:
+// they meet the party only in the `mirror_match` boss encounter, all three
+// at once. (Their stats/gear must be kept in step with the party defs above
+// — see the `clones_mirror_the_party` test in tests/data.rs.)
+EnemyDef(
+    id: "clone_roland",
+    name: "DARK ROLAND",
+    // ROLAND's stats and gear, to the number.
+    stats: Stats(max_hp: 120, max_mp: 24, attack: 22, defense: 14, magic: 10, speed: 12),
+    sprite: BattlerSprite(
+        texture: "swordsman",
+        frame_w: 16, frame_h: 16,
+        draw_w: 48.0, draw_h: 48.0,
+        faces_left: false,
+        tint: Some((150, 120, 190)),   // a shadow cast over the hero's sheet
+        idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+        attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 14.0),
+    ),
+    // Everything ROLAND can learn: POWER STRIKE, WHIRLWIND, SUNDER.
+    skills: ["power_strike", "whirlwind", "sunder"],
+    weapon: Some("iron_sword"),
+    armor: Some("leather_armor"),
+    ai: Random,
+    xp: 70,
+    gold: 55,
+    drops: [ItemDrop(item: "hi_potion", chance: 0.30)],
+)

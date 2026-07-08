@@ -1,0 +1,23 @@
+EnemyDef(
+    id: "clone_gareth",
+    name: "DARK GARETH",
+    stats: Stats(max_hp: 94, max_mp: 30, attack: 20, defense: 11, magic: 8, speed: 21),
+    sprite: BattlerSprite(
+        texture: "hermit",
+        frame_w: 16, frame_h: 16,
+        draw_w: 48.0, draw_h: 48.0,
+        faces_left: false,
+        tint: Some((150, 120, 190)),
+        idle:   AnimClip(row: 2, first_col: 0, frames: 5, fps: 5.0),
+        attack: AnimClip(row: 6, first_col: 0, frames: 6, fps: 18.0),
+    ),
+    // Everything GARETH can learn: QUICK SLASH, SWALLOW CUT, FINAL CUT. The
+    // fastest clone by far — it acts first.
+    skills: ["quick_slash", "swallow_cut", "final_cut"],
+    weapon: Some("scouts_edge"),
+    armor: Some("scouts_cloak"),
+    ai: Random,
+    xp: 68,
+    gold: 55,
+    drops: [ItemDrop(item: "hi_potion", chance: 0.30)],
+)

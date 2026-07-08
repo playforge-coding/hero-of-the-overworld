@@ -1,0 +1,7 @@
+// A dark knight's warlance: long reach, a keen point that finds the gap.
+EquipmentDef(
+    id: "cavalry_lance", name: "CAVALRY LANCE",
+    description: "A mounted knight's warlance; long and deadly.",
+    slot: Weapon, icon: "starter_sword",
+    mods: StatMods(attack: 10), crit: 8, accuracy: 6,
+)

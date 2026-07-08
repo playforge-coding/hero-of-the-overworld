@@ -1,0 +1,6 @@
+ItemDef(
+    id: "bomb", name: "BOMB",
+    description: "A lit satchel charge. 35 fire damage to a foe.",
+    price: 40, target: OneEnemy,
+    effect: ItemEffect(damage: 35, inflicts: ["burn"]),
+)

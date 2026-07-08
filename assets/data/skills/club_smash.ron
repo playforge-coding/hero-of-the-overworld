@@ -1,0 +1,7 @@
+// ------ UNDERWORLD: the goblin and orc families ---------------------
+// The club goblins' crude but heavy swing. Free, so they lean on it.
+SkillDef(
+    id: "club_smash", name: "CLUB SMASH",
+    description: "A goblin's crude club brought down on one foe.",
+    mp_cost: 0, power: 130, kind: Physical, target: OneEnemy,
+)

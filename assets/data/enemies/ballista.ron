@@ -1,0 +1,31 @@
+// ------ TOOL enemies: inert engines worked by the foes beside them ------
+// BALLISTA: a siege engine wheeled into the passes of TRAVELLER'S END and
+// the CHARRED DEPTHS. It never acts on its own; an aware foe spends a turn
+// to crank and loose a heavy BOLT (fired from the ballista, so its own high
+// attack drives the damage). Tanky enough to weather direct fire — but once
+// the last enemy working it falls, it has no crew and crumbles on its own.
+// Never leads an encounter (it has no overworld sprite); place it *after*
+// its crew so the roaming map sprite stays that of a real foe.
+// ballista.png is one row of 16x16 frames: attack cols 0-2 (the loose),
+// then idle cols 3-6.
+EnemyDef(
+    id: "ballista",
+    name: "BALLISTA",
+    stats: Stats(max_hp: 160, max_mp: 0, attack: 24, defense: 18, magic: 0, speed: 3),
+    sprite: BattlerSprite(
+        texture: "ballista",
+        frame_w: 16, frame_h: 16,
+        draw_w: 52.0, draw_h: 52.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 3, frames: 4, fps: 3.0),
+        attack: AnimClip(row: 0, first_col: 0, frames: 3, fps: 6.0),
+    ),
+    ai: Basic,
+    xp: 30,
+    gold: 22,
+    drops: [ItemDrop(item: "hi_potion", chance: 0.20)],
+    // The tool behaviour: aware foes strongly prefer to work the engine,
+    // loosing its BOLT on most of their turns while it stands (they only
+    // fall back to their own attacks now and then).
+    tool: Some(ToolDef(skill: "ballista_bolt", operate_chance: 0.8)),
+)

@@ -1,0 +1,7 @@
+SkillDef(
+    id: "firebolt", name: "FIREBOLT",
+    description: "Hurl a searing bolt of flame at one foe.",
+    mp_cost: 6, power: 180, kind: Magical, target: OneEnemy,
+    unblockable: true,
+    anim: Projectile(texture: "fireball"),   // ELARA's flaming bolt
+)

@@ -1,0 +1,1 @@
+EncounterDef(id: "ballista_pit",     enemies: ["club_goblin", "archer_goblin", "ballista"])

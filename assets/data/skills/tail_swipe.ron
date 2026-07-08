@@ -1,0 +1,5 @@
+SkillDef(
+    id: "tail_swipe", name: "TAIL SWIPE",
+    description: "A crushing sweep of the dragon's tail.",
+    mp_cost: 0, power: 160, kind: Physical, target: OneEnemy,
+)

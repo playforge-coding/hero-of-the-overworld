@@ -1,0 +1,9 @@
+// GARETH's kit: a scout's gear, light and quick. The back-slung blade is
+// keen and fast (a touch of speed, high crit/accuracy); the cloak trades
+// armor for the evasion of a man who lived by not being caught.
+EquipmentDef(
+    id: "scouts_edge", name: "SCOUT'S EDGE",
+    description: "A keen, light back-slung blade.",
+    slot: Weapon, icon: "starter_sword",
+    mods: StatMods(attack: 7, speed: 3), crit: 14, accuracy: 10,
+)

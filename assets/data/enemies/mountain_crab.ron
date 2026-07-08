@@ -1,0 +1,33 @@
+// ------ TRAVELLER'S END denizens ------------------------------------
+// Mountain crabs: skittering shell-backed fodder of the low slopes. Weak
+// and slow, but their hard shells (high defense) make them a chore to
+// crack. mountain_crab.png is a tiny 3x1 sheet: one front-facing row, so
+// the "attack" clip just replays the idle row a touch faster (a pinch).
+EnemyDef(
+    id: "mountain_crab",
+    name: "MOUNTAIN CRAB",
+    stats: Stats(max_hp: 30, max_mp: 0, attack: 11, defense: 13, magic: 0, speed: 5),
+    sprite: BattlerSprite(
+        texture: "mountain_crab",
+        frame_w: 16, frame_h: 16,
+        draw_w: 38.0, draw_h: 38.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 3, fps: 3.0),
+        attack: AnimClip(row: 0, first_col: 0, frames: 3, fps: 8.0),
+    ),
+    // One-row sheet: every facing reads the same scuttle row.
+    overworld: Some(OverworldWalk(
+        texture: "mountain_crab",
+        frame_w: 16, frame_h: 16,
+        draw_w: 18.0, draw_h: 18.0,
+        row_down: 0, row_up: 0, row_right: 0, row_left: 0,
+        frames: 3, fps: 6.0,
+    )),
+    skills: [],
+    ai: Basic,
+    xp: 6,
+    gold: 5,
+    // Slow scuttle — easy to sidestep on the map.
+    overworld_speed: Some(26.0),
+    drops: [ItemDrop(item: "potion", chance: 0.20)],
+)

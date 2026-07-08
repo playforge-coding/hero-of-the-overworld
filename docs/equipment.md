@@ -71,7 +71,7 @@ lost — and the whole bag rides along in your [save](gameplay.md#saving).
 
 ## Adding your own
 
-Weapons and armor are pure data, like everything else — an `EquipmentDef` in
-`assets/data/game.ron` with a slot, an icon, stat bonuses, and a description.
+Weapons and armor are pure data, like everything else — an `EquipmentDef` in its
+own `assets/data/equipment/<id>.ron` with a slot, an icon, stat bonuses, and a description.
 Characters (and enemies) equip them by id. See
 **[Extending the Game](modding.md#add-equipment)**.

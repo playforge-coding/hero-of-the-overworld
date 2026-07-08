@@ -6,8 +6,8 @@ comments: true
 
 Every character in Hero of the Overworld — hero and demon alike — has a page here
 with its stat block, skills, and notes on how it fights. All of these numbers come
-straight from the game's content file, [`assets/data/game.ron`](../modding.md), so
-if you edit that file your own additions belong here too.
+straight from the game's [content files](../modding.md) (each enemy is its own
+`assets/data/enemies/<id>.ron`), so if you add one your own page belongs here too.
 
 Stats are the six values every battler shares:
 

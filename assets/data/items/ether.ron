@@ -1,0 +1,6 @@
+ItemDef(
+    id: "ether", name: "ETHER",
+    description: "Bitter blue brew. Restores 20 MP.",
+    price: 60, target: OneAlly,
+    effect: ItemEffect(restore_mp: 20),
+)

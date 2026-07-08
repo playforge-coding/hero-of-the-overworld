@@ -1,0 +1,5 @@
+StatusDef(
+    id: "burn", name: "BURN",
+    duration: 3, damage_per_turn: 8,
+    tint: Some((255, 140, 60)),
+)

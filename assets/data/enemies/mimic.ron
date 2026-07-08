@@ -1,0 +1,45 @@
+// The MIMIC — a chest that bites back, and a LATE-GAME ambush predator: it
+// lurks in the deep regions (TRAVELLER'S END, the DEMON FORTRESS, the
+// CHARRED DEPTHS) disguised as treasure, then springs when you draw near.
+// Powerful and tricky in a fight — it hurls FIREBALL, bites hard, and, its
+// signature, APES the party's last move: it takes on that hero's very shape
+// to cast a nerfed copy of it (see `mimicry`). Beating one is well paid: a
+// fat purse and generous drops. mimic.png is a 16x32 sheet — one column of
+// two 16x16 frames: row 0 the dormant disguise, row 1 the toothy lunge.
+EnemyDef(
+    id: "mimic",
+    name: "MIMIC",
+    stats: Stats(max_hp: 132, max_mp: 40, attack: 26, defense: 14, magic: 24, speed: 14),
+    sprite: BattlerSprite(
+        texture: "mimic",
+        frame_w: 16, frame_h: 16,
+        draw_w: 46.0, draw_h: 46.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 1, fps: 1.0),
+        attack: AnimClip(row: 1, first_col: 0, frames: 1, fps: 1.0),
+    ),
+    // Its own moves: FIREBALL and a heavy bite (the AI's basic-attack
+    // fallback). `Random` so it mixes the cast in with plain swings.
+    skills: ["fireball"],
+    ai: Random,
+    xp: 55,
+    gold: 80,
+    drops: [
+        ItemDrop(item: "hi_potion", chance: 0.5),
+        ItemDrop(item: "ether",     chance: 0.4),
+    ],
+    // The signature trick: ape the party's last move at 65% power, wearing
+    // that hero's shape as it strikes. The allow-list is the safe subset —
+    // mid-power strikes and the party's area moves — deliberately leaving
+    // out the big finishers (SUNDER, FINAL CUT) and MEND, so a mimic stays
+    // dangerous without being able to parrot a nuke back at the party.
+    mimicry: Some(MimicryDef(
+        copyable: [
+            "power_strike", "whirlwind",   // ROLAND
+            "firebolt", "frost",           // ELARA
+            "quick_slash", "swallow_cut",  // GARETH
+        ],
+        power_pct: 65,
+        chance: 0.5,
+    )),
+)

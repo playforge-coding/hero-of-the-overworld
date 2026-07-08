@@ -1,0 +1,6 @@
+// The orc brutes' hammering overhead — slow to wind up, brutal to land.
+SkillDef(
+    id: "brute_slam", name: "BRUTE SLAM",
+    description: "A hulking orc's two-fisted slam crashes down on one foe.",
+    mp_cost: 0, power: 170, kind: Physical, target: OneEnemy,
+)

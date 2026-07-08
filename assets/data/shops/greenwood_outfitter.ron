@@ -1,0 +1,18 @@
+ShopDef(
+    id: "greenwood_outfitter",
+    name: "OUTFITTER",
+    greeting: Some("FRESH FROM THE FORGE - WHAT'LL IT BE?"),
+    facing: Down,
+    stock: [
+        ShopStock(item: "iron_sword",     price: 40),
+        ShopStock(item: "leather_armor",  price: 40),
+        ShopStock(item: "travelers_robe", price: 70),
+        ShopStock(item: "stone_fists",    price: 120),
+        // Consumables sit on the same counter — `stock` resolves an id as
+        // equipment first, then as an item, so a shop can sell either.
+        ShopStock(item: "potion",         price: 30),
+        ShopStock(item: "ether",          price: 60),
+        ShopStock(item: "bomb",           price: 40),
+        ShopStock(item: "might_tonic",    price: 50),
+    ],
+)

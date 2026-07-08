@@ -1,0 +1,14 @@
+// Plays on first entry to the CHARRED DEPTHS (its `intro_cutscene`).
+CutsceneDef(
+    id: "charreddepths_intro",
+    steps: [
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "SO THIS IS THE UNDERWORLD. CHARRED STONE AS FAR AS THE TORCHLIGHT REACHES."),
+        Say(speaker: Some("ELARA"), portrait: Some("mage"),
+            text: "THE CHARRED DEPTHS. THE PRISONERS WERE CAST DOWN HERE - AND THE DARK REMADE THEM FAST."),
+        Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+            text: "GOBLINS FROM THE ONES IT BROKE AND LOOSED. ORCS FROM THE ONES IT TWISTED WHOLE. WATCH THE ARCHERS - THEY STRIKE FROM RANGE."),
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "THEY WERE OUR OWN, ONCE. WE END WHAT WAS DONE TO THEM - AND WHOEVER ORDERED IT."),
+    ],
+)

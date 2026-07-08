@@ -1,0 +1,6 @@
+EquipmentDef(
+    id: "scouts_cloak", name: "SCOUT'S CLOAK",
+    description: "A light, silent ranger's cloak.",
+    slot: Armor, icon: "starter_gear",
+    mods: StatMods(defense: 3, speed: 2), evasion: 14,
+)

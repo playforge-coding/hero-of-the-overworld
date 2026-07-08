@@ -1,0 +1,22 @@
+EnemyDef(
+    id: "clone_elara",
+    name: "DARK ELARA",
+    stats: Stats(max_hp: 78, max_mp: 60, attack: 10, defense: 9, magic: 26, speed: 13),
+    sprite: BattlerSprite(
+        texture: "mage",
+        frame_w: 16, frame_h: 16,
+        draw_w: 48.0, draw_h: 48.0,
+        faces_left: false,
+        tint: Some((150, 120, 190)),
+        idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+        attack: AnimClip(row: 7, first_col: 0, frames: 5, fps: 14.0),
+    ),
+    // Everything ELARA can learn: FIREBOLT, FROST, and MEND — so she mends
+    // her fellow clones. Cut her down first.
+    skills: ["firebolt", "frost", "mend"],
+    armor: Some("travelers_robe"),
+    ai: Random,
+    xp: 68,
+    gold: 55,
+    drops: [ItemDrop(item: "ether", chance: 0.30)],
+)

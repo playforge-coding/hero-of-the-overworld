@@ -1,0 +1,6 @@
+StatusDef(
+    id: "guard", name: "GUARD",
+    duration: 3,
+    stat_mods: StatMods(defense: 8),
+    tint: Some((140, 200, 255)),
+)

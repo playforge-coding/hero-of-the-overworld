@@ -1,6 +1,6 @@
 //! Cutscene playback: a scripted sequence of [`CutsceneStep`]s.
 //!
-//! Cutscenes are pure data (see `game.ron`), so adding story beats — including
+//! Cutscenes are pure data (one `assets/data/cutscenes/<id>.ron` each), so adding story beats — including
 //! new party members joining — is a data edit. A `Say` step shows a dialogue
 //! box with an optional portrait and a typewriter reveal; a `Recruit` step adds
 //! a character to the party. Non-visual steps (like `Recruit`) execute the

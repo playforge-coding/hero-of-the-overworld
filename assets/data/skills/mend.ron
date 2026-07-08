@@ -1,0 +1,8 @@
+// ELARA's capstone: a potent restorative mastered late (her last learned
+// move). Only she knows it — the other heroes get their own ultimate below.
+SkillDef(
+    id: "mend", name: "MEND",
+    description: "Mastered white magic: heals an ally, or revives a fallen one.",
+    mp_cost: 10, power: 240, kind: Heal, target: OneAlly,
+    revives: true,   // can bring a downed ally back
+)

@@ -1,0 +1,9 @@
+// The warhorse's stomp is a heavy but telegraphed blow — you can brace and
+// block it, unlike the piercing LANCE CHARGE. That gives the party timing
+// counterplay against a knight pack (whose other threats are unblockable).
+SkillDef(
+    id: "trample", name: "TRAMPLE",
+    description: "The warhorse tramples the whole party underhoof.",
+    mp_cost: 8, power: 90, kind: Physical, target: AllEnemies,
+    anim: Charge,   // sweeps across the whole party
+)

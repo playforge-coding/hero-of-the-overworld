@@ -1,0 +1,6 @@
+ItemDef(
+    id: "potion", name: "POTION",
+    description: "A herbal draught. Restores 40 HP.",
+    price: 30, target: OneAlly,
+    effect: ItemEffect(heal: 40),
+)

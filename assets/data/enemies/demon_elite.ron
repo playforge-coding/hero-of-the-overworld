@@ -1,0 +1,34 @@
+// ------ Future foes: defined and reachable via the dev fight menu, but
+// not yet placed in any level's spawns. ------
+// The DEMON ELITE: a demon in war-plate — orc-like brawn bolted onto the
+// demon's fire. Same abilities as a demon (FIREBALL + CLAW) but far tougher
+// and harder-hitting. demon_elite.png is the demon's own 6x8 sheet redrawn
+// in armor, so the frame layout is copied from the demon verbatim.
+EnemyDef(
+    id: "demon_elite",
+    name: "DEMON ELITE",
+    stats: Stats(max_hp: 140, max_mp: 34, attack: 30, defense: 14, magic: 18, speed: 11),
+    sprite: BattlerSprite(
+        texture: "demon_elite",
+        frame_w: 16, frame_h: 16,
+        draw_w: 58.0, draw_h: 58.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 4.0),
+        attack: AnimClip(row: 4, first_col: 0, frames: 4, fps: 10.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "demon_elite",
+        frame_w: 16, frame_h: 16,
+        draw_w: 22.0, draw_h: 22.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 5, fps: 8.0,
+    )),
+    skills: ["fireball", "claw"],
+    ai: Random,
+    xp: 40,
+    gold: 34,
+    drops: [
+        ItemDrop(item: "might_tonic", chance: 0.18),
+        ItemDrop(item: "hi_potion",   chance: 0.12),
+    ],
+)

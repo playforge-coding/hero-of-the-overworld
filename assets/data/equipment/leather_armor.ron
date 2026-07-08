@@ -1,0 +1,6 @@
+EquipmentDef(
+    id: "leather_armor", name: "LEATHER ARMOR",
+    description: "Boiled leather; turns a glance.",
+    slot: Armor, icon: "starter_gear",
+    mods: StatMods(defense: 5), evasion: 4,
+)

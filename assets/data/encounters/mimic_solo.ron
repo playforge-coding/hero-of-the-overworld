@@ -1,0 +1,3 @@
+// Mimics — late-game ambushers sprung from a disguised chest. A lone one
+// is trouble enough; the CHARRED DEPTHS field them in pairs.
+EncounterDef(id: "mimic_solo", enemies: ["mimic"])

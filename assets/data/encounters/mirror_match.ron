@@ -1,0 +1,4 @@
+// The MIRROR MATCH — a dark double of each hero, all three at once. A `boss`
+// fight (plays the boss theme). Not placed in any level yet; reachable via
+// the dev fight menu.
+EncounterDef(id: "mirror_match", enemies: ["clone_roland", "clone_elara", "clone_gareth"], boss: true)

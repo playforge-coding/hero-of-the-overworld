@@ -1,0 +1,1 @@
+EncounterDef(id: "knight_demon",      enemies: ["dark_knight", "demon"])

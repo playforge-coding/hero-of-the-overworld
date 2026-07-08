@@ -1,0 +1,6 @@
+// TRAVELLER'S END foes.
+SkillDef(
+    id: "reap", name: "REAP",
+    description: "A skeleton's rusted blade drags across one foe.",
+    mp_cost: 0, power: 135, kind: Physical, target: OneEnemy,
+)

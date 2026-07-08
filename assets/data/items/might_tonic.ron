@@ -1,0 +1,6 @@
+ItemDef(
+    id: "might_tonic", name: "MIGHT TONIC",
+    description: "Steels the blood. Raises ATTACK for a few rounds.",
+    price: 50, target: OneAlly,
+    effect: ItemEffect(inflicts: ["might"]),
+)

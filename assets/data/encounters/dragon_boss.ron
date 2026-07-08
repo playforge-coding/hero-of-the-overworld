@@ -1,0 +1,3 @@
+// The DRAGON boss at the heart of the DEMON FORTRESS. Flagged `boss` so
+// the fight plays the boss theme instead of the usual battle track.
+EncounterDef(id: "dragon_boss", enemies: ["dragon"], boss: true)

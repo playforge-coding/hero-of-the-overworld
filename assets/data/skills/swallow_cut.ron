@@ -1,0 +1,6 @@
+SkillDef(
+    id: "swallow_cut", name: "SWALLOW CUT",
+    description: "A flowing sweep that flits between every foe.",
+    mp_cost: 7, power: 95, kind: Physical, target: AllEnemies,
+    anim: Charge,   // GARETH darts across the whole enemy line
+)

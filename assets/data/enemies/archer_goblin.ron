@@ -1,0 +1,28 @@
+// ARCHER GOBLIN: the goblins' skirmisher — a glass cannon that looses a
+// piercing ARROW SHOT from range (its Random AI mixes the shot with plain
+// swings). Thin on HP and defense, so it folds fast once you reach it.
+EnemyDef(
+    id: "archer_goblin",
+    name: "ARCHER GOBLIN",
+    stats: Stats(max_hp: 46, max_mp: 0, attack: 20, defense: 9, magic: 0, speed: 16),
+    sprite: BattlerSprite(
+        texture: "archer_goblin",
+        frame_w: 16, frame_h: 16,
+        draw_w: 46.0, draw_h: 46.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 5.0),
+        attack: AnimClip(row: 4, first_col: 0, frames: 3, fps: 8.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "archer_goblin",
+        frame_w: 16, frame_h: 16,
+        draw_w: 20.0, draw_h: 20.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 4, fps: 8.0,
+    )),
+    skills: ["arrow_shot"],
+    ai: Random,
+    xp: 24,
+    gold: 18,
+    drops: [ItemDrop(item: "potion", chance: 0.20)],
+)

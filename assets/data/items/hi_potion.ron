@@ -1,0 +1,6 @@
+ItemDef(
+    id: "hi_potion", name: "HI-POTION",
+    description: "A potent tonic. Restores 100 HP.",
+    price: 90, target: OneAlly,
+    effect: ItemEffect(heal: 100),
+)

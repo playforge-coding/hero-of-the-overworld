@@ -1,0 +1,32 @@
+CharacterDef(
+    id: "swordsman",
+    name: "ROLAND",
+    stats: Stats(max_hp: 120, max_mp: 24, attack: 22, defense: 14, magic: 10, speed: 12),
+    sprite: BattlerSprite(
+        texture: "swordsman",
+        frame_w: 16, frame_h: 16,
+        draw_w: 48.0, draw_h: 48.0,
+        faces_left: false,
+        // "walk right" row read as a ready/idle march.
+        idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+        // "attack right" row.
+        attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 14.0),
+    ),
+    // Overworld walk: rows 0-3 are walk down/up/right/left (4 frames).
+    overworld: Some(OverworldWalk(
+        texture: "swordsman",
+        frame_w: 16, frame_h: 16,
+        draw_w: 20.0, draw_h: 20.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 4, fps: 8.0,
+    )),
+    skills: ["power_strike"],
+    // ROLAND masters his sweeping WHIRLWIND a few fights in, then his
+    // devastating SUNDER as his final, most powerful move.
+    learnset: [
+        LearnedSkill(level: 3, skill: "whirlwind"),
+        LearnedSkill(level: 7, skill: "sunder"),
+    ],
+    weapon: Some("iron_sword"),
+    armor: Some("leather_armor"),
+)

@@ -1,17 +1,28 @@
 //! Game data: the on-disk RON file format plus the registries built from it.
 //!
-//! All content (party characters, enemies, skills, encounters) lives in
-//! `assets/data/game.ron` and is parsed into these serde structs. Adding a new
-//! party member or enemy is a pure data edit — no code change required — which
-//! is what makes the party/enemy systems "extensible".
+//! All content lives under `assets/data/`, **one file per entity** — an
+//! `enemies/<id>.ron`, a `skills/<id>.ron`, a `levels/<id>.ron`, and so on — with
+//! each stage's tilemaps kept as `maps/<level>/<screen>.csv`. Adding a new party
+//! member or enemy is a pure data edit (drop in a file) — no code change required —
+//! which is what makes the party/enemy systems "extensible". The whole tree is
+//! embedded into the binary at compile time (see [`DATA_DIR`]) and assembled into
+//! one [`GameData`] by [`load_game_data`], so the exact same load path works
+//! natively and on the web with no runtime filesystem or async asset fetching.
 //!
 //! Textures are referenced by a string *key*; the actual PNG bytes are embedded
-//! at compile time (see [`embedded_texture`]) so the exact same load path works
-//! natively and on the web with no async asset fetching.
+//! at compile time (see [`embedded_texture`]) the same way.
 
 use std::collections::HashMap;
 
+use include_dir::{include_dir, Dir};
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
+
+/// The entire content database — every per-entity RON file and CSV tilemap under
+/// `assets/data/` — baked into the binary at build time. This is what lets the web
+/// build ship all content inside the wasm bundle, exactly as the old single
+/// `game.ron` did before it was split up.
+static DATA_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/assets/data");
 
 /// Core combat stats shared by heroes and enemies.
 #[derive(Clone, Debug, Deserialize)]
@@ -324,7 +335,7 @@ pub struct Equipped {
 
 /// How a character is drawn while walking around the overworld.
 ///
-/// The sheet convention (see `game.ron`) is one walk row per facing direction,
+/// The sheet convention (see `meta.ron`) is one walk row per facing direction,
 /// each a run of `frames` columns played at `fps`. Separate from
 /// [`BattlerSprite`] because the overworld needs four directions where battle
 /// only needs idle/attack.
@@ -636,8 +647,14 @@ pub struct MimicSpawn {
 /// Each row of `map` is a string of tile chars (see [`crate::overworld::Tile`]
 /// for the legend). Rows may be ragged; shorter rows are grass-padded to the
 /// widest row. Neighbour fields are indices into the owning level's `screens`.
+///
+/// The `map` is **not** stored in the level RON — it lives in a sibling CSV
+/// (`maps/<level>/<screen index>.csv`) and is filled in at load time (hence
+/// `#[serde(default)]`): the level file lists only each screen's spawns, shops,
+/// chests, and links.
 #[derive(Clone, Debug, Deserialize)]
 pub struct ScreenDef {
+    #[serde(default)]
     pub map: Vec<String>,
     #[serde(default)]
     pub spawns: Vec<SpawnDef>,
@@ -714,7 +731,10 @@ pub struct CutsceneDef {
     pub steps: Vec<CutsceneStep>,
 }
 
-/// Root of the RON data file.
+/// The assembled content database. No longer a single on-disk file: it is built
+/// from the per-entity files under `assets/data/` by [`load_game_data`]. (Still
+/// derives `Deserialize` so its collections keep their `#[serde(default)]` field
+/// attributes, but it's assembled field-by-field in code, not parsed whole.)
 #[derive(Clone, Debug, Deserialize)]
 pub struct GameData {
     pub characters: Vec<CharacterDef>,
@@ -759,11 +779,108 @@ pub struct Registry {
     cutscenes: HashMap<String, usize>,
 }
 
+/// The top-level globals that aren't a per-entity collection: the starting party
+/// and the level **progression order**. The order is index-sensitive (screen
+/// neighbour links, save `level_progress`, and clear-to-advance all step through
+/// it), so it's stated explicitly in `meta.ron` rather than left to however the
+/// filesystem happens to sort the `levels/` folder.
+#[derive(Debug, Deserialize)]
+struct Meta {
+    starting_party: Vec<String>,
+    levels: Vec<String>,
+}
+
+/// Assemble the whole [`GameData`] from the embedded per-entity content tree: one
+/// def per file in each collection folder, the levels loaded in `meta.ron` order
+/// with their tilemaps read from CSV.
+fn load_game_data() -> GameData {
+    let meta: Meta = parse_data_file("meta.ron");
+    GameData {
+        characters: load_collection("characters"),
+        enemies: load_collection("enemies"),
+        skills: load_collection("skills"),
+        statuses: load_collection("statuses"),
+        equipment: load_collection("equipment"),
+        items: load_collection("items"),
+        shops: load_collection("shops"),
+        encounters: load_collection("encounters"),
+        cutscenes: load_collection("cutscenes"),
+        levels: meta.levels.iter().map(|id| load_level(id)).collect(),
+        starting_party: meta.starting_party,
+    }
+}
+
+/// Parse a single embedded RON file (relative to `assets/data/`) into `T`.
+fn parse_data_file<T: DeserializeOwned>(path: &str) -> T {
+    let file = DATA_DIR
+        .get_file(path)
+        .unwrap_or_else(|| panic!("missing data file '{path}'"));
+    let src = file
+        .contents_utf8()
+        .unwrap_or_else(|| panic!("data file '{path}' is not valid UTF-8"));
+    ron::from_str(src).unwrap_or_else(|e| panic!("parse data file '{path}': {e}"))
+}
+
+/// Load every `*.ron` file directly in the `sub` collection folder into a
+/// `Vec<T>`, one def per file. Sorted by filename for a deterministic order —
+/// collections are looked up by id, so the order is cosmetic (levels, whose order
+/// *is* significant, are loaded via [`load_level`] in `meta.ron` order instead).
+fn load_collection<T: DeserializeOwned>(sub: &str) -> Vec<T> {
+    let dir = DATA_DIR
+        .get_dir(sub)
+        .unwrap_or_else(|| panic!("missing data folder '{sub}'"));
+    let mut files: Vec<_> = dir
+        .files()
+        .filter(|f| f.path().extension().and_then(|e| e.to_str()) == Some("ron"))
+        .collect();
+    files.sort_by_key(|f| f.path());
+    files
+        .into_iter()
+        .map(|f| {
+            let path = f.path().to_string_lossy();
+            let src = f
+                .contents_utf8()
+                .unwrap_or_else(|| panic!("data file '{path}' is not valid UTF-8"));
+            ron::from_str(src).unwrap_or_else(|e| panic!("parse data file '{path}': {e}"))
+        })
+        .collect()
+}
+
+/// Load one level and fill each of its screens' tilemaps from the matching CSV
+/// (`maps/<id>/<screen index>.csv`), which is where the tile grids live now that
+/// the map is no longer inlined in the level RON.
+fn load_level(id: &str) -> LevelDef {
+    let mut level: LevelDef = parse_data_file(&format!("levels/{id}.ron"));
+    for (i, screen) in level.screens.iter_mut().enumerate() {
+        let path = format!("maps/{id}/{i}.csv");
+        let file = DATA_DIR
+            .get_file(&path)
+            .unwrap_or_else(|| panic!("level '{id}' screen {i} is missing its map '{path}'"));
+        let csv = file
+            .contents_utf8()
+            .unwrap_or_else(|| panic!("map '{path}' is not valid UTF-8"));
+        screen.map = parse_csv_map(csv);
+    }
+    level
+}
+
+/// Parse a CSV tilemap into rows of tile characters: each non-empty line is a row,
+/// each comma-separated cell one tile char (an empty cell reads as walkable grass).
+/// The result matches the old inline `map: [ "..." ]` shape the overworld consumes.
+fn parse_csv_map(csv: &str) -> Vec<String> {
+    csv.lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
+            line.split(',')
+                .map(|cell| cell.trim().chars().next().unwrap_or('.'))
+                .collect()
+        })
+        .collect()
+}
+
 impl Registry {
     pub fn load() -> Self {
-        let src = include_str!("../assets/data/game.ron");
-        let data: GameData = ron::from_str(src).expect("parse assets/data/game.ron");
-        Self::from_data(data)
+        Self::from_data(load_game_data())
     }
 
     pub fn from_data(data: GameData) -> Self {

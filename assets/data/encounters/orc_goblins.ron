@@ -1,0 +1,1 @@
+EncounterDef(id: "orc_goblins",   enemies: ["orc_brute", "club_goblin", "archer_goblin"])

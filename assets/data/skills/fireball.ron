@@ -1,0 +1,7 @@
+SkillDef(
+    id: "fireball", name: "FIREBALL",
+    description: "A demon's blazing orb; leaves the target burning.",
+    mp_cost: 6, power: 150, kind: Magical, target: OneEnemy,
+    inflicts: ["burn"], unblockable: true,
+    anim: Projectile(texture: "fireball"),   // hurls a fireball at the target
+)

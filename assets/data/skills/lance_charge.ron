@@ -1,0 +1,7 @@
+SkillDef(
+    id: "lance_charge", name: "LANCE CHARGE",
+    description: "A thundering couched-lance charge at one hero.",
+    mp_cost: 6, power: 145, kind: Physical, target: OneEnemy,
+    unblockable: true,
+    anim: Charge,   // gallops through the hero and wraps the field
+)

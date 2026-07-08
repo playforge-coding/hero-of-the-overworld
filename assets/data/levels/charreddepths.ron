@@ -1,0 +1,125 @@
+// CHARRED DEPTHS — the first level of the UNDERWORLD, unlocked once the
+// DEMON FORTRESS falls (the portal cutscene draws the party down here).
+// A long warren of scorched flagstone that winds ever deeper: goblin packs
+// screen the upper halls, orc brutes wall the middle chambers two and three
+// abreast, and demon-led warbands hold the depths — culminating in the deep
+// hall's guardian. Charred-stone floor, dark ramparts. The toughest descent
+// in the game, mirroring the escalating climb of TRAVELLER'S END.
+LevelDef(
+    id: "charreddepths", name: "CHARRED DEPTHS",
+    node: (6, 2),
+    start_screen: 0, start: (3, 5),
+    ground: Some("charred_stone"),
+    wall: Some("dark_wall"),
+    intro_cutscene: Some("charreddepths_intro"),
+    screens: [
+        // The mouth of the underworld: a broad, rubble-strewn cavern.
+        ScreenDef(
+            east: Some(1),
+            spawns: [
+                SpawnDef(col: 9,  row: 5, encounter: "goblin_pack"),
+                SpawnDef(col: 14, row: 8, encounter: "goblin_pair"),
+            ],
+        ),
+        // The crossing: north into the goblin nest, or east into the depths.
+        ScreenDef(
+            north: Some(2), east: Some(3), west: Some(0),
+            spawns: [
+                SpawnDef(col: 9,  row: 5, encounter: "archer_duo"),
+                SpawnDef(col: 15, row: 8, encounter: "goblin_pack"),
+            ],
+        ),
+        // The goblin nest: a dead-end chamber thick with clubbers and
+        // archers — with a pair of "chests" against the north wall, one a
+        // real cache, one a mimic that fooled the goblins too.
+        ScreenDef(
+            south: Some(1),
+            spawns: [
+                SpawnDef(col: 9,  row: 5, encounter: "goblin_pack"),
+                SpawnDef(col: 14, row: 7, encounter: "orc_solo"),
+            ],
+            chests: [
+                ChestSpawn(col: 14, row: 1, gold: 110, item: Some("hi_potion")),
+            ],
+            mimics: [
+                MimicSpawn(col: 16, row: 1, encounter: "mimic_solo"),
+            ],
+        ),
+        // The twisting galleries, where the first orc brutes lumber.
+        ScreenDef(
+            east: Some(4), west: Some(1),
+            spawns: [
+                SpawnDef(col: 5,  row: 5, encounter: "orc_solo"),
+                SpawnDef(col: 12, row: 5, encounter: "orc_goblins"),
+            ],
+        ),
+        // The sunken warren: the galleries open north into orc country.
+        ScreenDef(
+            north: Some(5), west: Some(3),
+            spawns: [
+                SpawnDef(col: 5,  row: 5, encounter: "orc_goblins"),
+                SpawnDef(col: 14, row: 8, encounter: "goblin_pack"),
+            ],
+        ),
+        // The orc pit: a wide chamber where the brutes muster two abreast.
+        ScreenDef(
+            east: Some(6), south: Some(4),
+            spawns: [
+                SpawnDef(col: 9,  row: 5, encounter: "orc_duo"),
+                SpawnDef(col: 5,  row: 8, encounter: "ballista_battery"),
+            ],
+            // A real prize — a CAVALRY LANCE — flanked by a nest of mimics.
+            // The deepest hall's treasure is the best-guarded, and the most
+            // likely to bite: this "chest" is two mimics at once.
+            chests: [
+                ChestSpawn(col: 16, row: 1, gold: 140, equipment: Some("cavalry_lance")),
+            ],
+            mimics: [
+                MimicSpawn(col: 3, row: 1, encounter: "mimic_pair"),
+            ],
+        ),
+        // The chasm walk: a narrow crossing where a demon prowls the pack.
+        ScreenDef(
+            east: Some(7), west: Some(5),
+            spawns: [
+                SpawnDef(col: 9,  row: 5, encounter: "orc_goblins"),
+                SpawnDef(col: 14, row: 8, encounter: "demon_orc"),
+            ],
+        ),
+        // The bone gallery: the way bends north, deeper under demon rule.
+        ScreenDef(
+            north: Some(8), west: Some(6),
+            spawns: [
+                SpawnDef(col: 9,  row: 5, encounter: "demon_orc"),
+                SpawnDef(col: 5,  row: 8, encounter: "ballista_pit"),
+            ],
+        ),
+        // The deep warren: three orc brutes wall the passage east.
+        ScreenDef(
+            east: Some(9), south: Some(7),
+            spawns: [
+                SpawnDef(col: 10, row: 5, encounter: "orc_trio"),
+                SpawnDef(col: 5,  row: 8, encounter: "orc_goblins"),
+            ],
+        ),
+        // The antechamber: a demon-led warband holds the last door.
+        ScreenDef(
+            east: Some(10), west: Some(8),
+            spawns: [
+                SpawnDef(col: 9,  row: 5, encounter: "demon_orcs"),
+                SpawnDef(col: 14, row: 8, encounter: "orc_duo"),
+            ],
+        ),
+        // The deep hall: the demons that opened the way hold it still.
+        ScreenDef(
+            west: Some(9),
+            spawns: [
+                // The depths' guardian: a demon flanked by two orc thralls,
+                // with a second warband and a wall of brutes still to break.
+                SpawnDef(col: 9,  row: 5, encounter: "demon_guard"),
+                SpawnDef(col: 14, row: 3, encounter: "demon_orcs"),
+                SpawnDef(col: 5,  row: 7, encounter: "orc_trio"),
+            ],
+        ),
+    ],
+)

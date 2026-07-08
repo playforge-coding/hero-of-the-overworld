@@ -1,0 +1,5 @@
+SkillDef(
+    id: "claw", name: "CLAW",
+    description: "A raking swipe of the demon's claws.",
+    mp_cost: 0, power: 125, kind: Physical, target: OneEnemy,
+)

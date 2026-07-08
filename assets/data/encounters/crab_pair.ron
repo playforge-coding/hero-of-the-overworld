@@ -1,0 +1,4 @@
+// TRAVELLER'S END — a long climb of escalating packs. Crabs and skeletons
+// on the low slopes; gargoyle patrols on the shelves; dark knights and
+// stray demons holding the summit.
+EncounterDef(id: "crab_pair",         enemies: ["mountain_crab", "mountain_crab"])

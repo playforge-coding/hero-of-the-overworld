@@ -82,7 +82,7 @@ Your item stash is [saved](gameplay.md#saving) with the rest of your party.
 
 ## Adding your own
 
-An item is an `ItemDef` in `assets/data/game.ron`: a **target** and a composable
+An item is an `ItemDef` in its own `assets/data/items/<id>.ron`: a **target** and a composable
 **effect** (`heal`, `damage`, `restore_mp`, and/or `inflicts` status ids). Sell it
 at a shop or hang it on an enemy's `drops` table. See
 **[Extending the Game](modding.md#add-an-item)** for the full recipe.

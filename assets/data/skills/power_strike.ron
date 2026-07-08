@@ -1,0 +1,5 @@
+SkillDef(
+    id: "power_strike", name: "POWER STRIKE",
+    description: "A focused two-handed blow to one foe.",
+    mp_cost: 4, power: 175, kind: Physical, target: OneEnemy,
+)
