@@ -610,6 +610,83 @@ GameData(
             // fall back to their own attacks now and then).
             tool: Some(ToolDef(skill: "ballista_bolt", operate_chance: 0.8)),
         ),
+        // ------ CLONE enemies: shadow-mirrors of the party ---------------------
+        // A dark double of each hero — identical stats, sprite, gear, and full
+        // skill set, to the number, but sworn to the other side. Each borrows its
+        // hero's own battle sheet under a shadowy violet tint, so a mirror reads
+        // apart from the real hero across the field. Straight stat-clones — plain
+        // Random-AI foes, no special engine behaviour. Unused in any level for now:
+        // they meet the party only in the `mirror_match` boss encounter, all three
+        // at once. (Their stats/gear must be kept in step with the party defs above
+        // — see the `clones_mirror_the_party` test in tests/data.rs.)
+        EnemyDef(
+            id: "clone_roland",
+            name: "DARK ROLAND",
+            // ROLAND's stats and gear, to the number.
+            stats: Stats(max_hp: 120, max_mp: 24, attack: 22, defense: 14, magic: 10, speed: 12),
+            sprite: BattlerSprite(
+                texture: "swordsman",
+                frame_w: 16, frame_h: 16,
+                draw_w: 48.0, draw_h: 48.0,
+                faces_left: false,
+                tint: Some((150, 120, 190)),   // a shadow cast over the hero's sheet
+                idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+                attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 14.0),
+            ),
+            // Everything ROLAND can learn: POWER STRIKE, WHIRLWIND, SUNDER.
+            skills: ["power_strike", "whirlwind", "sunder"],
+            weapon: Some("iron_sword"),
+            armor: Some("leather_armor"),
+            ai: Random,
+            xp: 70,
+            gold: 55,
+            drops: [ItemDrop(item: "hi_potion", chance: 0.30)],
+        ),
+        EnemyDef(
+            id: "clone_elara",
+            name: "DARK ELARA",
+            stats: Stats(max_hp: 78, max_mp: 60, attack: 10, defense: 9, magic: 26, speed: 13),
+            sprite: BattlerSprite(
+                texture: "mage",
+                frame_w: 16, frame_h: 16,
+                draw_w: 48.0, draw_h: 48.0,
+                faces_left: false,
+                tint: Some((150, 120, 190)),
+                idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+                attack: AnimClip(row: 7, first_col: 0, frames: 5, fps: 14.0),
+            ),
+            // Everything ELARA can learn: FIREBOLT, FROST, and MEND — so she mends
+            // her fellow clones. Cut her down first.
+            skills: ["firebolt", "frost", "mend"],
+            armor: Some("travelers_robe"),
+            ai: Random,
+            xp: 68,
+            gold: 55,
+            drops: [ItemDrop(item: "ether", chance: 0.30)],
+        ),
+        EnemyDef(
+            id: "clone_gareth",
+            name: "DARK GARETH",
+            stats: Stats(max_hp: 94, max_mp: 30, attack: 20, defense: 11, magic: 8, speed: 21),
+            sprite: BattlerSprite(
+                texture: "hermit",
+                frame_w: 16, frame_h: 16,
+                draw_w: 48.0, draw_h: 48.0,
+                faces_left: false,
+                tint: Some((150, 120, 190)),
+                idle:   AnimClip(row: 2, first_col: 0, frames: 5, fps: 5.0),
+                attack: AnimClip(row: 6, first_col: 0, frames: 6, fps: 18.0),
+            ),
+            // Everything GARETH can learn: QUICK SLASH, SWALLOW CUT, FINAL CUT. The
+            // fastest clone by far — it acts first.
+            skills: ["quick_slash", "swallow_cut", "final_cut"],
+            weapon: Some("scouts_edge"),
+            armor: Some("scouts_cloak"),
+            ai: Random,
+            xp: 68,
+            gold: 55,
+            drops: [ItemDrop(item: "hi_potion", chance: 0.30)],
+        ),
     ],
 
     skills: [
@@ -985,6 +1062,10 @@ GameData(
         // menu. The MINOTAUR is `boss`-flagged so it plays the boss theme.
         EncounterDef(id: "demon_elite_solo", enemies: ["demon_elite"]),
         EncounterDef(id: "minotaur_boss",    enemies: ["minotaur"], boss: true),
+        // The MIRROR MATCH — a dark double of each hero, all three at once. A `boss`
+        // fight (plays the boss theme). Not placed in any level yet; reachable via
+        // the dev fight menu.
+        EncounterDef(id: "mirror_match", enemies: ["clone_roland", "clone_elara", "clone_gareth"], boss: true),
     ],
 
     // ------------------------------------------------------------------------

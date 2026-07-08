@@ -190,6 +190,58 @@ fn mimic_references_resolve() {
     }
 }
 
+/// The clone enemies are faithful stat-mirrors of the party: each `clone_*` foe
+/// carries the exact stats and gear of the hero it doubles, so a mirror match is a
+/// true reflection. Guards against the party defs and their clones drifting apart.
+#[test]
+fn clones_mirror_the_party() {
+    let reg = registry();
+
+    for (clone_id, hero_id) in [
+        ("clone_roland", "swordsman"),
+        ("clone_elara", "mage"),
+        ("clone_gareth", "hermit"),
+    ] {
+        let clone = reg
+            .enemy(clone_id)
+            .unwrap_or_else(|| panic!("missing clone enemy '{clone_id}'"));
+        let hero = reg
+            .character(hero_id)
+            .unwrap_or_else(|| panic!("missing hero '{hero_id}'"));
+
+        let (c, h) = (&clone.stats, &hero.stats);
+        assert_eq!(
+            (c.max_hp, c.max_mp, c.attack, c.defense, c.magic, c.speed),
+            (h.max_hp, h.max_mp, h.attack, h.defense, h.magic, h.speed),
+            "{clone_id} stats must mirror {hero_id}"
+        );
+        assert_eq!(
+            clone.weapon, hero.weapon,
+            "{clone_id} weapon must mirror {hero_id}"
+        );
+        assert_eq!(
+            clone.armor, hero.armor,
+            "{clone_id} armor must mirror {hero_id}"
+        );
+        // A clone should share the hero's sprite sheet (a dark reflection of them).
+        assert_eq!(
+            clone.sprite.texture, hero.sprite.texture,
+            "{clone_id} should wear {hero_id}'s sprite"
+        );
+    }
+
+    // The mirror-match boss fields exactly the three clones, and is a boss fight.
+    let enc = reg
+        .encounter("mirror_match")
+        .expect("missing mirror_match encounter");
+    assert!(enc.boss, "mirror_match should play the boss theme");
+    assert_eq!(
+        enc.enemies,
+        vec!["clone_roland", "clone_elara", "clone_gareth"],
+        "mirror_match should field one clone of each party member"
+    );
+}
+
 #[test]
 fn levels_are_valid_and_linked() {
     let reg = registry();

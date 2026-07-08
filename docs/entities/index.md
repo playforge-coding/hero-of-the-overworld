@@ -54,11 +54,15 @@ preserve the turn order.
 | [Mimic](mimic.md) | 132 | 40 | 26 | 14 | 24 | 14 | 55 XP · 80 gold | Traveller's End, Demon Fortress, Charred Depths (disguised as chests) |
 | [Demon Elite](demon_elite.md) | 140 | 34 | 30 | 14 | 18 | 11 | 40 XP · 34 gold | Unplaced (dev fight menu) |
 | [Minotaur](minotaur.md) | 240 | 50 | 30 | 18 | 20 | 10 | 90 XP · 70 gold | Unplaced (dev fight menu, boss theme) |
+| [Dark Roland](clones.md#dark-roland) | 120 | 24 | 22 | 14 | 10 | 12 | 70 XP · 55 gold | Unplaced (mirror-match boss) |
+| [Dark Elara](clones.md#dark-elara) | 78 | 60 | 10 | 9 | 26 | 13 | 68 XP · 55 gold | Unplaced (mirror-match boss) |
+| [Dark Gareth](clones.md#dark-gareth) | 94 | 30 | 20 | 11 | 8 | 21 | 68 XP · 55 gold | Unplaced (mirror-match boss) |
 
-The last two — the **[demon elite](demon_elite.md)** and the **[minotaur](minotaur.md)**
-miniboss — are **defined but not yet placed** in any level. They're playable now
-through the **[developer fight menu](../modding.md#the-developer-menu-f1)**, waiting
-to be dropped into a future region.
+The **[demon elite](demon_elite.md)** and the **[minotaur](minotaur.md)** miniboss are
+**defined but not yet placed** in any level. Nor are the three **[clones](clones.md)** —
+dark stat-mirrors of the party that meet you only in the **mirror-match** boss. All of
+these are playable now through the **[developer fight menu](../modding.md#the-developer-menu-f1)**,
+waiting to be dropped into a future region.
 
 Each level fields its own foes: **slimes** swarm the Greenwood (with a lone demon
 guarding its end), **gargoyles** hold the Stone Pass, the long climb of **Traveller's
