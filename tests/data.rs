@@ -153,6 +153,43 @@ fn tool_enemy_references_resolve() {
     }
 }
 
+/// Mimic enemies are well-formed: every skill on a mimic's copy allow-list
+/// resolves, the power nerf is a positive percentage, and the per-turn chance is a
+/// valid probability. Guards the mimicry extensibility contract (a future variant
+/// with a wider list or different nerf stays validated).
+#[test]
+fn mimic_references_resolve() {
+    let reg = registry();
+
+    for e in &reg.data.enemies {
+        let Some(mim) = &e.mimicry else { continue };
+        assert!(
+            !mim.copyable.is_empty(),
+            "mimic {} has an empty copy allow-list",
+            e.id
+        );
+        for id in &mim.copyable {
+            assert!(
+                reg.skill(id).is_some(),
+                "mimic {} can copy unknown skill '{id}'",
+                e.id
+            );
+        }
+        assert!(
+            mim.power_pct > 0,
+            "mimic {} has a non-positive mimicry power_pct {}",
+            e.id,
+            mim.power_pct
+        );
+        assert!(
+            (0.0..=1.0).contains(&mim.chance),
+            "mimic {} has an out-of-range mimicry chance {}",
+            e.id,
+            mim.chance
+        );
+    }
+}
+
 #[test]
 fn levels_are_valid_and_linked() {
     let reg = registry();
@@ -340,7 +377,15 @@ fn screens_are_traversable() {
 #[test]
 fn overworld_textures_are_embedded() {
     let reg = registry();
-    for key in ["grass", "water", "tree", "rock", "barricade"] {
+    for key in [
+        "grass",
+        "water",
+        "tree",
+        "rock",
+        "barricade",
+        "chest",
+        "mimic",
+    ] {
         assert!(
             embedded_texture(key).is_some(),
             "tile texture '{key}' not embedded"
@@ -1032,6 +1077,92 @@ fn shops_are_valid_and_placed() {
                     "level {} screen {si} entrance references unknown shop '{}'",
                     lv.id,
                     sp.shop
+                );
+            }
+        }
+    }
+}
+
+/// Chests and mimics are well-formed and placed on standable ground: every chest
+/// holds *something* and names only real loot, every mimic names a real
+/// encounter, and neither is stranded in a wall or off the map. Guards the
+/// treasure/ambush extensibility contract exactly as spawns and shops are guarded.
+#[test]
+fn chests_and_mimics_are_valid_and_placed() {
+    let reg = registry();
+
+    for lv in &reg.data.levels {
+        for (si, sc) in lv.screens.iter().enumerate() {
+            let width = sc.map.iter().map(|r| r.chars().count()).max().unwrap();
+            let height = sc.map.len();
+            let solid = |col: u32, row: u32| -> bool {
+                let ch = sc
+                    .map
+                    .get(row as usize)
+                    .and_then(|r| r.chars().nth(col as usize))
+                    .unwrap_or('.');
+                !matches!(ch, '.' | ' ')
+            };
+
+            for ch in &sc.chests {
+                assert!(
+                    (ch.col as usize) < width && (ch.row as usize) < height,
+                    "level {} screen {si} chest ({},{}) out of bounds",
+                    lv.id,
+                    ch.col,
+                    ch.row
+                );
+                assert!(
+                    !solid(ch.col, ch.row),
+                    "level {} screen {si} chest ({},{}) sits in a solid tile",
+                    lv.id,
+                    ch.col,
+                    ch.row
+                );
+                assert!(ch.gold >= 0, "level {} chest has negative gold", lv.id);
+                assert!(
+                    ch.gold > 0 || ch.item.is_some() || ch.equipment.is_some(),
+                    "level {} screen {si} chest ({},{}) is empty",
+                    lv.id,
+                    ch.col,
+                    ch.row
+                );
+                if let Some(id) = &ch.item {
+                    assert!(
+                        reg.item(id).is_some(),
+                        "level {} chest holds unknown item '{id}'",
+                        lv.id
+                    );
+                }
+                if let Some(id) = &ch.equipment {
+                    assert!(
+                        reg.equipment(id).is_some(),
+                        "level {} chest holds unknown equipment '{id}'",
+                        lv.id
+                    );
+                }
+            }
+
+            for m in &sc.mimics {
+                assert!(
+                    (m.col as usize) < width && (m.row as usize) < height,
+                    "level {} screen {si} mimic ({},{}) out of bounds",
+                    lv.id,
+                    m.col,
+                    m.row
+                );
+                assert!(
+                    !solid(m.col, m.row),
+                    "level {} screen {si} mimic ({},{}) sits in a solid tile",
+                    lv.id,
+                    m.col,
+                    m.row
+                );
+                assert!(
+                    reg.encounter(&m.encounter).is_some(),
+                    "level {} screen {si} mimic references unknown encounter '{}'",
+                    lv.id,
+                    m.encounter
                 );
             }
         }

@@ -17,7 +17,7 @@ use crate::devtools::{DevTools, DevToolsEvent};
 use crate::input::{Button, Controllers, Input, InputAssignment, TouchScheme};
 use crate::input_config::{InputConfig, InputConfigEvent};
 use crate::inventory::{Inventory, InventoryEvent};
-use crate::overworld::{Event, Overworld, Trigger};
+use crate::overworld::{Event, LevelProgress, Overworld, Trigger};
 use crate::party::{ItemStack, Party, PartyMember};
 use crate::renderer::{color, virtual_w, Renderer, VIRTUAL_H};
 use crate::save::{self, SaveData, SavedLevel, SavedLocation, SavedMember};
@@ -63,9 +63,10 @@ pub struct Game {
     current_level: usize,
     /// Which levels the player has fully cleared (parallel to `reg.data.levels`).
     cleared: Vec<bool>,
-    /// Per-level in-progress state (which demons are beaten), keyed by level id.
-    /// Persisted so quitting mid-level keeps the enemies you've already cleared.
-    level_progress: HashMap<String, Vec<Vec<bool>>>,
+    /// Per-level in-progress state (beaten enemies, opened chests, slain mimics),
+    /// keyed by level id. Persisted so quitting mid-level keeps the enemies you've
+    /// already cleared and the treasure you've already looted.
+    level_progress: HashMap<String, LevelProgress>,
     /// Whether a save was loaded at startup (drives the title's CONTINUE prompt).
     has_save: bool,
     /// Selected level on the map screen.
@@ -169,7 +170,19 @@ impl Game {
             gamepads: data.input_gamepads.iter().map(|&p| p as usize).collect(),
         };
         self.played_cutscenes = data.played_cutscenes.into_iter().collect();
-        self.level_progress = data.levels.into_iter().map(|l| (l.id, l.screens)).collect();
+        // Merge the three per-level bool grids (enemies / chests / mimics), each
+        // keyed by level id, back into one `LevelProgress` per level.
+        let mut level_progress: HashMap<String, LevelProgress> = HashMap::new();
+        for l in data.levels {
+            level_progress.entry(l.id).or_default().enemies = l.screens;
+        }
+        for l in data.chest_levels {
+            level_progress.entry(l.id).or_default().chests = l.screens;
+        }
+        for l in data.mimic_levels {
+            level_progress.entry(l.id).or_default().mimics = l.screens;
+        }
+        self.level_progress = level_progress;
 
         // If the save was taken inside a level, rebuild that level and drop the
         // player back at their exact screen/position. A `None` location (saved on
@@ -186,7 +199,7 @@ impl Game {
             {
                 self.current_level = idx;
                 self.map_cursor = idx;
-                let defeated = self
+                let progress = self
                     .level_progress
                     .get(&loc.level_id)
                     .cloned()
@@ -197,7 +210,7 @@ impl Game {
                     &self.reg,
                     &self.party,
                     idx,
-                    &defeated,
+                    &progress,
                 );
                 level.set_position(loc.screen, loc.x, loc.y);
                 self.level = Some(level);
@@ -235,14 +248,26 @@ impl Game {
                 armor: m.armor.clone(),
             })
             .collect();
-        let levels = self
-            .level_progress
-            .iter()
-            .map(|(id, screens)| SavedLevel {
+        // Split each level's `LevelProgress` back into three id-keyed grids for
+        // the save file (enemies stay in `levels`; chests/mimics ride along in
+        // their own trailing, back-compatible sections).
+        let mut levels = Vec::new();
+        let mut chest_levels = Vec::new();
+        let mut mimic_levels = Vec::new();
+        for (id, prog) in &self.level_progress {
+            levels.push(SavedLevel {
                 id: id.clone(),
-                screens: screens.clone(),
-            })
-            .collect();
+                screens: prog.enemies.clone(),
+            });
+            chest_levels.push(SavedLevel {
+                id: id.clone(),
+                screens: prog.chests.clone(),
+            });
+            mimic_levels.push(SavedLevel {
+                id: id.clone(),
+                screens: prog.mimics.clone(),
+            });
+        }
         // Record where the player is standing so a resumed session lands back in
         // the level. `None` while on the map, so continuing then starts on the map.
         let location = self.level.as_ref().map(|level| {
@@ -275,16 +300,19 @@ impl Game {
                 .iter()
                 .map(|s| (s.id.clone(), s.count))
                 .collect(),
+            chest_levels,
+            mimic_levels,
         };
         save::store(&data);
         self.has_save = true;
     }
 
-    /// Record the active level's defeated-enemy state into `level_progress`.
+    /// Record the active level's progress (beaten enemies, opened chests, slain
+    /// mimics) into `level_progress`.
     fn capture_level_progress(&mut self) {
         if let Some(level) = &self.level {
             let id = self.reg.data.levels[self.current_level].id.clone();
-            self.level_progress.insert(id, level.defeated_state());
+            self.level_progress.insert(id, level.progress());
         }
     }
 
@@ -577,9 +605,10 @@ impl Game {
         }
         if input.pressed(Button::Confirm) && self.unlocked(self.map_cursor) {
             self.current_level = self.map_cursor;
-            // Restore this level's saved progress (beaten demons) if any.
+            // Restore this level's saved progress (beaten demons, looted chests,
+            // slain mimics) if any.
             let level_id = self.reg.data.levels[self.current_level].id.clone();
-            let defeated = self
+            let progress = self
                 .level_progress
                 .get(&level_id)
                 .cloned()
@@ -590,7 +619,7 @@ impl Game {
                 &self.reg,
                 &self.party,
                 self.current_level,
-                &defeated,
+                &progress,
             ));
             // Play the level's intro cutscene the first time it's entered.
             if let Some(id) = self.reg.data.levels[self.current_level]
@@ -629,6 +658,44 @@ impl Game {
                 };
                 let shop = Shop::new(renderer, &mut self.cache, &self.reg, &self.party, def);
                 Scene::Shop(shop)
+            }
+            Some(Event::OpenChest {
+                gold,
+                item,
+                equipment,
+            }) => {
+                // Pour the chest's contents into the party and show a brief spoils
+                // report, mirroring how battle loot is presented.
+                let mut lines = Vec::new();
+                if gold > 0 {
+                    self.party.gold += gold;
+                    lines.push(format!("FOUND {gold} GOLD"));
+                }
+                if let Some(id) = item {
+                    self.party.add_item(&id, 1);
+                    let name = self.reg.item(&id).map(|it| it.name.clone()).unwrap_or(id);
+                    lines.push(format!("FOUND {name}"));
+                }
+                if let Some(id) = equipment {
+                    let name = self
+                        .reg
+                        .equipment(&id)
+                        .map(|e| e.name.clone())
+                        .unwrap_or_else(|| id.clone());
+                    self.party.bag.push(id);
+                    lines.push(format!("FOUND {name}"));
+                }
+                if lines.is_empty() {
+                    lines.push("THE CHEST IS EMPTY".to_string());
+                }
+                // The chest is already marked opened in the live level; persist it
+                // (and the new loot) so it stays looted across save/reload.
+                self.save();
+                Scene::Report {
+                    win: true,
+                    lines,
+                    timer: 0.8,
+                }
             }
             Some(Event::OpenInventory) => Scene::Inventory(Inventory::new()),
             Some(Event::Battle(trigger)) => {

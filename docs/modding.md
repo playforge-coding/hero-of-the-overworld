@@ -272,6 +272,55 @@ ScreenDef(
   to enter). Keep it on open ground, like a spawn.
 - The keeper's on-map sprite is the shared `shopkeeper` texture.
 
+## Add a chest or a mimic
+
+Both are **screen placements** — no new list of their own — and both are pure data.
+
+A **chest** is opened with **Confirm** (like a shop) and pours its contents into the
+party. Its reward fields are additive and each optional, so one chest can hold gold,
+a consumable, and equipment at once:
+
+```ron
+ScreenDef(
+    map: [ /* ... */ ],
+    chests: [
+        ChestSpawn(col: 16, row: 3, gold: 30, item: Some("potion")),
+        ChestSpawn(col: 3, row: 5, gold: 50, equipment: Some("scouts_edge")),
+    ],
+),
+```
+
+- `gold` (default `0`) is added to the purse; `item` is an [item](#add-an-item) id
+  into the shared stash; `equipment` is an [equipment](#add-equipment) id dropped
+  into the bag. Give a chest **at least one** of the three.
+- Opened chests are **[saved](gameplay.md#saving)** per level, like beaten enemies,
+  so a looted box stays looted across a save/reload — no re-farming.
+- Chests draw the shared `chest` texture, bottom-centered like a prop.
+
+A **mimic** looks exactly like a chest on the map (it shares the chest's footprint)
+but is really a monster in disguise. It sits dormant until the player strays within
+range, then wakes, gives chase, and starts an encounter on contact — reusing the
+whole [roaming-enemy](world.md#roaming-enemies) chase/battle pipeline:
+
+```ron
+ScreenDef(
+    map: [ /* ... */ ],
+    mimics: [
+        MimicSpawn(col: 16, row: 8, encounter: "mimic_solo"),
+    ],
+),
+```
+
+- `encounter` is any [encounter](#add-an-enemy-and-an-encounter) id — typically a
+  solo mimic, but nothing stops you fielding a bigger ambush (`mimic_pair`, …).
+- On the map a *dormant* mimic borrows the real `chest` prop so it's pixel-identical
+  to nearby treasure, switching to the `mimic` sheet's toothy row 1 only once it
+  wakes. The enemy behind the encounter uses that same sheet in battle — see the
+  [mimic](entities/mimic.md) bestiary page for the layout.
+- The copy-the-party's-moves ability lives on the **enemy**, not the placement —
+  see [Make it a mimic](#make-it-a-mimic) below.
+- Slain mimics are saved per level, exactly like chests and enemies.
+
 ## Add an enemy and an encounter
 
 ```ron
@@ -336,6 +385,46 @@ its own fired skill, **no engine change**. Always place a tool in encounters
 **alongside real foes** (and never as the encounter's first enemy, since it has no
 overworld sprite) — a tool with no crew crumbles the instant the fight starts.
 
+### Make it a mimic
+
+Give an enemy a `mimicry` field and it gains the **[mimic](entities/mimic.md#mimicry)**
+trick: on some turns it **apes the party's last move**, taking on that hero's very
+sprite as it casts a nerfed copy of their skill. It's layered *on top of* the enemy's
+ordinary AI — the mimic still uses its own `skills` and basic attack — and only fires
+once the party has actually cast a copyable move this battle.
+
+```ron
+EnemyDef(
+    id: "mimic", name: "MIMIC",
+    stats: Stats(max_hp: 132, max_mp: 40, attack: 26, defense: 14, magic: 24, speed: 14),
+    sprite: BattlerSprite( /* ... */ ),
+    skills: ["fireball"],       // its own moves (plus the basic-attack fallback)
+    ai: Random,                 // so it mixes its own cast in with the mimicry
+    xp: 55, gold: 80,
+    mimicry: Some(MimicryDef(
+        copyable: [             // the safe allow-list — only these can be aped
+            "power_strike", "whirlwind",
+            "firebolt", "frost",
+            "quick_slash", "swallow_cut",
+        ],
+        power_pct: 65,          // the copy lands at 65% of the move's real power
+        chance: 0.5,            // 0.0–1.0: how often it apes instead of acting normally
+    )),
+),
+```
+
+- **`copyable`** is an allow-list of skill ids: the mimic can only parrot these, so
+  leave out the party's finishers to keep it from nuking you with your own hits. A
+  copied move must be on this list *and* have been cast by a hero this fight.
+- **`power_pct`** scales the copied move's power (the nerf); **`chance`** is the
+  per-turn odds it apes rather than taking its ordinary turn. The copy is **free**
+  (costs the mimic no MP) and otherwise behaves exactly like the original — a copied
+  projectile still flies, a blockable copy can still be blocked.
+- The whole ability is **data** — a "greater mimic" that copies the finishers at full
+  strength, or an "arcane mimic" that apes only spells, is just another `MimicryDef`,
+  **no engine change**. The mimic wears the copied hero's sprite only for the strike,
+  then reverts.
+
 ## Add a level
 
 A `LevelDef` is a marker on the world map plus a set of connected **screens**.
@@ -382,6 +471,8 @@ LevelDef(
   arrival they step out of the opening on the far screen's edge nearest to where
   they left, so the gaps needn't line up at the mid-point.
 - A roaming enemy takes its on-map look from its encounter's **first** enemy.
+- A screen can also carry `shops`, [`chests`, and `mimics`](#add-a-chest-or-a-mimic)
+  alongside its `spawns`.
 
 ## Add a cutscene
 
@@ -409,7 +500,8 @@ CutsceneDef(
 The fast test suite parses the data file and cross-checks every reference — that
 each skill (including a character's `learnset` and any `Projectile` animation
 texture), enemy, encounter, texture, cutscene, shop, item, and drop id resolves,
-that shop wares and keeper placements are valid, that item effects and enemy drops
+that shop wares and keeper placements are valid, that chest loot and mimic
+encounters resolve and sit on standable ground, that item effects and enemy drops
 point at real statuses/items at sane odds, and that every level's screens are
 linked and traversable. It also exercises level-up skill unlocks. Run it after
 editing:

@@ -32,6 +32,14 @@ const AGGRO: f32 = 108.0;
 const CONTACT: f32 = 11.0;
 /// How close (px) the player must stand to a shop keeper to enter on Confirm.
 const SHOP_REACH: f32 = 22.0;
+/// How close (px) the player must stand to a chest to open it on Confirm.
+const CHEST_REACH: f32 = 20.0;
+/// A dormant mimic springs its ambush once the player comes within this radius.
+const MIMIC_WAKE: f32 = 34.0;
+/// A woken mimic's chase speed (px/s). Faster than a plain roaming enemy so the
+/// ambush bites if you linger, but still shy of the player's own [`PLAYER_SPEED`]
+/// so a quick retreat can outrun it.
+const MIMIC_SPEED: f32 = 48.0;
 /// Half-extents of the (feet) collision box used against solid tiles.
 const HALF: Vec2 = Vec2::new(5.0, 4.0);
 /// How close to an edge (px) counts as "in the opening" for a screen flip.
@@ -116,11 +124,53 @@ struct Enemy {
     defeated: bool,
 }
 
-/// Identifies the enemy that started the current battle so it can be cleared.
+/// A treasure chest resting on a screen: opened once when the player walks up and
+/// confirms, spilling its [contents](crate::data::ChestSpawn) into the party.
+struct Chest {
+    pos: Vec2,
+    gold: i32,
+    item: Option<String>,
+    equipment: Option<String>,
+    opened: bool,
+}
+
+/// A mimic lurking on a screen, disguised as a [`Chest`]. While dormant it is
+/// drawn from the very same chest sprite — indistinguishable from real treasure —
+/// until the player strays inside [`MIMIC_WAKE`], whereupon it wakes, reveals its
+/// toothy true form, and chases the player down to start a battle.
+struct Mimic {
+    pos: Vec2,
+    home: Vec2,
+    /// Encounter started when the woken mimic touches the player.
+    encounter: String,
+    /// Sprung awake and giving chase. Once revealed it stays awake (until it is
+    /// beaten, or retreats home on a lost fight and re-disguises).
+    awake: bool,
+    /// Seconds spent chasing, for a menacing bob; reset when idle.
+    walk_t: f32,
+    defeated: bool,
+}
+
+/// Identifies the field actor that started the current battle so it can be
+/// cleared (marked defeated) when the fight is won. `index` selects into the
+/// screen's `enemies` list, or its `mimics` list when [`is_mimic`](Self::is_mimic).
 pub struct Trigger {
     pub screen: usize,
-    pub enemy: usize,
+    pub index: usize,
     pub encounter: String,
+    /// Whether `index` refers to a mimic (`true`) or a roaming enemy (`false`).
+    pub is_mimic: bool,
+}
+
+/// Saved per-level progress restored into a fresh [`Overworld`]: which enemies
+/// are beaten, which chests are opened, and which mimics are slain — each shaped
+/// `screens[s][i]` to line up with that screen's actor list. The snapshot side is
+/// [`Overworld::progress`], and the shapes round-trip through the save file.
+#[derive(Clone, Debug, Default)]
+pub struct LevelProgress {
+    pub enemies: Vec<Vec<bool>>,
+    pub chests: Vec<Vec<bool>>,
+    pub mimics: Vec<Vec<bool>>,
 }
 
 /// A shop doorway on a screen: a shopkeeper standing at `pos` who ushers the
@@ -136,6 +186,12 @@ pub enum Event {
     Battle(Trigger),
     /// Enter the shop with this id (player walked up to a keeper and confirmed).
     EnterShop(String),
+    /// Open a treasure chest and award its contents (walked up + confirmed).
+    OpenChest {
+        gold: i32,
+        item: Option<String>,
+        equipment: Option<String>,
+    },
     /// Open the party inventory / equipment screen (the Menu button).
     OpenInventory,
     /// Leave the level and go back to the map screen.
@@ -150,6 +206,8 @@ struct Screen {
     h: usize,
     enemies: Vec<Enemy>,
     shops: Vec<ShopEntrance>,
+    chests: Vec<Chest>,
+    mimics: Vec<Mimic>,
     north: Option<usize>,
     south: Option<usize>,
     east: Option<usize>,
@@ -216,6 +274,11 @@ pub struct Overworld {
     tex: TileTex,
     /// Sprite drawn for a shop keeper standing at an entrance.
     shop_tex: TextureHandle,
+    /// Treasure-chest prop sprite, shared by every chest on every screen.
+    chest_tex: TextureHandle,
+    /// Mimic spritesheet (row 0 dormant chest disguise, row 1 toothy attack),
+    /// shared by every mimic.
+    mimic_tex: TextureHandle,
     player: Player,
     cam: Vec2,
     /// Brief window during which contact can't trigger a fight (post-battle or
@@ -227,17 +290,17 @@ pub struct Overworld {
 impl Overworld {
     /// Build the runtime for `reg.data.levels[level_idx]`.
     ///
-    /// `defeated` restores saved progress: `defeated[screen][enemy]` marks an
-    /// enemy already beaten this run (from a previous session or a re-entry), so
-    /// clearing a level survives quitting mid-way. Pass an empty slice for a
-    /// fresh, untouched level.
+    /// `progress` restores saved state: which enemies are beaten, which chests are
+    /// opened, and which mimics are slain (each shaped `[screen][index]`), so a
+    /// level's cleared foes and looted treasure survive quitting mid-way. Pass
+    /// [`LevelProgress::default`] for a fresh, untouched level.
     pub fn new(
         r: &mut Renderer,
         cache: &mut TextureCache,
         reg: &Registry,
         party: &Party,
         level_idx: usize,
-        defeated: &[Vec<bool>],
+        progress: &LevelProgress,
     ) -> Self {
         let level = &reg.data.levels[level_idx];
 
@@ -259,6 +322,10 @@ impl Overworld {
 
         // Shopkeepers standing at shop entrances share one small NPC sprite.
         let shop_tex = cache.get(r, "shopkeeper");
+        // Chests and mimics look alike on the field; a mimic just draws its own
+        // disguise sheet instead of the chest prop. Both textures are shared.
+        let chest_tex = cache.get(r, "chest");
+        let mimic_tex = cache.get(r, "mimic");
 
         let mut screens = Vec::new();
         for (screen_idx, sd) in level.screens.iter().enumerate() {
@@ -278,7 +345,7 @@ impl Overworld {
             }
 
             // Which enemies on this screen are already beaten (restored save).
-            let screen_defeated = defeated.get(screen_idx);
+            let screen_defeated = progress.enemies.get(screen_idx);
 
             let mut enemies = Vec::new();
             for sp in &sd.spawns {
@@ -328,12 +395,49 @@ impl Overworld {
                 })
                 .collect();
 
+            // Treasure chests, restoring which have already been looted.
+            let chest_state = progress.chests.get(screen_idx);
+            let chests = sd
+                .chests
+                .iter()
+                .enumerate()
+                .map(|(i, cs)| Chest {
+                    pos: tile_center(cs.col, cs.row),
+                    gold: cs.gold,
+                    item: cs.item.clone(),
+                    equipment: cs.equipment.clone(),
+                    opened: chest_state.and_then(|s| s.get(i)).copied().unwrap_or(false),
+                })
+                .collect();
+
+            // Mimics, restoring which have already been slain. They always start
+            // dormant on (re-)entry — the disguise resets each visit.
+            let mimic_state = progress.mimics.get(screen_idx);
+            let mimics = sd
+                .mimics
+                .iter()
+                .enumerate()
+                .map(|(i, ms)| {
+                    let pos = tile_center(ms.col, ms.row);
+                    Mimic {
+                        pos,
+                        home: pos,
+                        encounter: ms.encounter.clone(),
+                        awake: false,
+                        walk_t: 0.0,
+                        defeated: mimic_state.and_then(|s| s.get(i)).copied().unwrap_or(false),
+                    }
+                })
+                .collect();
+
             screens.push(Screen {
                 tiles,
                 w,
                 h,
                 enemies,
                 shops,
+                chests,
+                mimics,
                 north: sd.north,
                 south: sd.south,
                 east: sd.east,
@@ -356,6 +460,8 @@ impl Overworld {
             current,
             tex,
             shop_tex,
+            chest_tex,
+            mimic_tex,
             player,
             cam: Vec2::ZERO,
             grace: 0.0,
@@ -376,14 +482,28 @@ impl Overworld {
             .all(|s| s.enemies.iter().all(|e| e.defeated))
     }
 
-    /// Snapshot of which enemies are beaten, as `screens[s][e]`, for saving. The
-    /// shape mirrors the `defeated` argument to [`Overworld::new`], so a
-    /// save→load round-trip restores the exact same field state.
-    pub fn defeated_state(&self) -> Vec<Vec<bool>> {
-        self.screens
-            .iter()
-            .map(|s| s.enemies.iter().map(|e| e.defeated).collect())
-            .collect()
+    /// Snapshot of the level's progress (beaten enemies, opened chests, slain
+    /// mimics) for saving. The shape mirrors the `progress` argument to
+    /// [`Overworld::new`], so a save→load round-trip restores the exact same
+    /// field state.
+    pub fn progress(&self) -> LevelProgress {
+        LevelProgress {
+            enemies: self
+                .screens
+                .iter()
+                .map(|s| s.enemies.iter().map(|e| e.defeated).collect())
+                .collect(),
+            chests: self
+                .screens
+                .iter()
+                .map(|s| s.chests.iter().map(|c| c.opened).collect())
+                .collect(),
+            mimics: self
+                .screens
+                .iter()
+                .map(|s| s.mimics.iter().map(|m| m.defeated).collect())
+                .collect(),
+        }
     }
 
     /// The player's feet-center position in world pixels, for saving.
@@ -446,8 +566,19 @@ impl Overworld {
     /// otherwise every enemy in its screen retreats home so it can't insta-fight.
     pub fn resolve_battle(&mut self, trigger: &Trigger, won: bool) {
         if let Some(screen) = self.screens.get_mut(trigger.screen) {
-            if won {
-                if let Some(e) = screen.enemies.get_mut(trigger.enemy) {
+            if trigger.is_mimic {
+                // A mimic wins its own place: cleared on victory, otherwise it
+                // slinks back home and re-disguises to spring again.
+                if let Some(m) = screen.mimics.get_mut(trigger.index) {
+                    if won {
+                        m.defeated = true;
+                    } else {
+                        m.pos = m.home;
+                        m.awake = false;
+                    }
+                }
+            } else if won {
+                if let Some(e) = screen.enemies.get_mut(trigger.index) {
                     e.defeated = true;
                 }
             } else {
@@ -499,7 +630,7 @@ impl Overworld {
         // A screen flip may relocate the player and change the current screen.
         self.check_transition();
 
-        // --- Shop entrance: walk up to a keeper and confirm to go inside ----
+        // --- Confirm interactions: enter a shop, or open a treasure chest ----
         if input.pressed(Button::Confirm) {
             let p = self.player.pos;
             if let Some(sh) = self
@@ -510,19 +641,34 @@ impl Overworld {
             {
                 return Some(Event::EnterShop(sh.shop.clone()));
             }
+            // Open the nearest unopened chest in reach. Mark it looted right here
+            // so it can't be re-opened, then hand its contents to the game.
+            if let Some(chest) = self.screens[self.current]
+                .chests
+                .iter_mut()
+                .find(|c| !c.opened && (c.pos - p).length() < CHEST_REACH)
+            {
+                chest.opened = true;
+                return Some(Event::OpenChest {
+                    gold: chest.gold,
+                    item: chest.item.clone(),
+                    equipment: chest.equipment.clone(),
+                });
+            }
         }
 
-        // --- Enemies chase (current screen only) ----------------------------
+        // --- Enemies & mimics chase (current screen only) -------------------
         let target = self.player.pos;
         let Screen {
             tiles,
             enemies,
+            mimics,
             w,
             h,
             ..
         } = &mut self.screens[self.current];
         let (sw, sh) = (*w, *h);
-        // One BFS flow field from the player, reused by every chasing enemy so
+        // One BFS flow field from the player, reused by every chasing actor so
         // they steer around obstacles instead of pressing into them.
         let field = dist_field(tiles, sw, sh, target);
         for e in enemies.iter_mut() {
@@ -543,6 +689,27 @@ impl Overworld {
                 e.walk_t = 0.0;
             }
         }
+        // Mimics lie still until the player strays within striking distance, then
+        // spring awake for good and give chase — no aggro cap once revealed, so
+        // an ambush you kick off has to be shaken by outrunning it.
+        for m in mimics.iter_mut() {
+            if m.defeated {
+                continue;
+            }
+            let dist = (target - m.pos).length();
+            if !m.awake && dist < MIMIC_WAKE {
+                m.awake = true;
+            }
+            if m.awake && dist > 0.5 {
+                let dir = chase_dir(tiles, sw, sh, &field, m.pos, target);
+                let len = dir.length();
+                if len > 0.001 {
+                    let delta = dir / len * MIMIC_SPEED * dt;
+                    m.pos = slide_on(tiles, sw, sh, m.pos, delta);
+                    m.walk_t += dt;
+                }
+            }
+        }
 
         self.update_camera();
 
@@ -553,8 +720,20 @@ impl Overworld {
                 if !e.defeated && (e.pos - self.player.pos).length() < CONTACT {
                     return Some(Event::Battle(Trigger {
                         screen: idx,
-                        enemy: i,
+                        index: i,
                         encounter: e.encounter.clone(),
+                        is_mimic: false,
+                    }));
+                }
+            }
+            // A woken mimic that reaches the player springs its fight.
+            for (i, m) in self.screens[idx].mimics.iter().enumerate() {
+                if !m.defeated && m.awake && (m.pos - self.player.pos).length() < CONTACT {
+                    return Some(Event::Battle(Trigger {
+                        screen: idx,
+                        index: i,
+                        encounter: m.encounter.clone(),
+                        is_mimic: true,
                     }));
                 }
             }
@@ -679,6 +858,8 @@ impl Overworld {
             Player,
             Enemy(usize),
             Shop(usize),
+            Chest(usize),
+            Mimic(usize),
         }
         let mut items: Vec<(f32, Item)> = vec![(self.player.pos.y, Item::Player)];
         for (i, e) in self.cur().enemies.iter().enumerate() {
@@ -689,6 +870,14 @@ impl Overworld {
         for (i, s) in self.cur().shops.iter().enumerate() {
             items.push((s.pos.y, Item::Shop(i)));
         }
+        for (i, c) in self.cur().chests.iter().enumerate() {
+            items.push((c.pos.y, Item::Chest(i)));
+        }
+        for (i, m) in self.cur().mimics.iter().enumerate() {
+            if !m.defeated {
+                items.push((m.pos.y, Item::Mimic(i)));
+            }
+        }
         items.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         for (_, item) in &items {
@@ -696,8 +885,91 @@ impl Overworld {
                 Item::Player => self.draw_player(r),
                 Item::Enemy(i) => self.draw_enemy(r, &self.cur().enemies[*i]),
                 Item::Shop(i) => self.draw_shop_entrance(r, &self.cur().shops[*i]),
+                Item::Chest(i) => self.draw_chest(r, &self.cur().chests[*i]),
+                Item::Mimic(i) => self.draw_mimic(r, &self.cur().mimics[*i]),
             }
         }
+    }
+
+    /// Draw the treasure-chest prop at feet-position `pos` with `tint`: a soft
+    /// shadow and the `chest` texture bottom-centered on the tile. Shared by real
+    /// chests and by *dormant* mimics, so a sleeping mimic is drawn from the very
+    /// same sprite as a real chest — pixel-for-pixel indistinguishable until it
+    /// springs.
+    fn blit_chest(&self, r: &mut Renderer, pos: Vec2, tint: Color) {
+        let (tw, th) = r.texture_size(self.chest_tex);
+        let (tw, th) = (tw as f32, th as f32);
+        let sx = pos.x - self.cam.x;
+        let sy = pos.y - self.cam.y;
+        r.draw_rect(
+            sx - tw * 0.4,
+            sy - 1.0,
+            tw * 0.8,
+            3.0,
+            color::rgba(0, 0, 0, 80),
+        );
+        r.draw_texture(
+            self.chest_tex,
+            sx - tw / 2.0,
+            sy + HALF.y - th,
+            tw,
+            th,
+            tint,
+        );
+    }
+
+    /// A treasure chest sitting on the ground, bottom-centered like a prop. An
+    /// opened chest reads spent (dimmed); an unopened one in reach blinks a
+    /// "PRESS Z" prompt to invite a Confirm — the same affordance as a shop.
+    fn draw_chest(&self, r: &mut Renderer, c: &Chest) {
+        let tint = if c.opened {
+            color::rgb(110, 110, 110)
+        } else {
+            color::WHITE
+        };
+        self.blit_chest(r, c.pos, tint);
+        if !c.opened
+            && (c.pos - self.player.pos).length() < CHEST_REACH
+            && (self.time * 2.0) as i32 % 2 == 0
+        {
+            let (_, th) = r.texture_size(self.chest_tex);
+            let sx = c.pos.x - self.cam.x;
+            let sy = c.pos.y - self.cam.y;
+            r.draw_text_centered(
+                "PRESS Z",
+                sx,
+                sy - th as f32 - 6.0,
+                1.0,
+                color::rgb(255, 226, 120),
+            );
+        }
+    }
+
+    /// A mimic on the field. **Dormant**, it is drawn as an ordinary [`Chest`] —
+    /// the exact same prop sprite — so it can't be told from real treasure at a
+    /// glance. Only once it wakes (the player strayed near) does it reveal its true
+    /// form: the mimic sheet's toothy row-1 lunge, bobbing menacingly as it chases.
+    fn draw_mimic(&self, r: &mut Renderer, m: &Mimic) {
+        if !m.awake {
+            self.blit_chest(r, m.pos, color::WHITE);
+            return;
+        }
+        // Sprung: the 16x32 sheet is one column of two 16x16 frames; row 1 is the
+        // bared-teeth attack pose.
+        let src = [0.0, 16.0, 16.0, 16.0];
+        let (dw, dh) = (18.0, 18.0);
+        let bob = (m.walk_t * 16.0).sin() * 1.5;
+        let sx = m.pos.x - self.cam.x;
+        let sy = m.pos.y - self.cam.y;
+        r.draw_rect(
+            sx - dw * 0.4,
+            sy - 1.0,
+            dw * 0.8,
+            3.0,
+            color::rgba(0, 0, 0, 80),
+        );
+        let dest = [sx - dw / 2.0, sy + HALF.y - dh - bob, dw, dh];
+        r.draw_sprite(self.mimic_tex, dest, src, false, color::WHITE);
     }
 
     /// A shop keeper standing at a doorway, with a "SHOP" banner and a "PRESS Z"

@@ -85,9 +85,17 @@ pub struct SaveData {
     pub input_keyboard: u32,
     pub input_gamepads: Vec<u32>,
     /// Owned consumable items as `(id, count)` pairs (the party's
-    /// [items](crate::party::Party::items)). The last trailing section, read
-    /// leniently so pre-item saves (which lack it) load with no items.
+    /// [items](crate::party::Party::items)). Read leniently so pre-item saves
+    /// (which lack it) load with no items.
     pub items: Vec<(String, u32)>,
+    /// Per-level opened-chest grids, reusing [`SavedLevel`] where `screens[s][c]`
+    /// = chest `c` on screen `s` has been opened. A trailing section, read
+    /// leniently so pre-chest saves (which lack it) load with no chests looted.
+    pub chest_levels: Vec<SavedLevel>,
+    /// Per-level slain-mimic grids, same shape as [`chest_levels`](Self::chest_levels):
+    /// `screens[s][m]` = mimic `m` on screen `s` has been beaten. The final
+    /// trailing section, read the same lenient way.
+    pub mimic_levels: Vec<SavedLevel>,
 }
 
 // ---- Encoding ---------------------------------------------------------------
@@ -200,7 +208,28 @@ pub fn to_bytes(data: &SaveData) -> Vec<u8> {
         put_u32(&mut out, *count);
     }
 
+    // Trailing, back-compatibly optional: opened-chest and slain-mimic grids,
+    // each an id-keyed list of per-screen bool grids (same shape as `levels`).
+    put_levels(&mut out, &data.chest_levels);
+    put_levels(&mut out, &data.mimic_levels);
+
     out
+}
+
+/// Write an id-keyed list of per-screen bool grids (the shared shape of the
+/// enemy / chest / mimic progress sections).
+fn put_levels(out: &mut Vec<u8>, levels: &[SavedLevel]) {
+    put_u32(out, levels.len() as u32);
+    for lv in levels {
+        put_str(out, &lv.id);
+        put_u32(out, lv.screens.len() as u32);
+        for screen in &lv.screens {
+            put_u32(out, screen.len() as u32);
+            for &d in screen {
+                put_bool(out, d);
+            }
+        }
+    }
 }
 
 // ---- Decoding ---------------------------------------------------------------
@@ -258,6 +287,34 @@ impl<'a> Reader<'a> {
             Some(None)
         }
     }
+}
+
+/// Read one trailing id-keyed list of per-screen bool grids (chest/mimic
+/// progress), the lenient counterpart of [`put_levels`]. A missing leading count
+/// (an older save that ends before this section) yields an empty list rather than
+/// a decode failure; a count that is present but truncated fails like any other
+/// malformed field. `Some(_)` on success (possibly empty), `None` on corruption.
+fn read_levels(r: &mut Reader) -> Option<Vec<SavedLevel>> {
+    let count = match r.u32() {
+        Some(n) => n as usize,
+        None => return Some(Vec::new()),
+    };
+    let mut levels = Vec::with_capacity(count.min(1024));
+    for _ in 0..count {
+        let id = r.string()?;
+        let screen_count = r.u32()? as usize;
+        let mut screens = Vec::with_capacity(screen_count.min(1024));
+        for _ in 0..screen_count {
+            let n = r.u32()? as usize;
+            let mut screen = Vec::with_capacity(n.min(4096));
+            for _ in 0..n {
+                screen.push(r.bool()?);
+            }
+            screens.push(screen);
+        }
+        levels.push(SavedLevel { id, screens });
+    }
+    Some(levels)
 }
 
 /// Parse save bytes produced by [`to_bytes`]. Returns `None` for anything that
@@ -393,6 +450,11 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
         None => Vec::new(),
     };
 
+    // The chest and mimic progress grids are the last two trailing additions,
+    // read the same lenient way: absent (a pre-chest save) → nothing looted/slain.
+    let chest_levels = read_levels(&mut r)?;
+    let mimic_levels = read_levels(&mut r)?;
+
     Some(SaveData {
         gold,
         members,
@@ -404,6 +466,8 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
         input_keyboard,
         input_gamepads,
         items,
+        chest_levels,
+        mimic_levels,
     })
 }
 
@@ -561,6 +625,14 @@ mod tests {
             input_keyboard: 0,
             input_gamepads: vec![1, 2],
             items: vec![("potion".into(), 3), ("bomb".into(), 1)],
+            chest_levels: vec![SavedLevel {
+                id: "greenwood".into(),
+                screens: vec![vec![true], vec![], vec![false]],
+            }],
+            mimic_levels: vec![SavedLevel {
+                id: "greenwood".into(),
+                screens: vec![vec![], vec![true]],
+            }],
         }
     }
 
@@ -580,19 +652,22 @@ mod tests {
 
     #[test]
     fn pre_bag_save_loads_with_defaults() {
-        // A save written before the trailing bag + input + items sections existed
-        // simply ends after `location`. With an empty bag, default input, and no
-        // items, those sections are four zero counts: bag (0) + keyboard (0) +
-        // gamepad count (0) + item count (0) = 16 bytes. Dropping them yields
-        // exactly such an older save, which must still decode — to empty bag,
-        // default (all-zero) input, and no items — rather than failing.
+        // A save written before the trailing bag + input + items + chest + mimic
+        // sections existed simply ends after `location`. With everything empty
+        // those sections are six zero counts: bag (0) + keyboard (0) + gamepad
+        // count (0) + item count (0) + chest count (0) + mimic count (0) = 24
+        // bytes. Dropping them yields exactly such an older save, which must still
+        // decode — to empty bag, default (all-zero) input, no items, and no looted
+        // chests / slain mimics — rather than failing.
         let mut data = sample();
         data.bag = Vec::new();
         data.input_keyboard = 0;
         data.input_gamepads = Vec::new();
         data.items = Vec::new();
+        data.chest_levels = Vec::new();
+        data.mimic_levels = Vec::new();
         let bytes = to_bytes(&data);
-        let old = &bytes[..bytes.len() - 16];
+        let old = &bytes[..bytes.len() - 24];
         assert_eq!(from_bytes(old), Some(data));
     }
 

@@ -51,6 +51,7 @@ preserve the turn order.
 | [Archer Goblin](archer_goblin.md) | 46 | 0 | 20 | 9 | 0 | 16 | 24 XP · 18 gold | Charred Depths |
 | [Orc Brute](orc_brute.md) | 150 | 0 | 34 | 19 | 0 | 9 | 48 XP · 40 gold | Charred Depths |
 | [Ballista](ballista.md) | 160 | 0 | 24 | 18 | 0 | 3 | 30 XP · 22 gold | Traveller's End, Charred Depths |
+| [Mimic](mimic.md) | 132 | 40 | 26 | 14 | 24 | 14 | 55 XP · 80 gold | Traveller's End, Demon Fortress, Charred Depths (disguised as chests) |
 | [Demon Elite](demon_elite.md) | 140 | 34 | 30 | 14 | 18 | 11 | 40 XP · 34 gold | Unplaced (dev fight menu) |
 | [Minotaur](minotaur.md) | 240 | 50 | 30 | 18 | 20 | 10 | 90 XP · 70 gold | Unplaced (dev fight menu, boss theme) |
 
@@ -70,6 +71,14 @@ underworld's **Charred Depths**, the war's remade prisoners lie in wait: the
 are placed as roaming overworld sprites that chase you and start a battle on contact —
 see [The Overworld](../world.md#roaming-enemies). The dragon's fight plays a dedicated
 **boss theme** in place of the usual battle music.
+
+The **deep** regions — Traveller's End, the Demon Fortress, and the Charred Depths —
+hide **[mimics](mimic.md)**: powerful ambush predators disguised as
+[treasure chests](../world.md#chests-and-mimics). A dormant mimic is drawn from the
+very same sprite as a real chest, so you can't tell them apart at a glance; it lies
+still until you stray close, then reveals its teeth and gives chase. In battle it
+hurls FIREBALL, bites hard, and — its signature — **[copies the party's last move](mimic.md#mimicry)**,
+taking on that hero's shape to turn a nerfed version of their own skill back on them.
 
 Not every foe is a creature: the **[ballista](ballista.md)** is a **[tool
 enemy](../battles.md#tool-enemies)** — an inert siege engine worked by the foes

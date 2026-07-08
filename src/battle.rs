@@ -19,8 +19,8 @@ use glam::Vec2;
 use std::collections::HashMap;
 
 use crate::data::{
-    AttackAnim, BattlerSprite, EnemyAi, ItemDrop, Registry, SkillDef, SkillKind, Stats, StatusDef,
-    TargetKind, ToolDef,
+    AttackAnim, BattlerSprite, EnemyAi, ItemDrop, MimicryDef, Registry, SkillDef, SkillKind, Stats,
+    StatusDef, TargetKind, ToolDef,
 };
 use crate::input::{Button, Controllers, Input};
 use crate::party::{ItemStack, Party};
@@ -140,6 +140,13 @@ struct Battler {
     /// remain to work it (see [`ToolDef`] and [`Battle::crumble_orphan_tools`]).
     /// `None` for heroes and ordinary enemies.
     tool: Option<ToolDef>,
+    /// If set, this (enemy) battler is a **mimic** that can copy the party's last
+    /// move (see [`MimicryDef`]). `None` for heroes and ordinary enemies.
+    mimicry: Option<MimicryDef>,
+    /// While mid-mimicry a mimic wears a copied hero's art; this stashes its own
+    /// `(sprite, texture)` so it can revert when the copied strike ends. `None`
+    /// means it is wearing its true form (see [`Battle::wear_disguise`]).
+    true_form: Option<(BattlerSprite, TextureHandle)>,
     home: Vec2,
     offset: Vec2,
     flash: f32,
@@ -193,6 +200,14 @@ impl Battler {
 enum ActionKind {
     Attack,
     Skill(String),
+    /// A [mimic](MimicryDef) apes a party member's move: it casts the copied
+    /// `skill` (nerfed, and free of MP) while wearing the shape of the hero at
+    /// battler index `source`. Resolves like a [`Skill`](ActionKind::Skill) but at
+    /// the mimic's reduced power.
+    Mimic {
+        skill: String,
+        source: usize,
+    },
     /// Use a consumable item (id into the registry's `items`). Resolves its
     /// composable effect on the targets and spends one from the party stash.
     Item(String),
@@ -588,6 +603,10 @@ pub struct Battle {
     /// [`AttackAnim::Projectile`], so a projectile in flight can be drawn without
     /// touching the texture cache mid-frame.
     projectile_textures: HashMap<String, ProjTex>,
+    /// The last skill a **hero** cast this battle, as `(battler index, skill id)` —
+    /// the move a [mimic](MimicryDef) apes (and whose caster's shape it borrows).
+    /// Recorded whenever a hero resolves a skill; `None` until the party casts one.
+    last_hero_skill: Option<(usize, String)>,
 }
 
 impl Battle {
@@ -643,6 +662,8 @@ impl Battle {
                 gold: 0,
                 drops: Vec::new(),
                 tool: None,
+                mimicry: None,
+                true_form: None,
                 home,
                 offset: Vec2::ZERO,
                 flash: 0.0,
@@ -697,6 +718,8 @@ impl Battle {
                 gold: def.gold * scale / 100,
                 drops: def.drops.clone(),
                 tool: def.tool.clone(),
+                mimicry: def.mimicry.clone(),
+                true_form: None,
                 home,
                 offset: Vec2::ZERO,
                 flash: 0.0,
@@ -731,6 +754,7 @@ impl Battle {
             encounter_name: name,
             items: party.items.clone(),
             projectile_textures,
+            last_hero_skill: None,
         }
     }
 
@@ -1293,6 +1317,27 @@ impl Battle {
             }
         }
 
+        // A mimic may ape the party's last move, taking on that hero's shape as it
+        // strikes. Kept in check by its allow-list, a power nerf, and a per-turn
+        // roll — and only fires once a copyable move has actually been cast this
+        // fight; otherwise it drops through to its own skills and basic attack.
+        if let Some(mim) = self.battlers[enemy].mimicry.clone() {
+            if let Some((source, skill)) = self.last_hero_skill.clone() {
+                if mim.copyable.contains(&skill) && rng.chance(mim.chance) {
+                    if let Some(def) = reg.skill(&skill) {
+                        let targets = self.pick_targets(enemy, def.target, rng);
+                        if !targets.is_empty() {
+                            return Action {
+                                actor: enemy,
+                                kind: ActionKind::Mimic { skill, source },
+                                targets,
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
         let b = &self.battlers[enemy];
         // Random AI may use a skill; Basic always attacks.
         let use_skill = matches!(b.ai, EnemyAi::Random) && !b.skills.is_empty();
@@ -1396,6 +1441,12 @@ impl Battle {
             exec.timed = self.make_timed(&action, reg);
             exec.taunt = self.make_taunt(&action);
             exec.hit_mod = HitMod::NEUTRAL;
+            // A mimicry cloaks the mimic in the copied hero's shape for the strike;
+            // it's shed at `end_t` below. Done before the attack clip is set so the
+            // borrowed sprite's own attack animation plays.
+            if let ActionKind::Mimic { source, .. } = action.kind {
+                self.wear_disguise(actor, source);
+            }
         }
 
         // The timeline has three beats, each animation setting its own: the timing
@@ -1533,6 +1584,9 @@ impl Battle {
         }
 
         if t >= end_t {
+            // A mimic sheds the borrowed hero shape back to its true form before
+            // returning to idle (so the restored idle is its own).
+            self.shed_disguise(actor);
             // Restore idle, clear any stray projectiles, and move to the next action.
             let idle = self.battlers[actor].idle.clone();
             self.battlers[actor].anim = idle;
@@ -1549,6 +1603,11 @@ impl Battle {
     fn action_anim(&self, action: &Action, reg: &Registry) -> AttackAnim {
         match &action.kind {
             ActionKind::Skill(id) => reg.skill(id).map(|s| s.anim.clone()).unwrap_or_default(),
+            // A mimicry plays the *copied* move's animation (so an aped fireball
+            // still hurls a fireball) — atop the borrowed hero sprite.
+            ActionKind::Mimic { skill, .. } => {
+                reg.skill(skill).map(|s| s.anim.clone()).unwrap_or_default()
+            }
             _ => AttackAnim::Lunge,
         }
     }
@@ -1633,6 +1692,11 @@ impl Battle {
                 Some(def) => (!matches!(def.kind, SkillKind::Heal), def.is_unblockable()),
                 None => (false, false),
             },
+            // A mimicry blocks exactly as the copied move would.
+            ActionKind::Mimic { skill, .. } => match reg.skill(skill) {
+                Some(def) => (!matches!(def.kind, SkillKind::Heal), def.is_unblockable()),
+                None => (false, false),
+            },
             // Items resolve reliably with no timed-hit window of their own.
             ActionKind::Item(_) => (false, false),
         };
@@ -1699,6 +1763,15 @@ impl Battle {
                 let sk = reg.skill(id).map(|s| s.name.as_str()).unwrap_or("SKILL");
                 format!("{name}: {sk}")
             }
+            ActionKind::Mimic { skill, source } => {
+                let sk = reg.skill(skill).map(|s| s.name.as_str()).unwrap_or("SKILL");
+                let who = self
+                    .battlers
+                    .get(*source)
+                    .map(|b| b.name.as_str())
+                    .unwrap_or("A HERO");
+                format!("{name} APES {who}'S {sk}")
+            }
             ActionKind::Item(id) => {
                 let it = reg.item(id).map(|i| i.name.as_str()).unwrap_or("ITEM");
                 format!("{name} USES {it}")
@@ -1730,67 +1803,42 @@ impl Battle {
             ActionKind::Skill(id) => {
                 let Some(def) = reg.skill(id) else { return };
                 let def: SkillDef = def.clone();
-                self.battlers[actor].mp = (self.battlers[actor].mp - def.mp_cost).max(0);
-                // A reviving heal keeps downed allies as valid targets; every other
-                // skill retargets a dead single-target to a living one if possible.
-                let revive = def.revives && matches!(def.kind, SkillKind::Heal);
-                let targets = if revive {
-                    self.resolve_revive_targets(actor, &action.targets, def.target)
-                } else {
-                    self.resolve_live_targets(actor, &action.targets, def.target)
-                };
-                match def.kind {
-                    SkillKind::Heal => {
-                        let mag = self.eff_stats(reg, actor).magic;
-                        for &tgt in &targets {
-                            let heal = (mag * def.power / 100).max(1);
-                            let b = &mut self.battlers[tgt];
-                            let revived = revive && !b.alive() && heal > 0;
-                            let before = b.hp;
-                            b.hp = (b.hp + heal).min(b.max_hp);
-                            let gained = b.hp - before;
-                            b.flash = 0.25;
-                            let pos = b.pos();
-                            popups.push(Popup {
-                                text: format!("+{gained}"),
-                                pos: pos + Vec2::new(0.0, -6.0),
-                                t: 0.0,
-                                color: color::rgb(120, 240, 140),
-                            });
-                            // Call out a revive so a downed hero standing back up reads.
-                            if revived {
-                                popups.push(Popup {
-                                    text: "REVIVE".to_string(),
-                                    pos: pos + Vec2::new(0.0, -20.0),
-                                    t: 0.0,
-                                    color: color::rgb(180, 245, 180),
-                                });
-                            }
-                        }
-                    }
-                    SkillKind::Physical => {
-                        let atk = self.eff_stats(reg, actor).attack;
-                        for &tgt in &targets {
-                            if self.battlers[tgt].alive()
-                                && self
-                                    .strike(actor, tgt, atk, def.power, hit_mod, reg, rng, popups)
-                            {
-                                self.inflict_all(reg, tgt, &def.inflicts, popups);
-                            }
-                        }
-                    }
-                    SkillKind::Magical => {
-                        let mag = self.eff_stats(reg, actor).magic;
-                        for &tgt in &targets {
-                            if self.battlers[tgt].alive()
-                                && self
-                                    .strike(actor, tgt, mag, def.power, hit_mod, reg, rng, popups)
-                            {
-                                self.inflict_all(reg, tgt, &def.inflicts, popups);
-                            }
-                        }
-                    }
+                // Remember a hero's skill so a mimic can ape it on a later turn,
+                // wearing this hero's shape. A mimic's own copies don't record.
+                if self.battlers[actor].side == Side::Hero {
+                    self.last_hero_skill = Some((actor, def.id.clone()));
                 }
+                self.apply_skill(
+                    actor,
+                    &def,
+                    100,
+                    true,
+                    &action.targets,
+                    hit_mod,
+                    reg,
+                    rng,
+                    popups,
+                );
+            }
+            ActionKind::Mimic { skill, .. } => {
+                let Some(def) = reg.skill(skill) else { return };
+                let def: SkillDef = def.clone();
+                // A copy is free (no MP) and lands at the mimic's reduced power.
+                let pct = self.battlers[actor]
+                    .mimicry
+                    .as_ref()
+                    .map_or(100, |m| m.power_pct);
+                self.apply_skill(
+                    actor,
+                    &def,
+                    pct,
+                    false,
+                    &action.targets,
+                    hit_mod,
+                    reg,
+                    rng,
+                    popups,
+                );
             }
             ActionKind::Item(id) => {
                 let Some(item) = reg.item(id) else { return };
@@ -1842,6 +1890,119 @@ impl Battle {
                     }
                 }
             }
+        }
+    }
+
+    /// Resolve a skill's effect on its targets at `power_pct` percent of its listed
+    /// power (100 = full strength). Shared by a battler casting a real skill and by
+    /// a [mimic](MimicryDef) aping one at reduced power. Spends `def.mp_cost` only
+    /// when `spend_mp` (a mimic's copy is free). Damage/heal, targeting, and status
+    /// riders are otherwise identical to a normal cast — the nerf is a pure scalar.
+    #[allow(clippy::too_many_arguments)]
+    fn apply_skill(
+        &mut self,
+        actor: usize,
+        def: &SkillDef,
+        power_pct: i32,
+        spend_mp: bool,
+        action_targets: &[usize],
+        hit_mod: HitMod,
+        reg: &Registry,
+        rng: &mut Rng,
+        popups: &mut Vec<Popup>,
+    ) {
+        if spend_mp {
+            self.battlers[actor].mp = (self.battlers[actor].mp - def.mp_cost).max(0);
+        }
+        // The copied/cast move's effective power after the (mimic's) nerf.
+        let power = (def.power * power_pct / 100).max(1);
+        // A reviving heal keeps downed allies as valid targets; every other skill
+        // retargets a dead single-target to a living one if possible.
+        let revive = def.revives && matches!(def.kind, SkillKind::Heal);
+        let targets = if revive {
+            self.resolve_revive_targets(actor, action_targets, def.target)
+        } else {
+            self.resolve_live_targets(actor, action_targets, def.target)
+        };
+        match def.kind {
+            SkillKind::Heal => {
+                let mag = self.eff_stats(reg, actor).magic;
+                for &tgt in &targets {
+                    let heal = (mag * power / 100).max(1);
+                    let b = &mut self.battlers[tgt];
+                    let revived = revive && !b.alive() && heal > 0;
+                    let before = b.hp;
+                    b.hp = (b.hp + heal).min(b.max_hp);
+                    let gained = b.hp - before;
+                    b.flash = 0.25;
+                    let pos = b.pos();
+                    popups.push(Popup {
+                        text: format!("+{gained}"),
+                        pos: pos + Vec2::new(0.0, -6.0),
+                        t: 0.0,
+                        color: color::rgb(120, 240, 140),
+                    });
+                    // Call out a revive so a downed hero standing back up reads.
+                    if revived {
+                        popups.push(Popup {
+                            text: "REVIVE".to_string(),
+                            pos: pos + Vec2::new(0.0, -20.0),
+                            t: 0.0,
+                            color: color::rgb(180, 245, 180),
+                        });
+                    }
+                }
+            }
+            SkillKind::Physical => {
+                let atk = self.eff_stats(reg, actor).attack;
+                for &tgt in &targets {
+                    if self.battlers[tgt].alive()
+                        && self.strike(actor, tgt, atk, power, hit_mod, reg, rng, popups)
+                    {
+                        self.inflict_all(reg, tgt, &def.inflicts, popups);
+                    }
+                }
+            }
+            SkillKind::Magical => {
+                let mag = self.eff_stats(reg, actor).magic;
+                for &tgt in &targets {
+                    if self.battlers[tgt].alive()
+                        && self.strike(actor, tgt, mag, power, hit_mod, reg, rng, popups)
+                    {
+                        self.inflict_all(reg, tgt, &def.inflicts, popups);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Cloak mimic `actor` in hero `source`'s appearance for its copied strike,
+    /// stashing the mimic's own art in `true_form` so [`shed_disguise`] can restore
+    /// it. It simply overwrites the fields [`draw_battler`](Self::draw_battler)
+    /// reads — `sprite`, `texture`, and the `idle` clip — so nothing in the drawing
+    /// path needs to know a disguise is in play; the caller sets the attack clip
+    /// (from the freshly borrowed sprite) right after.
+    fn wear_disguise(&mut self, actor: usize, source: usize) {
+        if actor == source || self.battlers[actor].true_form.is_some() {
+            return;
+        }
+        let sprite = self.battlers[source].sprite.clone();
+        let texture = self.battlers[source].texture;
+        let own_sprite = std::mem::replace(&mut self.battlers[actor].sprite, sprite);
+        let own_tex = std::mem::replace(&mut self.battlers[actor].texture, texture);
+        self.battlers[actor].true_form = Some((own_sprite, own_tex));
+        let idle = Anim::from_clip(&self.battlers[actor].sprite.idle, true);
+        self.battlers[actor].idle = idle;
+    }
+
+    /// Restore a mimic's true form after its copied strike — a no-op if it was
+    /// never disguised.
+    fn shed_disguise(&mut self, actor: usize) {
+        if let Some((sprite, texture)) = self.battlers[actor].true_form.take() {
+            self.battlers[actor].sprite = sprite;
+            self.battlers[actor].texture = texture;
+            let idle = Anim::from_clip(&self.battlers[actor].sprite.idle, true);
+            self.battlers[actor].idle = idle;
         }
     }
 

@@ -285,6 +285,27 @@ down, or split the difference. A tool is pure data (a `tool` field on an
 [enemy](modding.md#add-an-enemy-and-an-encounter)), so new siege engines are a
 content edit — see **[Extending the Game](modding.md)**.
 
+## Mimics { #mimics }
+
+The **[mimic](entities/mimic.md)** — the deep world's chest-shaped ambusher — brings
+a trick of its own into the fight: **mimicry**. On some of its turns it **copies the
+last skill a party member used**, taking on that hero's very sprite as it strikes with
+a copy of their move. You'll see a monster wearing Roland's face swing his own **POWER
+STRIKE**, or Elara's shape hurl her **FROST** — back at the party.
+
+It's kept fair, so it never becomes "the party's own kit, but worse to face":
+
+- It can only copy a **safe subset** of your skills (mid-power strikes and area moves),
+  never the big finishers (**SUNDER**, **FINAL CUT**) or **MEND**.
+- The copy lands at **reduced power** (65%).
+- The copy otherwise plays by the normal rules — a copied **FIREBALL** still can't be
+  [blocked](#action-timing-strikes-and-blocks); a copied **POWER STRIKE** still can.
+
+If the party hasn't cast a copyable move yet, the mimic just uses its own **FIREBALL**
+and a heavy bite. Like everything else here, mimicry is pure data (a `mimicry` field on
+an [enemy](modding.md#make-it-a-mimic)), so new mimic variants are a content edit — see
+**[Extending the Game](modding.md#make-it-a-mimic)**.
+
 ## Winning and losing
 
 - **Victory** awards **XP** and **gold** to every living hero, shown on a short

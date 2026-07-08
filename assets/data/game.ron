@@ -160,6 +160,51 @@ GameData(
             gold: 3,
             drops: [ItemDrop(item: "potion", chance: 0.25)],
         ),
+        // The MIMIC — a chest that bites back, and a LATE-GAME ambush predator: it
+        // lurks in the deep regions (TRAVELLER'S END, the DEMON FORTRESS, the
+        // CHARRED DEPTHS) disguised as treasure, then springs when you draw near.
+        // Powerful and tricky in a fight — it hurls FIREBALL, bites hard, and, its
+        // signature, APES the party's last move: it takes on that hero's very shape
+        // to cast a nerfed copy of it (see `mimicry`). Beating one is well paid: a
+        // fat purse and generous drops. mimic.png is a 16x32 sheet — one column of
+        // two 16x16 frames: row 0 the dormant disguise, row 1 the toothy lunge.
+        EnemyDef(
+            id: "mimic",
+            name: "MIMIC",
+            stats: Stats(max_hp: 132, max_mp: 40, attack: 26, defense: 14, magic: 24, speed: 14),
+            sprite: BattlerSprite(
+                texture: "mimic",
+                frame_w: 16, frame_h: 16,
+                draw_w: 46.0, draw_h: 46.0,
+                faces_left: false,
+                idle:   AnimClip(row: 0, first_col: 0, frames: 1, fps: 1.0),
+                attack: AnimClip(row: 1, first_col: 0, frames: 1, fps: 1.0),
+            ),
+            // Its own moves: FIREBALL and a heavy bite (the AI's basic-attack
+            // fallback). `Random` so it mixes the cast in with plain swings.
+            skills: ["fireball"],
+            ai: Random,
+            xp: 55,
+            gold: 80,
+            drops: [
+                ItemDrop(item: "hi_potion", chance: 0.5),
+                ItemDrop(item: "ether",     chance: 0.4),
+            ],
+            // The signature trick: ape the party's last move at 65% power, wearing
+            // that hero's shape as it strikes. The allow-list is the safe subset —
+            // mid-power strikes and the party's area moves — deliberately leaving
+            // out the big finishers (SUNDER, FINAL CUT) and MEND, so a mimic stays
+            // dangerous without being able to parrot a nuke back at the party.
+            mimicry: Some(MimicryDef(
+                copyable: [
+                    "power_strike", "whirlwind",   // ROLAND
+                    "firebolt", "frost",           // ELARA
+                    "quick_slash", "swallow_cut",  // GARETH
+                ],
+                power_pct: 65,
+                chance: 0.5,
+            )),
+        ),
         // The demons are now the elite threat, held back in the DEMON FORTRESS (plus a
         // lone one guarding the end of GREENWOOD). FIREBALL leaves the target
         // BURNING for three rounds, so they punish a drawn-out fight.
@@ -888,6 +933,10 @@ GameData(
     encounters: [
         // Slime swarms — three to a fight — fill the GREENWOOD.
         EncounterDef(id: "slime_trio", enemies: ["slime", "slime", "slime"]),
+        // Mimics — late-game ambushers sprung from a disguised chest. A lone one
+        // is trouble enough; the CHARRED DEPTHS field them in pairs.
+        EncounterDef(id: "mimic_solo", enemies: ["mimic"]),
+        EncounterDef(id: "mimic_pair", enemies: ["mimic", "mimic"]),
         // Gargoyle patrols hold STONE PASS.
         EncounterDef(id: "gargoyle_solo", enemies: ["gargoyle"]),
         EncounterDef(id: "gargoyle_duo",  enemies: ["gargoyle", "gargoyle"]),
@@ -978,6 +1027,10 @@ GameData(
                     shops: [
                         ShopSpawn(col: 5, row: 6, shop: "greenwood_outfitter"),
                     ],
+                    // A starter chest tucked in the northeast corner.
+                    chests: [
+                        ChestSpawn(col: 16, row: 3, gold: 30, item: Some("potion")),
+                    ],
                 ),
                 ScreenDef(
                     map: [
@@ -1019,6 +1072,9 @@ GameData(
                         SpawnDef(col: 6, row: 5, encounter: "slime_trio"),
                         SpawnDef(col: 14, row: 4, encounter: "slime_trio"),
                     ],
+                    chests: [
+                        ChestSpawn(col: 16, row: 4, gold: 40, item: Some("ether")),
+                    ],
                 ),
                 ScreenDef(
                     map: [
@@ -1059,6 +1115,11 @@ GameData(
                         SpawnDef(col: 10, row: 5, encounter: "slime_trio"),
                         // The lone demon guarding the end of the GREENWOOD.
                         SpawnDef(col: 14, row: 4, encounter: "demon_solo"),
+                    ],
+                    // The wood's reward: a real chest holding a SCOUT'S EDGE, past
+                    // the lone demon. (The deep regions are where chests bite back.)
+                    chests: [
+                        ChestSpawn(col: 3, row: 5, gold: 50, equipment: Some("scouts_edge")),
                     ],
                 ),
             ],
@@ -1251,6 +1312,14 @@ GameData(
                     spawns: [
                         SpawnDef(col: 10, row: 5, encounter: "skeleton_duo"),
                         SpawnDef(col: 14, row: 5, encounter: "crab_pair"),
+                    ],
+                    // Two chests side by side on the shelf — one a genuine cache,
+                    // the other a mimic. Reaching for the wrong one starts a fight.
+                    chests: [
+                        ChestSpawn(col: 14, row: 4, gold: 60, item: Some("hi_potion")),
+                    ],
+                    mimics: [
+                        MimicSpawn(col: 16, row: 4, encounter: "mimic_solo"),
                     ],
                 ),
                 // A switchback climb guarded by a lone gargoyle.
@@ -1515,11 +1584,18 @@ GameData(
                         "#..................#",
                         "#########...########",
                     ],
-                    // The cell block: a dead-end warren to the north.
+                    // The cell block: a dead-end warren to the north. Its far corners
+                    // hold a genuine cache — and a mimic squatting among the cells.
                     south: Some(1),
                     spawns: [
                         SpawnDef(col: 3, row: 3, encounter: "demon_trio"),
                         SpawnDef(col: 16, row: 5, encounter: "demon_duo"),
+                    ],
+                    chests: [
+                        ChestSpawn(col: 16, row: 1, gold: 90, item: Some("hi_potion")),
+                    ],
+                    mimics: [
+                        MimicSpawn(col: 3, row: 1, encounter: "mimic_solo"),
                     ],
                 ),
                 ScreenDef(
@@ -1646,7 +1722,9 @@ GameData(
                         SpawnDef(col: 15, row: 8, encounter: "goblin_pack"),
                     ],
                 ),
-                // The goblin nest: a dead-end chamber thick with clubbers and archers.
+                // The goblin nest: a dead-end chamber thick with clubbers and
+                // archers — with a pair of "chests" against the north wall, one a
+                // real cache, one a mimic that fooled the goblins too.
                 ScreenDef(
                     map: [
                         "####################",
@@ -1665,6 +1743,12 @@ GameData(
                     spawns: [
                         SpawnDef(col: 9,  row: 5, encounter: "goblin_pack"),
                         SpawnDef(col: 14, row: 7, encounter: "orc_solo"),
+                    ],
+                    chests: [
+                        ChestSpawn(col: 14, row: 1, gold: 110, item: Some("hi_potion")),
+                    ],
+                    mimics: [
+                        MimicSpawn(col: 16, row: 1, encounter: "mimic_solo"),
                     ],
                 ),
                 // The twisting galleries, where the first orc brutes lumber.
@@ -1728,6 +1812,15 @@ GameData(
                     spawns: [
                         SpawnDef(col: 9,  row: 5, encounter: "orc_duo"),
                         SpawnDef(col: 5,  row: 8, encounter: "ballista_battery"),
+                    ],
+                    // A real prize — a CAVALRY LANCE — flanked by a nest of mimics.
+                    // The deepest hall's treasure is the best-guarded, and the most
+                    // likely to bite: this "chest" is two mimics at once.
+                    chests: [
+                        ChestSpawn(col: 16, row: 1, gold: 140, equipment: Some("cavalry_lance")),
+                    ],
+                    mimics: [
+                        MimicSpawn(col: 3, row: 1, encounter: "mimic_pair"),
                     ],
                 ),
                 // The chasm walk: a narrow crossing where a demon prowls the pack.

@@ -438,6 +438,32 @@ pub struct ToolDef {
     pub operate_chance: f32,
 }
 
+/// The MIMIC's signature trick, layered on top of its ordinary AI: on some turns
+/// it **apes the last skill a party member used**, taking on that very hero's
+/// shape as it strikes with a copy of their move. Two limits keep it fair — it may
+/// only copy skills on its [`copyable`](Self::copyable) allow-list (so it can't
+/// parrot a party's finisher back at full force), and the copy lands at reduced
+/// [`power_pct`](Self::power_pct). The mimicry is **free** (it costs no MP — it is
+/// a copy, not a learned spell) and only fires once a copyable move has actually
+/// been seen this battle; otherwise the mimic just uses its own skills and attack.
+///
+/// This is the extension point for mimic variants: a new mimic is a pure-data
+/// entry — widen or narrow the allow-list, retune the nerf or the odds — with no
+/// engine change. (A "greater mimic" that parrots the party's finishers, an
+/// "arcane mimic" that copies only spells, …)
+#[derive(Clone, Debug, Deserialize)]
+pub struct MimicryDef {
+    /// Skill ids this mimic is willing to copy — the safe subset. The last party
+    /// move must be on this list or the mimic won't ape it.
+    pub copyable: Vec<String>,
+    /// Percent of the copied skill's power the mimic actually deals (the nerf);
+    /// e.g. `65` casts the parroted move at 65% strength.
+    pub power_pct: i32,
+    /// Probability per turn (`0.0..=1.0`) it apes the last copyable party move it
+    /// has seen, instead of taking its ordinary turn.
+    pub chance: f32,
+}
+
 /// One chance-based item drop from an enemy. Rolled once per defeated enemy when
 /// a battle is won; a successful roll adds the item to the party's stash.
 #[derive(Clone, Debug, Deserialize)]
@@ -486,6 +512,10 @@ pub struct EnemyDef {
     /// Absent for ordinary enemies.
     #[serde(default)]
     pub tool: Option<ToolDef>,
+    /// Marks this enemy as a **mimic** that can copy the party's last move, wearing
+    /// that hero's shape as it strikes. See [`MimicryDef`]. Absent for ordinary foes.
+    #[serde(default)]
+    pub mimicry: Option<MimicryDef>,
 }
 
 /// One line of a shop's stock: an equipment id and what it costs. Buying it in
@@ -564,6 +594,41 @@ pub struct SpawnDef {
     pub encounter: String,
 }
 
+/// A treasure chest resting on an overworld screen. Walk up and press Confirm to
+/// open it and pocket its contents. The reward fields are additive and each
+/// optional, so one chest can hold gold, a consumable, and a piece of equipment
+/// at once — mirroring the composable, pure-data extension pattern the rest of
+/// the model follows. Adding a chest is a RON edit plus a placement in a screen.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ChestSpawn {
+    /// Tile column / row the chest sits on.
+    pub col: u32,
+    pub row: u32,
+    /// Gold added to the party's purse on opening.
+    #[serde(default)]
+    pub gold: i32,
+    /// Consumable item id (into [`GameData::items`]) added to the stash.
+    #[serde(default)]
+    pub item: Option<String>,
+    /// Equipment id (into [`GameData::equipment`]) dropped into the party's bag.
+    #[serde(default)]
+    pub equipment: Option<String>,
+}
+
+/// A MIMIC lying in wait on an overworld screen: it sits perfectly still,
+/// disguised as a [chest](ChestSpawn), until the player strays close — then it
+/// springs awake, gives chase, and starts the referenced [`EncounterDef`] on
+/// contact. It reuses the whole roaming-enemy chase/battle pipeline; the ambush
+/// is the only new behaviour. Adding one is pure data, like a [`SpawnDef`].
+#[derive(Clone, Debug, Deserialize)]
+pub struct MimicSpawn {
+    /// Tile column / row the disguised mimic waits on.
+    pub col: u32,
+    pub row: u32,
+    /// Encounter started when the woken mimic reaches the player.
+    pub encounter: String,
+}
+
 /// A single screen (room) within a level: one ASCII tile map, its enemy spawns,
 /// and links to neighbouring screens. Walking into the mid-edge opening on a
 /// side with a neighbour flips to that screen.
@@ -579,6 +644,12 @@ pub struct ScreenDef {
     /// Shop entrances on this screen (walk up + Confirm to enter).
     #[serde(default)]
     pub shops: Vec<ShopSpawn>,
+    /// Treasure chests on this screen (walk up + Confirm to open).
+    #[serde(default)]
+    pub chests: Vec<ChestSpawn>,
+    /// Mimics disguised as chests, lying in ambush on this screen.
+    #[serde(default)]
+    pub mimics: Vec<MimicSpawn>,
     #[serde(default)]
     pub north: Option<usize>,
     #[serde(default)]
@@ -809,6 +880,12 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "minotaur" => include_bytes!("../assets/textures/entities/monsters/minotaur.png"),
         "shopkeeper" => include_bytes!("../assets/textures/entities/npcs/shopkeeper.png"),
         "slime" => include_bytes!("../assets/textures/entities/monsters/slime.png"),
+        // A treasure chest prop, and the MIMIC that lurks disguised as one. The
+        // mimic's 16x32 sheet is a single column of two 16x16 frames: row 0 the
+        // dormant chest disguise (with a tell-tale watching eye), row 1 its
+        // gaping toothy maw once it springs the ambush.
+        "chest" => include_bytes!("../assets/textures/tiles/chest.png"),
+        "mimic" => include_bytes!("../assets/textures/entities/monsters/mimic.png"),
         "gargoyle" => include_bytes!("../assets/textures/entities/monsters/gargoyle.png"),
         "dragon" => include_bytes!("../assets/textures/entities/monsters/dragon.png"),
         // TRAVELLER'S END denizens: scuttling crabs, undead skeletons, and the

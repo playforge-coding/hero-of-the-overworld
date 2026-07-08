@@ -65,7 +65,10 @@ battle each living party member chooses **ATTACK**, a **SKILL**, an **ITEM**, or
 for extra damage, and each hero's **weapon and armor** tilt those odds. **Items** are
 consumables — potions, bombs, stat tonics — spent from a shared stash, bought at shops or
 dropped by beaten foes. Walk up to a **shopkeeper** on the map to step into a store and
-spend battle winnings on new gear and items. Clear every demon in a
+spend battle winnings on new gear and items. Screens also hide **treasure chests** to open
+for gold, items, and gear — and, in the deep regions, **mimics** drawn from the very same
+chest sprite, so you can't tell them apart until you get close and one springs a fight where
+it hurls fireballs and copies your party's own moves. Clear every demon in a
 level to mark it done on the map and **unlock the next** — progression is linear. Your
 party, clears, per-level progress, and your **exact position in a level** are **saved
 automatically** and resume on the next launch.
@@ -87,7 +90,7 @@ the window, so game code never deals with real pixels or DPI.
 | [`src/inventory.rs`](src/inventory.rs) | the out-of-battle party menu: equip/unequip gear, plus use healing items & moves on the map |
 | [`src/input_config.rs`](src/input_config.rs) | the controls screen: map keyboard/gamepads to players for local co-op |
 | [`src/devtools.rs`](src/devtools.rs) | **debug-only** developer menu (F1 on the map): set party level, add any character, fight any encounter |
-| [`src/overworld.rs`](src/overworld.rs) | tile-mapped levels: screens, walking, camera, roaming enemies |
+| [`src/overworld.rs`](src/overworld.rs) | tile-mapped levels: screens, walking, camera, roaming enemies, chests & mimics |
 | [`src/battle.rs`](src/battle.rs) | the turn-based battle scene (commands → AI → resolve) |
 | [`src/shop.rs`](src/shop.rs) | the shop interior scene: walk-in store + buy-and-equip / buy-item UI |
 | [`src/cutscene.rs`](src/cutscene.rs) | data-driven scripted dialogue + party recruitment |
@@ -153,12 +156,14 @@ armor with stat bonuses, crit /
 accuracy / evasion, and descriptions — heroes and enemies equip them by id), **items**
 (consumables with a target and a composable effect — heal / damage / restore MP / inflict
 a status — used in battle, bought or dropped), **enemies** (stats, skills, AI, XP/gold
-rewards, a chance-based item **drop** table, and an optional **tool** marker that turns a
+rewards, a chance-based item **drop** table, an optional **tool** marker that turns a
 foe into an inert siege engine like the ballista — worked by the enemies beside it and
-crumbling once none remain), **encounters** (named groups of enemies),
-**levels** (a map marker plus a set of connected ASCII-tile screens with enemy spawns and
-shop entrances), **shops** (a keeper, a facing/exit wall, and priced wares — gear or items),
-and **cutscenes** (scripted dialogue lines and recruits).
+crumbling once none remain — and an optional **mimicry** marker that lets a mimic copy
+the party's last move, wearing that hero's shape as it strikes), **encounters** (named groups of enemies),
+**levels** (a map marker plus a set of connected ASCII-tile screens with enemy spawns, shop
+entrances, **treasure chests**, and disguised **mimics**), **shops** (a keeper, a facing/exit
+wall, and priced wares — gear or items), and **cutscenes** (scripted dialogue lines and
+recruits).
 
 ### The sprite sheets
 
@@ -183,8 +188,9 @@ Two layers:
 **1. Fast data/logic tests** — run on every `cargo test`, no display needed. They validate the
 RON parses, every skill/enemy/encounter/texture/cutscene/shop/item/drop cross-reference
 resolves, that every level's screens are linked and traversable, that shop wares and keeper
-placements are valid, that the shop interior/buy logic behaves (gear *and* items), and that
-the party mechanics (build, recruit, level-up) behave.
+placements are valid, that chest loot and mimic encounters resolve on standable ground, that
+the shop interior/buy logic behaves (gear *and* items), and that the party mechanics (build,
+recruit, level-up) behave.
 
 ```bash
 cargo test --test data

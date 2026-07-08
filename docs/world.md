@@ -107,3 +107,31 @@ spend the gold you've won on new [weapons and armor](equipment.md). You leave th
 way the keeper faces — walk back out the doorway to return to the map. The
 Greenwood's opening screen has an **OUTFITTER** right by your start, so you can
 kit out before your first fight.
+
+## Chests and mimics
+
+Scattered across the screens are **treasure chests**. Walk up to one and — like a
+shop — press **Confirm** on the **PRESS Z** prompt to open it and pocket what's
+inside: a purse of **gold**, a consumable [item](items.md), a piece of
+[equipment](equipment.md), or some combination. An opened chest is spent (it fades
+grey) and, like a beaten enemy, that's [saved](gameplay.md#saving) — it stays
+looted even if you leave and come back, so there's no farming the same box twice.
+The Greenwood alone hides a starter purse, an **ether**, and a **[SCOUT'S
+EDGE](equipment.md)** waiting past its lone demon.
+
+But in the **deep** regions — Traveller's End, the Demon Fortress, and the Charred
+Depths — not every chest is treasure. A **[mimic](entities/mimic.md)** sits perfectly
+still wearing a chest's exact shape — drawn from the **very same sprite**, so from a
+distance there is *no way to tell it from the real thing*. Those regions deliberately
+sit real chests and mimics side by side, so you can never be sure which cache is safe.
+Stray too close and the disguise drops: it reveals a mouthful of teeth and **gives
+chase**. A woken mimic is quicker than an ordinary roaming foe, though still a hair
+slower than you, so a prompt retreat can shake it — but let it catch you and it starts
+a **[battle](battles.md)**.
+
+And a mimic is no pushover in that fight: it is tanky, hurls **FIREBALL**, and — its
+signature — **[copies the party's last move](entities/mimic.md#mimicry)**, taking on
+that hero's very shape to turn a weakened version of their own skill back on them.
+Beat one, though, and it's gone for good and generously paid. Since a dormant mimic
+is indistinguishable until it springs, the only safe habit is to approach any deep
+chest ready to run.
