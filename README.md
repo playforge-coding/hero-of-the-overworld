@@ -86,6 +86,7 @@ the window, so game code never deals with real pixels or DPI.
 | [`src/party.rs`](src/party.rs) | the persistent, extensible party (HP/MP/XP carried between battles) + the shared gear bag and consumable-item stash |
 | [`src/inventory.rs`](src/inventory.rs) | the out-of-battle party menu: equip/unequip gear, plus use healing items & moves on the map |
 | [`src/input_config.rs`](src/input_config.rs) | the controls screen: map keyboard/gamepads to players for local co-op |
+| [`src/devtools.rs`](src/devtools.rs) | **debug-only** developer menu (F1 on the map): set party level, add any character, fight any encounter |
 | [`src/overworld.rs`](src/overworld.rs) | tile-mapped levels: screens, walking, camera, roaming enemies |
 | [`src/battle.rs`](src/battle.rs) | the turn-based battle scene (commands → AI → resolve) |
 | [`src/shop.rs`](src/shop.rs) | the shop interior scene: walk-in store + buy-and-equip / buy-item UI |

@@ -423,7 +423,7 @@ cargo test --test data
 Testing content deep in the game — a late level, the underworld, a level-clear
 cutscene — is tedious if you must clear everything before it first, and replaying a
 level you have already beaten is worse (its enemies stay defeated, so you walk an
-empty map). In a **debug build** (`cargo run`, i.e. *not* `--release`), a pair of
+empty map). In a **debug build** (`cargo run`, i.e. *not* `--release`), a set of
 hidden hotkeys let a developer skip ahead and reset levels at will:
 
 - **On the world map** — highlight a level marker and press <kbd>Tab</kbd> to mark it
@@ -442,7 +442,26 @@ hidden hotkeys let a developer skip ahead and reset levels at will:
   encounter, to clear it (and trigger things like the Demon Fortress → underworld
   portal cutscene) without actually fighting.
 
+### The developer menu (F1)
+
+For the state that is otherwise slow to set up, the world map also opens a small
+**dev menu**: highlight nothing in particular and press <kbd>F1</kbd>. It's a plain
+selectable menu (arrow keys / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to
+move, <kbd>Enter</kbd> to choose, <kbd>Esc</kbd> to back out) with three tools:
+
+- **Change level** — a spinner (<kbd>←</kbd>/<kbd>→</kbd> by 1,
+  <kbd>↑</kbd>/<kbd>↓</kbd> by 10) that sets **every** party member to the chosen
+  level. Members are rebuilt up the normal growth curve, so their stats and learned
+  skills match that level exactly (and it works downward too); equipment is kept.
+- **Add party member** — pick any character from the roster (`characters` in the RON)
+  to recruit it on the spot, joining at the party's current level like a normal
+  mid-game recruit. Handy for testing a hero's kit without playing to their story
+  recruitment. (No dedupe — choosing the same one twice adds two copies.)
+- **Fight encounter** — pick any encounter (`encounters` in the RON) to jump straight
+  into that battle, boss theme and all. It grants full spoils on victory and drops
+  you back on the map afterward, so you can test a fight in isolation.
+
 These are gated behind `#[cfg(debug_assertions)]`, so they are **compiled out of
 `--release` builds entirely** — a shipped game keeps the normal linear progression
-and players cannot skip, reset, or auto-win. Both screens show a small *"DEV: …"*
-hint in debug builds as a reminder.
+and players cannot skip, reset, auto-win, or open the dev menu. Both screens show a
+small *"DEV: …"* hint in debug builds as a reminder.

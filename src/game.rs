@@ -12,6 +12,8 @@ use crate::audio::{Audio, Track};
 use crate::battle::{Battle, BattleOutcome};
 use crate::cutscene::{Cutscene, CutsceneOutcome};
 use crate::data::Registry;
+#[cfg(debug_assertions)]
+use crate::devtools::{DevTools, DevToolsEvent};
 use crate::input::{Button, Controllers, Input, InputAssignment, TouchScheme};
 use crate::input_config::{InputConfig, InputConfigEvent};
 use crate::inventory::{Inventory, InventoryEvent};
@@ -37,6 +39,11 @@ enum Scene {
     /// The input-mapping config, opened with Menu from the title screen: assign
     /// the keyboard and each gamepad to players for local co-op.
     InputConfig(InputConfig),
+    /// **DEV-ONLY** developer menu, opened with F1 from the map: set the party's
+    /// level, add any character, or fight any encounter. Only reachable in debug
+    /// builds (the whole variant is compiled out of `--release`).
+    #[cfg(debug_assertions)]
+    DevTools(DevTools),
     Report {
         win: bool,
         lines: Vec<String>,
@@ -448,6 +455,37 @@ impl Game {
                     None => Scene::InputConfig(cfg),
                 }
             }
+            #[cfg(debug_assertions)]
+            Scene::DevTools(mut dev) => match dev.update(input) {
+                Some(DevToolsEvent::Close) => {
+                    self.save();
+                    Scene::Map
+                }
+                Some(DevToolsEvent::SetLevel(n)) => {
+                    self.party.set_level(&self.reg, n);
+                    self.save();
+                    Scene::DevTools(dev)
+                }
+                Some(DevToolsEvent::AddMember(id)) => {
+                    self.party.recruit(&self.reg, &id);
+                    self.save();
+                    Scene::DevTools(dev)
+                }
+                Some(DevToolsEvent::Fight(id)) => {
+                    // Start a battle with no map trigger: finish_battle only
+                    // touches level state when both a level and a trigger exist,
+                    // so a dev fight still grants spoils and lands back on the map.
+                    self.party.revive_downed(5);
+                    let battle =
+                        Battle::new(renderer, &mut self.cache, &self.reg, &self.party, &id);
+                    let is_boss = self.reg.encounter(&id).is_some_and(|e| e.boss);
+                    let track = if is_boss { Track::Boss } else { Track::Battle };
+                    self.audio.play_music_looping(track);
+                    self.pending = None;
+                    Scene::Battle(battle)
+                }
+                None => Scene::DevTools(dev),
+            },
             Scene::Report {
                 win,
                 lines,
@@ -515,6 +553,27 @@ impl Game {
             self.reset_level(self.map_cursor);
             self.save();
             return Scene::Map;
+        }
+        // DEV-ONLY developer menu: set the party's level, add any character, or
+        // fight any encounter. Compiled out of release builds along with the
+        // whole `DevTools` scene. See [`input::dev_menu_pressed`].
+        #[cfg(debug_assertions)]
+        if crate::input::dev_menu_pressed() {
+            let characters = self
+                .reg
+                .data
+                .characters
+                .iter()
+                .map(|c| (c.id.clone(), c.name.clone()))
+                .collect();
+            let encounters = self
+                .reg
+                .data
+                .encounters
+                .iter()
+                .map(|e| e.id.clone())
+                .collect();
+            return Scene::DevTools(DevTools::new(self.party.level(), characters, encounters));
         }
         if input.pressed(Button::Confirm) && self.unlocked(self.map_cursor) {
             self.current_level = self.map_cursor;
@@ -734,6 +793,8 @@ impl Game {
             Scene::Shop(shop) => shop.draw(renderer, &self.reg, &self.party),
             Scene::Inventory(inv) => inv.draw(renderer, &self.party, &self.reg),
             Scene::InputConfig(cfg) => cfg.draw(renderer),
+            #[cfg(debug_assertions)]
+            Scene::DevTools(dev) => dev.draw(renderer),
             Scene::Report { win, lines, .. } => Self::draw_report(*win, lines, renderer),
         }
     }
@@ -826,7 +887,7 @@ impl Game {
         // XP; R resets it to replay.
         #[cfg(debug_assertions)]
         r.draw_text_centered(
-            "DEV: TAB SKIPS (+XP) · R RESETS LEVEL",
+            "DEV: TAB SKIPS (+XP) · R RESETS · F1 MENU",
             virtual_w() / 2.0,
             3.0,
             1.0,

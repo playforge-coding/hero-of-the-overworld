@@ -145,6 +145,17 @@ pub fn dev_reset_pressed() -> bool {
     is_key_pressed(KeyCode::R)
 }
 
+/// **DEV-ONLY** hidden hotkey (F1) that opens the developer menu from the world
+/// map — a menu to set the party's level, add any character, or fight any
+/// encounter (see [`crate::devtools`]). Like the other dev hotkeys it reads the
+/// raw key, deliberately *outside* the logical [`Button`] mapping so it can't be
+/// bound to a pad or triggered by ordinary play, and is compiled out of
+/// `--release` builds so a shipped game has no such menu.
+#[cfg(debug_assertions)]
+pub fn dev_menu_pressed() -> bool {
+    is_key_pressed(KeyCode::F1)
+}
+
 /// Read the current keyboard state into a logical [`Input`], using macroquad's
 /// own press-edge latching for `pressed`.
 fn read_keyboard() -> Input {

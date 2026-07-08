@@ -22,6 +22,10 @@ pub mod audio;
 pub mod battle;
 pub mod cutscene;
 pub mod data;
+/// **DEV-ONLY** developer menu (set level / add member / fight encounter). Only
+/// exists in debug builds — compiled out of `--release`.
+#[cfg(debug_assertions)]
+pub mod devtools;
 pub mod game;
 pub mod input;
 pub mod input_config;

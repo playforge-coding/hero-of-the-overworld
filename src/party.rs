@@ -207,6 +207,32 @@ impl Party {
         self.members.iter().any(|m| m.is_alive())
     }
 
+    /// **DEV-ONLY.** Set every member to `target` level, rebuilding their stats up
+    /// the normal growth curve so a developer can jump the party to any level for
+    /// testing. Each member is rebuilt from its definition at level 1 and grown to
+    /// `target` (the same path [`recruit`](Self::recruit) uses), so lowering the
+    /// level works too; equipment is preserved and everyone ends at full HP/MP.
+    /// Compiled out of release builds along with its only caller.
+    #[cfg(debug_assertions)]
+    pub fn set_level(&mut self, reg: &Registry, target: i32) {
+        let target = target.max(1);
+        for m in &mut self.members {
+            let Some(def) = reg.character(&m.def_id) else {
+                continue;
+            };
+            let Some(mut fresh) = PartyMember::from_def(reg, &m.def_id) else {
+                continue;
+            };
+            while fresh.level < target {
+                fresh.level_up(def);
+            }
+            // Keep whatever gear the member is actually carrying.
+            fresh.weapon = m.weapon.clone();
+            fresh.armor = m.armor.clone();
+            *m = fresh;
+        }
+    }
+
     /// A member's current item in `slot`, if any.
     fn slot_id(member: &PartyMember, slot: EquipSlot) -> &Option<String> {
         match slot {
