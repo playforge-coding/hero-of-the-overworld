@@ -1,0 +1,9 @@
+// BRENN the axeman's opening move: a hand axe hurled at one foe, tumbling end over
+// end across the field. Like every thrown/ranged blow it can't be timed-blocked.
+SkillDef(
+    id: "axe_throw", name: "AXE THROW",
+    description: "A hand axe hurled end-over-end at one foe.",
+    mp_cost: 3, power: 165, kind: Physical, target: OneEnemy,
+    unblockable: true,
+    anim: Projectile(texture: "axe"),   // the axe spins as it flies
+)

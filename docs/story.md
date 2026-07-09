@@ -131,8 +131,20 @@ far waters. Now, with the princess alive and set on putting the kingdom right, t
 captain throws in with them — musket, deck, and a course back across the sea — and
 **[joins the party](entities/captain.md)**.
 
-That is as far as the built world reaches for now: past the pirate camps the coast
-runs on into country not yet made, and the tale pauses there — **to be continued**.
+With a ship and a sailor who knows these waters, the party stops running and starts
+building. The captain sets a course for the nearest friendly port — **[Harborwatch](world.md#the-world-map)**,
+an old garrison town — to do the one thing three heroes and a pirate crew cannot do
+alone: **round up soldiers** for the long road home. Harborwatch is the first **safe
+ground** of Chapter 2, a peaceful town with no fight in it — only streets to walk,
+**townsfolk to talk to**, a quartermaster's shop, and rumours of a black tide creeping
+in past the reef. Its one holdout is **[Brenn](world.md#the-world-map)**, a garrison
+axeman who flatly refuses to march on demons — until **Elara lowers her hood** and
+**Gareth** names her the true heir, and the old soldier's oath wins out over his fear.
+He takes up his axe and **joins the party**: the first recruit of the army the captain
+means to raise.
+
+That is as far as the built world reaches for now: past Harborwatch the coast runs on
+into country not yet made, and the tale pauses there — **to be continued**.
 
 ## An alternate timeline
 

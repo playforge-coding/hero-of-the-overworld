@@ -1,0 +1,30 @@
+// Plays the first time the party talks to the AXEMAN standing in the HARBORWATCH
+// square (his `NpcSpawn` names this as its `cutscene`, and `recruits: "axeman"`).
+// BRENN refuses outright, certain that marching on demons is a death sentence —
+// until ELARA lowers her hood and GARETH names her, and the soldier's old oath
+// wins over his fear. He joins. No sprites change during the reveal; it's told in
+// the dialogue. See `characters/axeman.ron`.
+CutsceneDef(
+    id: "axeman_joins",
+    steps: [
+        Say(speaker: Some("BRENN"), portrait: Some("axeman"),
+            text: "LOOKING FOR SWORDS? YOU'LL FIND NONE HERE. I CARRIED AN AXE FOR THIS TOWN TEN YEARS. I'LL NOT CARRY IT INTO A DEMON'S JAWS."),
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "WE'RE NOT ASKING YOU TO DIE. WE'RE ASKING YOU TO STAND. THE THING ON THE THRONE WON'T STOP AT THE SEA - IT'LL COME FOR HARBORWATCH NEXT."),
+        Say(speaker: Some("BRENN"), portrait: Some("axeman"),
+            text: "SO SAYS EVERY RECRUITER WITH A LOST CAUSE. I'VE A ROOF AND A NAME AND NO WISH TO END AS ASH ON SOME DEMON'S FIELD. FIND YOUR HERO ELSEWHERE."),
+        Say(speaker: None, portrait: None,
+            text: "ELARA STEPS FORWARD AND DRAWS BACK HER HOOD. THE FACE BENEATH IT IS ONE THE OLD SOLDIER HAS SEEN ON COIN AND BANNER."),
+        Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+            text: "THAT'S THE PRINCESS YOU'RE TALKING TO! THE TRUE HEIR - NOT THE VIPER WEARING HER FATHER'S CROWN. SO MIND HOW YOU REFUSE HER."),
+        Say(speaker: Some("BRENN"), portrait: Some("axeman"),
+            text: "THE - THE PRINC- BUT YOU- I- ...GODS. IT'S REALLY YOU. HERE. ON MY STREET. AND I STOOD THERE PRATTLING ABOUT MY ROOF."),
+        Say(speaker: Some("ELARA"), portrait: Some("mage"),
+            text: "KEEP YOUR ROOF, SOLDIER. I'D RATHER HAVE THE ARM THAT DEFENDS IT. WILL YOU STAND WITH US - NOT FOR A CROWN, BUT FOR THE TOWN BEHIND YOU?"),
+        Say(speaker: Some("BRENN"), portrait: Some("axeman"),
+            text: "...AYE. AYE, MY LADY. AN OATH'S AN OATH, AND I SWORE MINE LONG AGO. THE AXE OF HARBORWATCH IS YOURS - LEAD ON."),
+        Recruit(character: "axeman"),
+        Say(speaker: Some("CAPTAIN"), portrait: Some("captain"),
+            text: "HA! ONE GOOD MAN AND ALREADY THE TOWN LOOKS TALLER. THAT'S HOW AN ARMY STARTS, PRINCESS - ONE STUBBORN OATH AT A TIME."),
+    ],
+)

@@ -70,10 +70,12 @@ fn all_references_resolve() {
                 s.id
             );
         }
-        // A projectile or crowd animation names an embedded texture (the bolt art,
-        // or the swarm's walk sheet).
+        // A projectile, boomerang, or crowd animation names an embedded texture
+        // (the bolt/axe art, or the swarm's walk sheet).
         let anim_tex = match &s.anim {
-            AttackAnim::Projectile { texture } | AttackAnim::Crowd { texture } => Some(texture),
+            AttackAnim::Projectile { texture }
+            | AttackAnim::Boomerang { texture }
+            | AttackAnim::Crowd { texture } => Some(texture),
             _ => None,
         };
         if let Some(texture) = anim_tex {
@@ -1425,6 +1427,151 @@ fn shops_are_valid_and_placed() {
                     "level {} screen {si} entrance references unknown shop '{}'",
                     lv.id,
                     sp.shop
+                );
+            }
+        }
+    }
+}
+
+/// Townsfolk are well-formed and placed on standable ground: every NPC
+/// appearance has a name and an embedded sprite, and every placement is
+/// in-bounds, standable, names a real appearance, shows a registered emote
+/// bubble, and resolves any one-time cutscene / recruit it carries. Guards the
+/// NPC extensibility contract the same way spawns and shops are guarded — a
+/// missing emote or a recruit pointing at a phantom character would otherwise
+/// only panic (or silently break) once the town is reached in play.
+#[test]
+fn npcs_are_valid_and_placed() {
+    let reg = registry();
+
+    for npc in &reg.data.npcs {
+        assert!(!npc.name.trim().is_empty(), "npc {} has no name", npc.id);
+        assert!(
+            embedded_texture(&npc.sprite.texture).is_some(),
+            "npc {} sprite texture '{}' not embedded",
+            npc.id,
+            npc.sprite.texture
+        );
+    }
+
+    for lv in &reg.data.levels {
+        for (si, sc) in lv.screens.iter().enumerate() {
+            let width = sc.map.iter().map(|r| r.chars().count()).max().unwrap();
+            let height = sc.map.len();
+            let solid = |col: u32, row: u32| -> bool {
+                let ch = sc
+                    .map
+                    .get(row as usize)
+                    .and_then(|r| r.chars().nth(col as usize))
+                    .unwrap_or('.');
+                !matches!(ch, '.' | ' ')
+            };
+            for np in &sc.npcs {
+                assert!(
+                    (np.col as usize) < width && (np.row as usize) < height,
+                    "level {} screen {si} npc ({},{}) out of bounds",
+                    lv.id,
+                    np.col,
+                    np.row
+                );
+                assert!(
+                    !solid(np.col, np.row),
+                    "level {} screen {si} npc ({},{}) sits in a solid tile",
+                    lv.id,
+                    np.col,
+                    np.row
+                );
+                assert!(
+                    reg.npc(&np.npc).is_some(),
+                    "level {} screen {si} npc references unknown appearance '{}'",
+                    lv.id,
+                    np.npc
+                );
+                let emote_key = format!("{}_emote", np.emote);
+                assert!(
+                    embedded_texture(&emote_key).is_some(),
+                    "level {} screen {si} npc emote '{}' has no embedded texture",
+                    lv.id,
+                    np.emote
+                );
+                if let Some(cs) = &np.cutscene {
+                    assert!(
+                        reg.cutscene(cs).is_some(),
+                        "level {} screen {si} npc names unknown cutscene '{cs}'",
+                        lv.id
+                    );
+                }
+                if let Some(rec) = &np.recruits {
+                    assert!(
+                        reg.character(rec).is_some(),
+                        "level {} screen {si} npc recruits unknown character '{rec}'",
+                        lv.id
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Every house stamped on a screen fits entirely within that screen's bounds
+/// (its fixed 6×4 footprint can't hang off the map), and the shared house
+/// tileset (`house_0`..`house_23`) is fully embedded. A house whose base row
+/// fell off the grid would inject its solid wall out of bounds.
+#[test]
+fn houses_fit_and_tileset_is_embedded() {
+    // House tileset dimensions, mirrored from `crate::overworld` (kept in sync
+    // by this very test — a resized tileset would need both updated).
+    const HOUSE_COLS: u32 = 6;
+    const HOUSE_ROWS: u32 = 4;
+    for i in 0..(HOUSE_COLS * HOUSE_ROWS) {
+        assert!(
+            embedded_texture(&format!("house_{i}")).is_some(),
+            "house tile 'house_{i}' not embedded"
+        );
+    }
+
+    let reg = registry();
+    for lv in &reg.data.levels {
+        for (si, sc) in lv.screens.iter().enumerate() {
+            let width = sc.map.iter().map(|r| r.chars().count()).max().unwrap() as u32;
+            let height = sc.map.len() as u32;
+            for h in &sc.houses {
+                assert!(
+                    h.col + HOUSE_COLS <= width && h.row + HOUSE_ROWS <= height,
+                    "level {} screen {si} house at ({},{}) overhangs the {}x{} screen",
+                    lv.id,
+                    h.col,
+                    h.row,
+                    width,
+                    height
+                );
+            }
+        }
+    }
+}
+
+/// A talkable NPC that recruits must be backed by a cutscene whose script
+/// actually adds that character to the party — otherwise the townsfolk vanishes
+/// on being talked to but never joins. Covers HARBORWATCH's BRENN specifically.
+#[test]
+fn recruiting_npcs_actually_recruit() {
+    let reg = registry();
+    for lv in &reg.data.levels {
+        for sc in &lv.screens {
+            for np in &sc.npcs {
+                let (Some(rec), Some(cs_id)) = (&np.recruits, &np.cutscene) else {
+                    continue;
+                };
+                let cs = reg
+                    .cutscene(cs_id)
+                    .unwrap_or_else(|| panic!("npc cutscene '{cs_id}' missing"));
+                assert!(
+                    cs.steps.iter().any(|s| matches!(
+                        s,
+                        CutsceneStep::Recruit { character } if character == rec
+                    )),
+                    "level {} npc recruits '{rec}' but cutscene '{cs_id}' never adds them",
+                    lv.id
                 );
             }
         }

@@ -1,0 +1,44 @@
+// BRENN — a garrison axeman of HARBORWATCH, recruited when the party sails in to
+// rally soldiers (via the `axeman_joins` cutscene). He first refuses, sure that
+// marching on demons is a death sentence — until ELARA lowers her hood and GARETH
+// names her the princess, and the old soldier's oath wins out. Not in
+// `starting_party`.
+//
+// The heavy of the party: the highest HP and a crushing axe, but the slowest to
+// act. axeman.png is a 6x6 sheet — walk rows 0-3 (down/up/right/left, 5 frames),
+// attack row 4, spin-attack row 5. The battle sprite reads the right-facing walk
+// row as a ready stance and the attack row when he swings.
+CharacterDef(
+    id: "axeman",
+    name: "BRENN",
+    stats: Stats(max_hp: 138, max_mp: 18, attack: 26, defense: 16, magic: 4, speed: 9),
+    sprite: BattlerSprite(
+        texture: "axeman",
+        frame_w: 16, frame_h: 16,
+        draw_w: 50.0, draw_h: 50.0,
+        faces_left: false,
+        // "walk right" row (5 frames) read as a ready stance.
+        idle:   AnimClip(row: 2, first_col: 0, frames: 5, fps: 5.0),
+        // "attack" row (6 frames) — a heavy overhead swing.
+        attack: AnimClip(row: 4, first_col: 0, frames: 6, fps: 13.0),
+    ),
+    // Overworld walk: rows 0-3 are walk down/up/right/left (5 frames).
+    overworld: Some(OverworldWalk(
+        texture: "axeman",
+        frame_w: 16, frame_h: 16,
+        draw_w: 20.0, draw_h: 20.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 5, fps: 9.0,
+    )),
+    skills: ["axe_throw"],
+    // BRENN's own axe-work: he opens with the thrown AXE THROW, learns the
+    // line-clearing AXE BOOMERANG a few levels in, and caps off with his brutal
+    // CLEAVE. Recruited mid-game, the learnset catches him up to everything his
+    // level grants on join.
+    learnset: [
+        LearnedSkill(level: 4, skill: "axe_boomerang"),
+        LearnedSkill(level: 9, skill: "cleave"),
+    ],
+    weapon: Some("battle_axe"),
+    armor: Some("leather_armor"),
+)

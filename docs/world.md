@@ -33,7 +33,8 @@ The bundled world spans two **[chapters](gameplay.md#chapters)**. **Chapter 1** 
 six levels across two realms — the surface, and the **underworld** beneath it,
 reached once the Demon Fortress falls — ending at the iron **Demon Facility** deep
 below, the seat of the horde's power. **Chapter 2** opens on a far **Castaway Shore**,
-where the Demon King flings the party once Chapter 1 ends. The map shows one chapter
+where the Demon King flings the party once Chapter 1 ends, and continues to the
+garrison town of **Harborwatch**. The map shows one chapter
 at a time; these are Chapter 1's regions, in order:
 
 | Level | Screens | Enemies | Notes |
@@ -45,12 +46,13 @@ at a time; these are Chapter 1's regions, in order:
 | **CHARRED DEPTHS** | 11 | [Club](entities/club_goblin.md) & [archer goblins](entities/archer_goblin.md), [orc brutes](entities/orc_brute.md) + [demons](entities/demon.md) | The **first level of the underworld** and the **toughest descent** in the game — a long warren of scorched flagstone that winds ever deeper, its foes escalating like the climb of Traveller's End. Goblin packs (clubbers screening their archers) hold the upper halls, orc brutes wall the middle chambers two and three abreast, and demon-led warbands hold the depths — down to the deep hall's guardian, a demon flanked by two remade orc thralls. Unlocks after the Demon Fortress — a **[portal cutscene](story.md)** takes you there, and it stands open on the map from then on. |
 | **DEMON FACILITY** | 11 | [Demon elites](entities/demon_elite.md) (singly and in packs) + a [Demon King](entities/demon_king.md) boss | The **climax of Chapter 1**: past the Charred Depths the raw stone turns to **iron**, an underground forge-hall where the horde plates its demons for war. A long, winding descent in the mould of the Charred Depths — war-plated elites two and three abreast, a barracks cache guarded by a mimic, a throne-hall guard — ending at the throne of the invincible **[Demon King](entities/demon_king.md)**. That fight **cannot be won**: losing it hurls the party back to the surface and opens **[Chapter 2](gameplay.md#chapters)**. Unlocks after the Charred Depths. |
 
-And **Chapter 2** so far is a single region — where the party washes up, an ocean
-from anywhere they knew:
+And **Chapter 2** so far runs two regions — the shore the party washes up on, and
+the town they sail to from it:
 
 | Level | Screens | Enemies | Notes |
 | ----- | ------- | ------- | ----- |
-| **CASTAWAY SHORE** | 6 | [Beach crabs](entities/beach_crab.md), [pirate grunts](entities/pirate_grunt.md) & [gunners](entities/pirate_gunner.md) + a [Pirate Captain](entities/captain.md) boss | The **opening of Chapter 2**: a sun-blasted beach of pale sand and coconut palms where the Demon King's blow drops the party, an ocean away from home. Skittering beach crabs work the tideline; higher up, cutlass-swinging pirate grunts and flintlock gunners hold the coast from behind wooden **barricades** — up to their **[captain](entities/captain.md)**, a musket-wielding boss at the back of the last camp who **yields and joins the party** once beaten. The party lands here automatically when Chapter 1 ends; clearing it reaches the edge of the built world — **"TO BE CONTINUED..."**. |
+| **CASTAWAY SHORE** | 6 | [Beach crabs](entities/beach_crab.md), [pirate grunts](entities/pirate_grunt.md) & [gunners](entities/pirate_gunner.md) + a [Pirate Captain](entities/captain.md) boss | The **opening of Chapter 2**: a sun-blasted beach of pale sand and coconut palms where the Demon King's blow drops the party, an ocean away from home. Skittering beach crabs work the tideline; higher up, cutlass-swinging pirate grunts and flintlock gunners hold the coast from behind wooden **barricades** — up to their **[captain](entities/captain.md)**, a musket-wielding boss at the back of the last camp who **yields and joins the party** once beaten. The party lands here automatically when Chapter 1 ends. |
+| **HARBORWATCH** | 3 | *none — a peaceful town* | The party's first **safe ground** of Chapter 2: a friendly garrison town the captain sails them to, to **round up soldiers**. It's a **[hub, not a battlefield](#townsfolk-and-towns)** — no roaming foes, so there's no "cleared" banner, just a **DOCKS**, a **SQUARE** and the **OUTSKIRTS** to wander. Talk to the **townsfolk**, buy sturdier gear at the **[quartermaster](shops.md)**, and open a couple of chests. Its one piece of business is **BRENN**, a garrison axeman in the square who **joins the party** once you talk him round (Elara reveals herself as the true heir). Clearing the shore before it, entering reaches the edge of the built world — **"TO BE CONTINUED..."**. |
 
 ## Screens
 
@@ -87,6 +89,12 @@ draws its `T` trees as **coconut palms** and its `#` walls as the pirates' woode
 drawn over the base, which is how Traveller's End dots its bare stone with patches
 of grass without re-theming the whole floor.
 
+Beyond the per-tile legend, a screen can also stamp whole **houses** — cottages
+drawn from a shared 6×4 tileset — placed at a tile position rather than spelled out
+in the map. Their grassy upper rows blend into the ground, and only the **stone wall
+along the base** blocks movement, so you walk *in front of* a house's door (they're
+scenery, not entered). Harborwatch's streets are lined with them.
+
 ## Roaming enemies
 
 Each screen can hold **roaming enemies**, placed at spawn points and tied to an
@@ -120,6 +128,25 @@ boundary (chapters turn over by story, not by clearing), and clearing the **last
 region** ends on **"TO BE CONTINUED..."**, leaving you free to return to the map with
 **Cancel**/**Menu**. Every cleared level still shows green on the map if you visit it,
 and you can always **Cancel**/**Menu** out of a level to the map by hand.
+
+## Townsfolk and towns
+
+Not every screen is a fight. A level with **no roaming enemies** is a peaceful
+**town** — the overworld reads it as a hub, so there's no "cleared" banner and
+nothing to defeat, just streets to explore and people to meet. **Harborwatch**, the
+garrison town of Chapter 2, is the first of them.
+
+Towns are dotted with **townsfolk** — villagers standing about with a little
+**emote bubble** bobbing over their head (a speech mark, a *?*, a *!*, a heart) to
+mark them as talk-to-able. Walk up and press **Confirm** on the **PRESS Z** prompt to
+hear what they have to say: rumours, colour, and the occasional lead. Most are pure
+flavour and can be talked to again and again.
+
+A few, though, are **business**. Some townsfolk carry a one-time scripted
+conversation — and one of those is a **recruit**: talk **BRENN**, the garrison axeman
+in the Harborwatch square, into the party (once **Elara** proves she's the true heir)
+and he **joins** as a heavy front-line fighter. Once he's in the ranks he's no longer
+standing in the square — recruited townsfolk move into the party for good.
 
 ## Shops
 

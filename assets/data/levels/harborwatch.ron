@@ -1,0 +1,72 @@
+// HARBORWATCH — a friendly garrison town, and the party's first safe ground of
+// CHAPTER 2. Having won the CASTAWAY SHORE and the PIRATE CAPTAIN's loyalty, they
+// sail here to rally soldiers for the road home (see `harborwatch_intro`). It is a
+// peaceful HUB, not a battlefield: no roaming enemies, so the overworld reads it
+// as a town — no "cleared" banner, just streets to walk, townsfolk to talk to
+// (walk up + Confirm), a quartermaster's shop, and a couple of chests. Its one
+// piece of business is BRENN the axeman in the square, who joins the party once
+// talked round (his `NpcSpawn` runs `axeman_joins`, which recruits `axeman`).
+//
+// Three screens: the DOCKS (arrival), the SQUARE (shop + townsfolk + BRENN), and
+// the OUTSKIRTS. Themed by data: grassy ground, houses stamped from the shared
+// house tileset (`HouseSpawn`). Last built region of CHAPTER 2 for now.
+LevelDef(
+    id: "harborwatch", name: "HARBORWATCH",
+    chapter: 2,
+    node: (2, 1),
+    start_screen: 0, start: (9, 5),
+    ground: Some("grass"),
+    intro_cutscene: Some("harborwatch_intro"),
+    screens: [
+        // 0 — THE DOCKS: where the captain's ship puts in. The harbor laps the
+        // south edge; the road north climbs into the town square. A wary fisher
+        // works the jetty.
+        ScreenDef(
+            north: Some(1),
+            npcs: [
+                NpcSpawn(col: 4, row: 5, npc: "farmer", facing: Down, emote: "talk",
+                    lines: ["FRESH OFF THE CAPTAIN'S SHIP? HALF THE BOATS WON'T PUT OUT SINCE THE BLACK TIDE ROSE. SOMETHING'S WRONG PAST THE REEF - AND IT'S CRAWLING CLOSER."]),
+            ],
+        ),
+        // 1 — THE TOWN SQUARE: two cottages, the quartermaster's counter, townsfolk
+        // trading rumours, and BRENN the axeman by the well, waiting to be talked
+        // into the ranks. The road runs south to the docks and north to the
+        // outskirts.
+        ScreenDef(
+            south: Some(0), north: Some(2),
+            houses: [
+                HouseSpawn(col: 2,  row: 1),
+                HouseSpawn(col: 12, row: 1),
+            ],
+            shops: [
+                ShopSpawn(col: 4, row: 6, shop: "harborwatch_store"),
+            ],
+            npcs: [
+                NpcSpawn(col: 8, row: 8, npc: "farmer", facing: Up, emote: "question",
+                    lines: ["STRANGERS OFF A PIRATE DECK - AND THE CAPTAIN VOUCHING FOR YOU? THESE ARE STRANGE DAYS. STILL... HE NEVER LIED TO THIS TOWN."]),
+                NpcSpawn(col: 16, row: 7, npc: "farmer", facing: Down, emote: "love",
+                    lines: ["THE HARVEST HELD THIS YEAR, THANK THE TIDES. IF THE ROADS WERE SAFE ENOUGH TO SELL IT, WE'D WANT FOR NOTHING."]),
+                NpcSpawn(col: 11, row: 7, npc: "axeman", facing: Down, emote: "exclaim",
+                    cutscene: Some("axeman_joins"), recruits: Some("axeman")),
+            ],
+            chests: [
+                ChestSpawn(col: 18, row: 3, gold: 150, item: Some("hi_potion")),
+            ],
+        ),
+        // 2 — THE OUTSKIRTS: the top of town, under the old watchtower road. A last
+        // cottage, a lookout fretting over the guard, and a chest by the treeline.
+        ScreenDef(
+            south: Some(1),
+            houses: [
+                HouseSpawn(col: 2, row: 1),
+            ],
+            npcs: [
+                NpcSpawn(col: 10, row: 7, npc: "farmer", facing: Down, emote: "talk",
+                    lines: ["UP PAST HERE'S THE OLD WATCHTOWER. WE KEEP A GUARD ON IT, BUT ONE AXE WON'T HOLD THE ROAD IF THEY COME IN NUMBERS. WE NEED MEN."]),
+            ],
+            chests: [
+                ChestSpawn(col: 16, row: 7, gold: 100, item: Some("guard_salve")),
+            ],
+        ),
+    ],
+)

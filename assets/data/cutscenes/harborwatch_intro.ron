@@ -1,0 +1,21 @@
+// Plays on first entry to HARBORWATCH (its `intro_cutscene`). Having taken the
+// CASTAWAY SHORE and won over its PIRATE CAPTAIN, the party crosses the water on
+// his ship to the nearest friendly port — a garrison town — to rally soldiers for
+// the long road home and the war waiting at its end.
+CutsceneDef(
+    id: "harborwatch_intro",
+    steps: [
+        Say(speaker: None, portrait: None,
+            text: "THE CAPTAIN'S SHIP RUNS BEFORE A STEADY WIND. BY DAWN A HUDDLE OF ROOFS AND A STONE JETTY RISE OUT OF THE HAZE - HARBORWATCH."),
+        Say(speaker: Some("CAPTAIN"), portrait: Some("captain"),
+            text: "HARBORWATCH. A GARRISON TOWN, OR IT WAS. IF THERE'S STILL FIGHTING MEN ON THIS COAST, THEY'LL BE HERE. WE'LL NEED THEM."),
+        Say(speaker: Some("ELARA"), portrait: Some("mage"),
+            text: "THREE OF US AND A SHIP'S CREW WON'T RETAKE A KINGDOM. YOU MEAN TO ROUND UP SOLDIERS."),
+        Say(speaker: Some("CAPTAIN"), portrait: Some("captain"),
+            text: "EVERY SWORD WE CAN. THE ADVISOR'S REACH IS LONG, BUT SO IS AN OLD SAILOR'S MEMORY OF WHO STILL OWES THE CROWN."),
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "THEN WE WALK THE STREETS AND WE ASK. SPREAD OUT, TALK TO THE TOWNSFOLK - SOMEONE HERE IS READY TO FIGHT."),
+        Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+            text: "MIND YOUR WORDS. A FRIGHTENED TOWN DOESN'T ENLIST FOR STRANGERS. GIVE THEM A REASON WORTH DYING FOR."),
+    ],
+)

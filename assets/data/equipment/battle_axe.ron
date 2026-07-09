@@ -1,0 +1,9 @@
+// BRENN the axeman's starting weapon — a heavy, broad-bladed war axe. Hits harder
+// than a soldier's sword but is no finesse tool (modest crit). Sold at the
+// HARBORWATCH stores. Reuses the generic blade icon for now.
+EquipmentDef(
+    id: "battle_axe", name: "BATTLE AXE",
+    description: "A broad, heavy war axe that cleaves through guard and mail alike.",
+    slot: Weapon, icon: "starter_sword",
+    mods: StatMods(attack: 10), crit: 4, accuracy: 2,
+)

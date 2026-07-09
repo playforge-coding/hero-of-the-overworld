@@ -1,0 +1,7 @@
+// BRENN the axeman's capstone (his last learned move, replacing the shared MEND):
+// a single, tremendous downward axe blow — the party's heaviest single hit.
+SkillDef(
+    id: "cleave", name: "CLEAVE",
+    description: "A tremendous overhead axe blow that splits one foe in two.",
+    mp_cost: 12, power: 240, kind: Physical, target: OneEnemy,
+)

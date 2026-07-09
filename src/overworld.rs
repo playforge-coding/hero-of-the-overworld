@@ -15,7 +15,7 @@ use std::collections::VecDeque;
 
 use glam::Vec2;
 
-use crate::data::{BattlerSprite, OverworldWalk, Registry};
+use crate::data::{BattlerSprite, Facing as DataFacing, OverworldWalk, Registry};
 use crate::input::{Button, Input};
 use crate::party::Party;
 use crate::renderer::{color, virtual_w, Color, Renderer, TextureHandle, VIRTUAL_H};
@@ -34,6 +34,11 @@ const CONTACT: f32 = 11.0;
 const SHOP_REACH: f32 = 22.0;
 /// How close (px) the player must stand to a chest to open it on Confirm.
 const CHEST_REACH: f32 = 20.0;
+/// How close (px) the player must stand to a townsfolk to talk on Confirm.
+const NPC_REACH: f32 = 22.0;
+/// A house is stamped from a 6-wide × 4-tall grid of the shared house tileset.
+const HOUSE_COLS: usize = 6;
+const HOUSE_ROWS: usize = 4;
 /// A dormant mimic springs its ambush once the player comes within this radius.
 const MIMIC_WAKE: f32 = 34.0;
 /// A woken mimic's chase speed (px/s). Faster than a plain roaming enemy so the
@@ -58,6 +63,11 @@ enum Tile {
     Tree,
     Rock,
     Barricade,
+    /// An invisible solid tile injected under a [`House`]'s base wall. It draws
+    /// nothing itself (the house sprite paints the stonework); it only blocks
+    /// movement so the player and townsfolk stop at the wall instead of walking
+    /// through it. Not addressable from the CSV — placed programmatically.
+    Building,
 }
 
 impl Tile {
@@ -134,6 +144,38 @@ struct Chest {
     opened: bool,
 }
 
+/// A talkable townsfolk standing on a screen. Walk up and press Confirm to speak:
+/// either a one-time [`cutscene`](Self::cutscene) plays (which may recruit them)
+/// or their repeatable [`lines`](Self::lines) show. An emote bubble bobs over the
+/// head to mark them as talk-to-able.
+struct Npc {
+    pos: Vec2,
+    facing: Facing,
+    walk: OverworldWalk,
+    tex: TextureHandle,
+    /// The emote-bubble texture drawn over the head.
+    emote_tex: TextureHandle,
+    /// Name shown on the dialogue box.
+    name: String,
+    lines: Vec<String>,
+    portrait: Option<String>,
+    cutscene: Option<String>,
+    recruits: Option<String>,
+    /// Optimistically hidden once a recruit conversation is started (the soldier
+    /// has joined the ranks). Re-entry omits the NPC outright once the party holds
+    /// the recruited character.
+    gone: bool,
+}
+
+/// A decorative building stamped from the shared 6×4 house tileset at a tile
+/// origin. It draws its 24 pieces over the ground; the stone wall along its base
+/// row is made solid (see [`Tile::Building`]) so actors pass in front of it.
+struct House {
+    /// Top-left tile column / row.
+    col: usize,
+    row: usize,
+}
+
 /// A mimic lurking on a screen, disguised as a [`Chest`]. While dormant it is
 /// drawn from the very same chest sprite — indistinguishable from real treasure —
 /// until the player strays inside [`MIMIC_WAKE`], whereupon it wakes, reveals its
@@ -194,6 +236,15 @@ pub enum Event {
     },
     /// Open the party inventory / equipment screen (the Menu button).
     OpenInventory,
+    /// Talk to a townsfolk (walked up + confirmed). Either plays a one-time
+    /// `cutscene` (which may recruit them) or, with none, shows `lines` as a
+    /// throwaway dialogue with the speaker `name` (and optional `portrait`).
+    TalkNpc {
+        cutscene: Option<String>,
+        name: String,
+        lines: Vec<String>,
+        portrait: Option<String>,
+    },
     /// Leave the level and go back to the map screen.
     ExitToMap,
 }
@@ -207,6 +258,8 @@ struct Screen {
     enemies: Vec<Enemy>,
     shops: Vec<ShopEntrance>,
     chests: Vec<Chest>,
+    npcs: Vec<Npc>,
+    houses: Vec<House>,
     mimics: Vec<Mimic>,
     north: Option<usize>,
     south: Option<usize>,
@@ -280,6 +333,13 @@ pub struct Overworld {
     /// Mimic spritesheet (row 0 dormant chest disguise, row 1 toothy attack),
     /// shared by every mimic.
     mimic_tex: TextureHandle,
+    /// The 24 pieces of the shared house tileset (`house_0`..`house_23`), blitted
+    /// as a 6×4 grid wherever a [`House`] is stamped.
+    house_tex: [TextureHandle; HOUSE_COLS * HOUSE_ROWS],
+    /// Whether this level has any roaming enemies at all. A level with none is a
+    /// peaceful **town**: its HUD skips the "LEVEL CLEARED!" banner (there was
+    /// nothing to clear) and shows town controls instead.
+    has_foes: bool,
     player: Player,
     cam: Vec2,
     /// Brief window during which contact can't trigger a fight (post-battle or
@@ -327,6 +387,12 @@ impl Overworld {
         // disguise sheet instead of the chest prop. Both textures are shared.
         let chest_tex = cache.get(r, "chest");
         let mimic_tex = cache.get(r, "mimic");
+        // The 24 house-tileset pieces, loaded once and shared by every house.
+        let house_tex: [TextureHandle; HOUSE_COLS * HOUSE_ROWS] =
+            std::array::from_fn(|i| cache.get(r, &format!("house_{i}")));
+
+        // A level with no spawns anywhere is a peaceful town (see `has_foes`).
+        let has_foes = level.screens.iter().any(|s| !s.spawns.is_empty());
 
         let mut screens = Vec::new();
         for (screen_idx, sd) in level.screens.iter().enumerate() {
@@ -431,6 +497,52 @@ impl Overworld {
                 })
                 .collect();
 
+            // Houses: stamp each at its tile origin and make the stone base row
+            // solid so actors walk in front of the wall. Injected into the tile
+            // grid (which both player and enemy collision read).
+            let mut houses = Vec::new();
+            for hs in &sd.houses {
+                let col = hs.col as usize;
+                let row = hs.row as usize;
+                let base = row + HOUSE_ROWS - 1;
+                for c in col..(col + HOUSE_COLS).min(w) {
+                    if base < h {
+                        tiles[base * w + c] = Tile::Building;
+                    }
+                }
+                houses.push(House { col, row });
+            }
+
+            // Townsfolk: skip any whose recruit-target is already in the party
+            // (they've joined the ranks and are no longer standing about).
+            let mut npcs = Vec::new();
+            for ns in &sd.npcs {
+                if let Some(rec) = &ns.recruits {
+                    if party.members.iter().any(|m| m.def_id == *rec) {
+                        continue;
+                    }
+                }
+                let Some(def) = reg.npc(&ns.npc) else {
+                    log::warn!("npc spawn references unknown npc '{}'", ns.npc);
+                    continue;
+                };
+                let tex = cache.get(r, &def.sprite.texture);
+                let emote_tex = cache.get(r, &format!("{}_emote", ns.emote));
+                npcs.push(Npc {
+                    pos: tile_center(ns.col, ns.row),
+                    facing: facing_from(ns.facing),
+                    walk: def.sprite.clone(),
+                    tex,
+                    emote_tex,
+                    name: def.name.clone(),
+                    lines: ns.lines.clone(),
+                    portrait: ns.portrait.clone(),
+                    cutscene: ns.cutscene.clone(),
+                    recruits: ns.recruits.clone(),
+                    gone: false,
+                });
+            }
+
             screens.push(Screen {
                 tiles,
                 w,
@@ -438,6 +550,8 @@ impl Overworld {
                 enemies,
                 shops,
                 chests,
+                npcs,
+                houses,
                 mimics,
                 north: sd.north,
                 south: sd.south,
@@ -463,6 +577,8 @@ impl Overworld {
             shop_tex,
             chest_tex,
             mimic_tex,
+            house_tex,
+            has_foes,
             player,
             cam: Vec2::ZERO,
             grace: 0.0,
@@ -641,6 +757,23 @@ impl Overworld {
                 .find(|s| (s.pos - p).length() < SHOP_REACH)
             {
                 return Some(Event::EnterShop(sh.shop.clone()));
+            }
+            // Talk to the nearest townsfolk in reach. A recruit conversation
+            // removes the NPC the moment it starts (they've joined the party).
+            if let Some(npc) = self.screens[self.current]
+                .npcs
+                .iter_mut()
+                .find(|n| !n.gone && (n.pos - p).length() < NPC_REACH)
+            {
+                if npc.recruits.is_some() && npc.cutscene.is_some() {
+                    npc.gone = true;
+                }
+                return Some(Event::TalkNpc {
+                    cutscene: npc.cutscene.clone(),
+                    name: npc.name.clone(),
+                    lines: npc.lines.clone(),
+                    portrait: npc.portrait.clone(),
+                });
             }
             // Open the nearest unopened chest in reach. Mark it looted right here
             // so it can't be re-opened, then hand its contents to the game.
@@ -848,7 +981,24 @@ impl Overworld {
                     }
                     Tile::Tree => blit_object(r, self.tex.tree, x, y),
                     Tile::Rock => blit_object(r, self.tex.rock, x, y),
+                    // The house sprite paints its own stonework over the top; the
+                    // solid base tile itself draws nothing.
+                    Tile::Building => {}
                 }
+            }
+        }
+        self.draw_houses(r);
+    }
+
+    /// Blit every house on the current screen: its 24 tileset pieces laid out as a
+    /// 6×4 grid from the house's top-left tile. Drawn in the tile pass (under the
+    /// actors) so the player and townsfolk stand in front of the walls.
+    fn draw_houses(&self, r: &mut Renderer) {
+        for house in &self.cur().houses {
+            for i in 0..HOUSE_COLS * HOUSE_ROWS {
+                let tx = (house.col + i % HOUSE_COLS) as f32 * TILE - self.cam.x;
+                let ty = (house.row + i / HOUSE_COLS) as f32 * TILE - self.cam.y;
+                r.draw_texture(self.house_tex[i], tx, ty, TILE, TILE, color::WHITE);
             }
         }
     }
@@ -860,6 +1010,7 @@ impl Overworld {
             Enemy(usize),
             Shop(usize),
             Chest(usize),
+            Npc(usize),
             Mimic(usize),
         }
         let mut items: Vec<(f32, Item)> = vec![(self.player.pos.y, Item::Player)];
@@ -874,6 +1025,11 @@ impl Overworld {
         for (i, c) in self.cur().chests.iter().enumerate() {
             items.push((c.pos.y, Item::Chest(i)));
         }
+        for (i, n) in self.cur().npcs.iter().enumerate() {
+            if !n.gone {
+                items.push((n.pos.y, Item::Npc(i)));
+            }
+        }
         for (i, m) in self.cur().mimics.iter().enumerate() {
             if !m.defeated {
                 items.push((m.pos.y, Item::Mimic(i)));
@@ -887,6 +1043,7 @@ impl Overworld {
                 Item::Enemy(i) => self.draw_enemy(r, &self.cur().enemies[*i]),
                 Item::Shop(i) => self.draw_shop_entrance(r, &self.cur().shops[*i]),
                 Item::Chest(i) => self.draw_chest(r, &self.cur().chests[*i]),
+                Item::Npc(i) => self.draw_npc(r, &self.cur().npcs[*i]),
                 Item::Mimic(i) => self.draw_mimic(r, &self.cur().mimics[*i]),
             }
         }
@@ -1004,6 +1161,40 @@ impl Overworld {
         }
     }
 
+    /// A townsfolk standing on the field: its walk sprite resting on frame 0 of
+    /// the facing it was placed with, an emote bubble bobbing over its head, and a
+    /// "PRESS Z" prompt once the player is close enough to talk.
+    fn draw_npc(&self, r: &mut Renderer, n: &Npc) {
+        let src = walk_src(&n.walk, n.facing, 0.0);
+        self.blit_sprite(
+            r,
+            n.tex,
+            n.pos,
+            n.walk.draw_w,
+            n.walk.draw_h,
+            src,
+            false,
+            color::WHITE,
+        );
+        // Emote bubble, gently bobbing above the head.
+        let (ew, eh) = r.texture_size(n.emote_tex);
+        let (ew, eh) = (ew as f32, eh as f32);
+        let bob = (self.time * 3.0).sin() * 1.0;
+        let sx = n.pos.x - self.cam.x;
+        let sy = n.pos.y - self.cam.y;
+        r.draw_texture(
+            n.emote_tex,
+            sx - ew / 2.0,
+            sy + HALF.y - n.walk.draw_h - eh + bob,
+            ew,
+            eh,
+            color::WHITE,
+        );
+        if (n.pos - self.player.pos).length() < NPC_REACH && (self.time * 2.0) as i32 % 2 == 0 {
+            r.draw_text_centered("PRESS Z", sx, sy + 4.0, 1.0, color::rgb(200, 240, 200));
+        }
+    }
+
     fn draw_player(&self, r: &mut Renderer) {
         let w = &self.player.walk;
         let src = walk_src(w, self.player.facing, self.player.walk_t);
@@ -1074,7 +1265,19 @@ impl Overworld {
             color::rgb(180, 200, 240),
         );
 
-        if self.all_cleared() {
+        // A peaceful town has nothing to clear: no victory banner, just the town
+        // controls (talk to folk, leave when done).
+        if !self.has_foes {
+            if (self.time * 2.0) as i32 % 2 == 0 {
+                r.draw_text_centered(
+                    "ARROWS: MOVE   Z: TALK   ESC: LEAVE TOWN",
+                    virtual_w() / 2.0,
+                    VIRTUAL_H - 10.0,
+                    1.0,
+                    color::rgba(180, 190, 170, 220),
+                );
+            }
+        } else if self.all_cleared() {
             r.draw_text_centered(
                 "LEVEL CLEARED!",
                 virtual_w() / 2.0,
@@ -1133,6 +1336,17 @@ fn entry_pos(ns: &Screen, dir: Dir, exit: Vec2) -> Vec2 {
             let col = ns.nearest_open_col(ns.h - 1, exit.x);
             Vec2::new((col as f32 + 0.5) * TILE, map.y - HALF.y - 2.0)
         }
+    }
+}
+
+/// Convert an authored [`DataFacing`] (from an [`crate::data::NpcSpawn`]) into the
+/// overworld's runtime facing.
+fn facing_from(d: DataFacing) -> Facing {
+    match d {
+        DataFacing::Down => Facing::Down,
+        DataFacing::Up => Facing::Up,
+        DataFacing::Left => Facing::Left,
+        DataFacing::Right => Facing::Right,
     }
 }
 

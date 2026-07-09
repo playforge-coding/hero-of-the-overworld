@@ -19,8 +19,8 @@ use glam::Vec2;
 use std::collections::HashMap;
 
 use crate::data::{
-    AttackAnim, BattlerSprite, EnemyAi, ItemDrop, MimicryDef, Registry, SkillDef, SkillKind, Stats,
-    StatusDef, TargetKind, ToolDef,
+    projectile_grid, AttackAnim, BattlerSprite, EnemyAi, ItemDrop, MimicryDef, Registry, SkillDef,
+    SkillKind, Stats, StatusDef, TargetKind, ToolDef,
 };
 use crate::input::{Button, Controllers, Input};
 use crate::party::{ItemStack, Party};
@@ -245,10 +245,11 @@ struct Popup {
 
 // ---- Projectiles ------------------------------------------------------------
 
-/// A live projectile sprite in flight (an [`AttackAnim::Projectile`] attack): it
-/// travels in a straight line from `from` to `to` over `dur` seconds, then
-/// vanishes as the blow lands. Purely visual — the damage is applied by the
-/// action's impact step, timed to coincide with arrival.
+/// A live projectile sprite in flight. A straight [`AttackAnim::Projectile`]
+/// travels from `from` to `to` over `dur` and vanishes as the blow lands; a
+/// [`boomerang`](Self::boomerang) instead flies out to `to`, curves, and loops
+/// back to `from`, lingering until it comes home. Purely visual — the damage is
+/// applied by the action's impact step, timed to coincide with the sweep.
 struct Projectile {
     /// Texture key (into [`Battle::projectile_textures`]).
     tex: String,
@@ -256,22 +257,87 @@ struct Projectile {
     to: Vec2,
     elapsed: f32,
     dur: f32,
+    /// An out-and-back [boomerang](AttackAnim::Boomerang) rather than a one-way
+    /// shot: it reaches `to` at the midpoint of its flight and returns to `from`,
+    /// bowing out sideways so the path reads as a thrown loop.
+    boomerang: bool,
 }
 
 impl Projectile {
-    /// Current position along its flight (clamped to the endpoint on arrival).
+    /// Current position along its flight. A straight shot lerps `from`→`to`; a
+    /// boomerang runs `from`→`to`→`from` with a perpendicular bow so it curves.
     fn pos(&self) -> Vec2 {
         let s = (self.elapsed / self.dur).clamp(0.0, 1.0);
-        self.from.lerp(self.to, s)
+        if !self.boomerang {
+            return self.from.lerp(self.to, s);
+        }
+        // Out on the first half, back on the second.
+        let base = if s < 0.5 {
+            self.from.lerp(self.to, s * 2.0)
+        } else {
+            self.to.lerp(self.from, (s - 0.5) * 2.0)
+        };
+        // Bow the path sideways, peaking at the midpoint, so out and back don't
+        // overlap — a thrown-loop feel. Perpendicular to the throw direction.
+        let seg = self.to - self.from;
+        let perp = Vec2::new(-seg.y, seg.x).normalize_or_zero();
+        let bow = (s * std::f32::consts::PI).sin() * (seg.length() * 0.18);
+        base + perp * bow
+    }
+
+    /// The spin frame to show at the current time, given the sheet's `frames`
+    /// count (1 = a still sprite). The axe tumbles fast as it flies.
+    fn frame(&self, frames: u32) -> u32 {
+        if frames <= 1 {
+            return 0;
+        }
+        ((self.elapsed * PROJ_SPIN_FPS) as u32) % frames
     }
 }
 
-/// A resolved projectile texture: its handle plus native pixel size, so the draw
-/// can centre and scale it without re-querying every frame.
+/// A resolved projectile texture: its handle, native pixel size, and spin layout,
+/// so the draw can pick a frame, centre, and scale it without re-querying.
 struct ProjTex {
     handle: TextureHandle,
-    w: f32,
-    h: f32,
+    /// Grid layout of the spin sheet in `(columns, rows)` (see [`projectile_grid`]);
+    /// `(1, 1)` for a still sprite. Frames read left-to-right, top-to-bottom.
+    cols: u32,
+    rows: u32,
+    /// Size of one frame in pixels (`sheet_w / cols` × `sheet_h / rows`).
+    frame_w: f32,
+    frame_h: f32,
+    /// Native→drawn scale. A still sprite keeps the classic 2.2×; a spin sheet
+    /// (the axe) is scaled to a sane on-field size instead.
+    scale: f32,
+}
+
+impl ProjTex {
+    /// Resolve a projectile texture key to its handle, size, and spin layout.
+    fn load(renderer: &mut Renderer, cache: &mut TextureCache, key: &str) -> ProjTex {
+        let handle = cache.get(renderer, key);
+        let (w, h) = renderer.texture_size(handle);
+        let (w, h) = (w as f32, h as f32);
+        let (cols, rows) = projectile_grid(key);
+        let (cols, rows) = (cols.max(1), rows.max(1));
+        let frame_w = w / cols as f32;
+        let frame_h = h / rows as f32;
+        // Multi-frame spin sheets (the axe) are drawn to a fixed ~28px height;
+        // single-frame shots keep the original 2.2× blow-up.
+        let scale = if cols * rows > 1 { 28.0 / frame_h } else { 2.2 };
+        ProjTex {
+            handle,
+            cols,
+            rows,
+            frame_w,
+            frame_h,
+            scale,
+        }
+    }
+
+    /// Total number of spin frames on the sheet.
+    fn frames(&self) -> u32 {
+        self.cols * self.rows
+    }
 }
 
 // ---- Action timing (attack / block timed hits) ------------------------------
@@ -308,6 +374,16 @@ const STRIKE_APPLY: f32 = STRIKE_CONNECT + STRIKE_GOOD;
 const PROJ_LAUNCH: f32 = 0.18;
 const PROJ_IMPACT: f32 = 0.52;
 const PROJ_END: f32 = 0.95;
+/// How fast a multi-frame projectile spin sheet (the axe) tumbles, in frames/sec.
+const PROJ_SPIN_FPS: f32 = 22.0;
+
+/// Boomerang attacks (the AXE BOOMERANG): a single spinning axe hurls out across
+/// the whole enemy line and loops home — a longer beat than a straight shot. It
+/// launches with the other projectiles, but lands its blow as it sweeps *out*
+/// through the foes (roughly the midpoint of its flight) and keeps going, so the
+/// end comes well after impact.
+const BOOMERANG_IMPACT: f32 = 0.6;
+const BOOMERANG_END: f32 = 1.15;
 
 /// Charge attacks: the actor sweeps across the field, striking mid-dash, then
 /// wraps the screen and returns — a longer beat than a lunge.
@@ -758,22 +834,17 @@ impl Battle {
         }
 
         // Preload the projectile art any skill references, once, so drawing a
-        // projectile mid-flight never has to reach for the texture cache.
+        // projectile mid-flight never has to reach for the texture cache. Both
+        // straight shots and boomerangs fly a projectile sprite.
         let mut projectile_textures = HashMap::new();
         for skill in &reg.data.skills {
-            if let AttackAnim::Projectile { texture } = &skill.anim {
-                projectile_textures
-                    .entry(texture.clone())
-                    .or_insert_with(|| {
-                        let handle = cache.get(renderer, texture);
-                        let (w, h) = renderer.texture_size(handle);
-                        ProjTex {
-                            handle,
-                            w: w as f32,
-                            h: h as f32,
-                        }
-                    });
-            }
+            let texture = match &skill.anim {
+                AttackAnim::Projectile { texture } | AttackAnim::Boomerang { texture } => texture,
+                _ => continue,
+            };
+            projectile_textures
+                .entry(texture.clone())
+                .or_insert_with(|| ProjTex::load(renderer, cache, texture));
         }
 
         // Preload any crowd art the same way (a swarm's walk sheet), once.
@@ -1532,33 +1603,62 @@ impl Battle {
         // Move the actor along this animation's path.
         self.battlers[actor].offset = self.actor_offset(actor, &exec.anim, t, end_t);
 
-        // A projectile attack launches one bolt per living target as the cast
-        // connects; each flies to arrive right as the blow lands.
-        let proj_tex = match &exec.anim {
-            AttackAnim::Projectile { texture } => Some(texture.clone()),
-            _ => None,
+        // Projectile attacks launch as the cast connects. A straight shot flings
+        // one bolt per living target (each arriving as the blow lands); a boomerang
+        // hurls a *single* axe out across the whole line and back.
+        let (proj_tex, boomerang) = match &exec.anim {
+            AttackAnim::Projectile { texture } => (Some(texture.clone()), false),
+            AttackAnim::Boomerang { texture } => (Some(texture.clone()), true),
+            _ => (None, false),
         };
         if let Some(tex) = proj_tex {
             if !exec.projectiles_spawned && t >= PROJ_LAUNCH {
                 exec.projectiles_spawned = true;
                 let dir = self.battlers[actor].facing_dir();
                 let from = self.battlers[actor].pos() + Vec2::new(dir * 6.0, -6.0);
-                let dur = (impact_t - PROJ_LAUNCH).max(0.05);
                 let targets: Vec<usize> = action
                     .targets
                     .iter()
                     .copied()
                     .filter(|&x| self.battlers[x].alive())
                     .collect();
-                for tgt in targets {
-                    let to = self.battlers[tgt].pos() + Vec2::new(0.0, -6.0);
-                    exec.projectiles.push(Projectile {
-                        tex: tex.clone(),
-                        from,
-                        to,
-                        elapsed: 0.0,
-                        dur,
-                    });
+                if boomerang {
+                    // One axe, aimed past the *farthest* target so it sweeps the
+                    // whole line, and flying the full out-and-back beat.
+                    let tgt_pt = |x: usize| self.battlers[x].pos() + Vec2::new(0.0, -6.0);
+                    let far = targets
+                        .iter()
+                        .copied()
+                        .max_by(|&a, &b| {
+                            let da = (tgt_pt(a) - from).length();
+                            let db = (tgt_pt(b) - from).length();
+                            da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+                        })
+                        .map(tgt_pt);
+                    if let Some(to) = far {
+                        let dur = (end_t - PROJ_LAUNCH).max(0.1);
+                        exec.projectiles.push(Projectile {
+                            tex,
+                            from,
+                            to,
+                            elapsed: 0.0,
+                            dur,
+                            boomerang: true,
+                        });
+                    }
+                } else {
+                    let dur = (impact_t - PROJ_LAUNCH).max(0.05);
+                    for tgt in targets {
+                        let to = self.battlers[tgt].pos() + Vec2::new(0.0, -6.0);
+                        exec.projectiles.push(Projectile {
+                            tex: tex.clone(),
+                            from,
+                            to,
+                            elapsed: 0.0,
+                            dur,
+                            boomerang: false,
+                        });
+                    }
                 }
             }
         }
@@ -1673,9 +1773,9 @@ impl Battle {
                 };
                 Vec2::new(x, 0.0)
             }
-            AttackAnim::Projectile { .. } => {
-                // A small brace: draw back as the bolt launches, then settle. The
-                // projectile itself carries the motion to the target.
+            AttackAnim::Projectile { .. } | AttackAnim::Boomerang { .. } => {
+                // A small brace: draw back as the axe/bolt launches, then settle.
+                // The projectile itself carries the motion to the target(s).
                 let recoil = 5.0 * FIELD_SCALE;
                 let x = if t < PROJ_LAUNCH {
                     -dir * recoil * (t / PROJ_LAUNCH)
@@ -2351,15 +2451,25 @@ impl Battle {
                 // Projectiles in flight, drawn over the battlers but under the text.
                 for p in &exec.projectiles {
                     if let Some(pt) = self.projectile_textures.get(&p.tex) {
-                        let scale = 2.2;
-                        let (w, h) = (pt.w * scale, pt.h * scale);
+                        let (w, h) = (pt.frame_w * pt.scale, pt.frame_h * pt.scale);
                         let pos = p.pos();
-                        // Flip the art when the shot flies left (it's drawn facing right).
-                        let flip = p.to.x < p.from.x;
+                        // The current spin frame (a still sprite is always frame 0),
+                        // unpacked into its grid cell (left-to-right, top-to-bottom).
+                        let frame = p.frame(pt.frames());
+                        let (col, row) = (frame % pt.cols, frame / pt.cols);
+                        let src = [
+                            col as f32 * pt.frame_w,
+                            row as f32 * pt.frame_h,
+                            pt.frame_w,
+                            pt.frame_h,
+                        ];
+                        // Flip a straight shot when it flies left (it's drawn facing
+                        // right); a spinning boomerang reads either way, so leave it.
+                        let flip = !p.boomerang && p.to.x < p.from.x;
                         r.draw_sprite(
                             pt.handle,
                             [pos.x - w / 2.0, pos.y - h / 2.0, w, h],
-                            [0.0, 0.0, pt.w, pt.h],
+                            src,
                             flip,
                             color::WHITE,
                         );
@@ -2747,6 +2857,7 @@ fn anim_impact_t(anim: &AttackAnim, window_close: f32) -> f32 {
     match anim {
         AttackAnim::Lunge => window_close,
         AttackAnim::Projectile { .. } => PROJ_IMPACT.max(window_close),
+        AttackAnim::Boomerang { .. } => BOOMERANG_IMPACT.max(window_close),
         AttackAnim::Charge => CHARGE_IMPACT.max(window_close),
         AttackAnim::Crowd { .. } => CROWD_IMPACT.max(window_close),
     }
@@ -2757,6 +2868,7 @@ fn anim_end_t(anim: &AttackAnim) -> f32 {
     match anim {
         AttackAnim::Lunge => LUNGE_END,
         AttackAnim::Projectile { .. } => PROJ_END,
+        AttackAnim::Boomerang { .. } => BOOMERANG_END,
         AttackAnim::Charge => CHARGE_END,
         AttackAnim::Crowd { .. } => CROWD_END,
     }

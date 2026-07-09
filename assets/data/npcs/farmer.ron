@@ -1,0 +1,15 @@
+// A village FARMER — the common townsfolk look of HARBORWATCH. A swordsman-style
+// 5x12 walk sheet (walk rows 0-3 = down/up/right/left); placed NPCs stand still on
+// frame 0 of whatever facing the map gives them. One appearance dresses many
+// villagers — each `NpcSpawn` supplies its own spot, facing, emote, and lines.
+NpcDef(
+    id: "farmer",
+    name: "TOWNSFOLK",
+    sprite: OverworldWalk(
+        texture: "farmer",
+        frame_w: 16, frame_h: 16,
+        draw_w: 20.0, draw_h: 20.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 4, fps: 8.0,
+    ),
+)

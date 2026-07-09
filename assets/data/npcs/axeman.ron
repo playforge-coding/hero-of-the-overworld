@@ -1,0 +1,15 @@
+// The AXEMAN's on-map look — a garrison soldier standing in the HARBORWATCH
+// square, waiting to be talked into joining (his `axeman_joins` cutscene recruits
+// the `axeman` character; once he's in the party this NPC is no longer spawned).
+// The axeman sheet is 6x6: walk rows 0-3 (down/up/right/left), then attack rows.
+NpcDef(
+    id: "axeman",
+    name: "SOLDIER",
+    sprite: OverworldWalk(
+        texture: "axeman",
+        frame_w: 16, frame_h: 16,
+        draw_w: 20.0, draw_h: 20.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 5, fps: 8.0,
+    ),
+)

@@ -1,0 +1,20 @@
+// The HARBORWATCH quartermaster's counter — the town's stores, restocked for a
+// chapter-2 party. Sells sturdier gear (including BRENN's BATTLE AXE) and the
+// deeper healing the shore's fights demand. `stock` resolves an id as equipment
+// first, then as an item, so the counter carries both.
+ShopDef(
+    id: "harborwatch_store",
+    name: "QUARTERMASTER",
+    greeting: Some("OFF THE CAPTAIN'S SHIP? THEN YOUR COIN'S GOOD HERE. ARM UP."),
+    facing: Down,
+    stock: [
+        ShopStock(item: "battle_axe",     price: 130),
+        ShopStock(item: "cavalry_lance",  price: 150),
+        ShopStock(item: "scouts_edge",    price: 120),
+        ShopStock(item: "travelers_robe", price: 90),
+        ShopStock(item: "hi_potion",      price: 90),
+        ShopStock(item: "ether",          price: 60),
+        ShopStock(item: "guard_salve",    price: 70),
+        ShopStock(item: "might_tonic",    price: 50),
+    ],
+)

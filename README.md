@@ -93,7 +93,7 @@ the window, so game code never deals with real pixels or DPI.
 | [`src/inventory.rs`](src/inventory.rs) | the out-of-battle party menu: equip/unequip gear, plus use healing items & moves on the map |
 | [`src/input_config.rs`](src/input_config.rs) | the controls screen: map keyboard/gamepads to players for local co-op |
 | [`src/devtools.rs`](src/devtools.rs) | **debug-only** developer menu (F1 on the map): set party level, add any character, fight any encounter |
-| [`src/overworld.rs`](src/overworld.rs) | tile-mapped levels: screens, walking, camera, roaming enemies, chests & mimics |
+| [`src/overworld.rs`](src/overworld.rs) | tile-mapped levels: screens, walking, camera, roaming enemies, chests & mimics, townsfolk & houses |
 | [`src/battle.rs`](src/battle.rs) | the turn-based battle scene (commands → AI → resolve) |
 | [`src/shop.rs`](src/shop.rs) | the shop interior scene: walk-in store + buy-and-equip / buy-item UI |
 | [`src/cutscene.rs`](src/cutscene.rs) | data-driven scripted dialogue + party recruitment |
@@ -170,10 +170,12 @@ the party's last move, wearing that hero's shape as it strikes, and an optional
 cutscene and advances the story **chapter**), **levels** (a map marker, a **chapter**,
 per-level **ground / wall / tree** textures to re-theme a region — sand and coconut
 palms for a beach, dark brick for a keep — and a set of connected ASCII-tile screens
-with enemy spawns, shop entrances, **treasure chests**, and disguised **mimics**),
-**shops** (a keeper, a facing/exit
-wall, and priced wares — gear or items), and **cutscenes** (scripted dialogue lines and
-recruits).
+with enemy spawns, shop entrances, **treasure chests**, disguised **mimics**,
+**townsfolk**, and **houses**; a screen with no spawns anywhere is a peaceful
+**town**), **shops** (a keeper, a facing/exit
+wall, and priced wares — gear or items), **npcs** (talkable townsfolk with an emote
+bubble and dialogue — some a one-time scene that **recruits** them), and **cutscenes**
+(scripted dialogue lines and recruits).
 
 ### The sprite sheets
 
@@ -240,7 +242,8 @@ assets/
   data/                             # the content database, one file per entity
     meta.ron                        #   starting party + level progression order
     characters/ enemies/ skills/    #   … statuses/ equipment/ items/ shops/
-    encounters/ cutscenes/ levels/  #   one <id>.ron per def
+    npcs/ encounters/ cutscenes/    #   … townsfolk appearances, enemy groups, scenes
+    levels/                         #   one <id>.ron per def
     maps/<level>/<screen>.csv       #   each stage's tilemaps as CSV
   textures/entities/playables/...   # party sprite sheets
   textures/entities/monsters/...    # enemy sprite sheets

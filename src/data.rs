@@ -24,6 +24,12 @@ use serde::Deserialize;
 /// `game.ron` did before it was split up.
 static DATA_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/assets/data");
 
+/// The house tileset: one cottage cut into a 6×4 grid of 16×16 tiles, laid out
+/// row-major as `0.png`..`23.png`. Embedded as a folder (rather than 24 match
+/// arms in [`embedded_texture`]) and addressed by the synthetic keys
+/// `house_0`..`house_23`, so a house is stamped by blitting its 24 pieces.
+static HOUSE_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/assets/textures/tiles/house");
+
 /// Core combat stats shared by heroes and enemies.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Stats {
@@ -128,8 +134,17 @@ pub enum AttackAnim {
     /// A projectile sprite flies from the attacker to each target, and the blow
     /// lands as it arrives. `texture` is a key resolved by [`embedded_texture`]
     /// (e.g. a fireball). One projectile is spawned per target — so an all-targets
-    /// skill fans a volley out across the whole enemy (or party) line.
+    /// skill fans a volley out across the whole enemy (or party) line. A texture
+    /// with more than one frame (see [`projectile_grid`]) spins as it flies (the
+    /// thrown `axe`); a single-frame sprite just flies straight.
     Projectile { texture: String },
+    /// A single spinning projectile is **hurled across the whole enemy line and
+    /// returns** to the thrower in a curving arc — an axe boomerang. Unlike
+    /// [`Projectile`](Self::Projectile), only *one* sprite is spawned no matter how
+    /// many targets; the blow lands on every target as it sweeps out through them,
+    /// then it loops back home. `texture` is a spin sheet key (the `axe`) resolved
+    /// by [`embedded_texture`]. Pairs naturally with an `AllEnemies` target.
+    Boomerang { texture: String },
     /// The attacker dashes across the battlefield through the target(s), off the
     /// far edge, wrapping around the screen and back to its post — striking as it
     /// sweeps past. A mounted charge / darting sweep.
@@ -594,6 +609,95 @@ pub struct ShopSpawn {
     pub shop: String,
 }
 
+/// The four cardinal directions a map actor can face. A small, serialisable
+/// facing shared by data placements (an [`NpcSpawn`]'s authored facing); the
+/// overworld converts it to its own runtime facing when it builds the screen.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Default)]
+pub enum Facing {
+    #[default]
+    Down,
+    Up,
+    Left,
+    Right,
+}
+
+/// A townsfolk **appearance**: the walking sprite an NPC is drawn from, plus a
+/// display name. Reusable across placements the way an [`EncounterDef`] is — many
+/// villagers can share one `farmer` look while each [`NpcSpawn`] carries its own
+/// position and dialogue. Adding a new townsfolk look is a pure data entry (drop
+/// an `npcs/<id>.ron` and register its texture key).
+#[derive(Clone, Debug, Deserialize)]
+pub struct NpcDef {
+    pub id: String,
+    /// Name shown on the dialogue box when this NPC speaks.
+    pub name: String,
+    /// How the NPC is drawn on the map (a standing townsfolk uses frame 0 of the
+    /// facing it was placed with; the walk cycle only animates if it ever moves).
+    pub sprite: OverworldWalk,
+}
+
+/// Default emote for an [`NpcSpawn`] that doesn't name one: the neutral speech
+/// bubble that marks a villager as talk-to-able.
+fn default_emote() -> String {
+    "talk".to_string()
+}
+
+/// A townsfolk placed on an overworld screen: walk up and press Confirm to talk.
+/// Its look comes from an [`NpcDef`] (`npc`); everything else — where it stands,
+/// which way it faces, the bubble bobbing over its head, and what it says — is
+/// per-placement, so the same villager sprite can populate a whole town with
+/// distinct lines.
+///
+/// Talking either runs a one-time [`cutscene`](Self::cutscene) (which may
+/// [`Recruit`](CutsceneStep::Recruit) the NPC into the party) or shows its
+/// repeatable [`lines`](Self::lines). Adding a talkable NPC is a pure data entry,
+/// like a [`ShopSpawn`] or [`ChestSpawn`].
+#[derive(Clone, Debug, Deserialize)]
+pub struct NpcSpawn {
+    /// Tile column / row the NPC stands on.
+    pub col: u32,
+    pub row: u32,
+    /// [`NpcDef`] id supplying the sprite/name.
+    pub npc: String,
+    /// Which way the NPC faces while idle. Defaults to facing the camera (`Down`).
+    #[serde(default)]
+    pub facing: Facing,
+    /// Short emote key (`talk` / `exclaim` / `question` / `love`) drawn as a
+    /// bubble over the NPC's head; resolves to the `<emote>_emote` texture.
+    #[serde(default = "default_emote")]
+    pub emote: String,
+    /// Dialogue shown when talked to (each string is one box). Used when no
+    /// [`cutscene`](Self::cutscene) is set, or once a one-time cutscene has
+    /// already played. Optional — an NPC can be pure ambience with no lines.
+    #[serde(default)]
+    pub lines: Vec<String>,
+    /// Optional portrait id (a character/enemy) shown beside this NPC's `lines`.
+    #[serde(default)]
+    pub portrait: Option<String>,
+    /// A one-time scripted scene played the first time this NPC is talked to
+    /// (e.g. a soldier being recruited). Tracked in the played-cutscene set like
+    /// any other; afterwards the NPC falls back to its [`lines`](Self::lines).
+    #[serde(default)]
+    pub cutscene: Option<String>,
+    /// Character id this NPC joins the party as. When that character is already
+    /// in the party the NPC isn't spawned (it has moved into the ranks). Pairs
+    /// with a [`cutscene`](Self::cutscene) whose `Recruit` step does the joining.
+    #[serde(default)]
+    pub recruits: Option<String>,
+}
+
+/// A building stamped onto an overworld screen from the shared 6×4 house
+/// tileset (`tiles/house/0..23.png`, laid out row-major). `col`/`row` is its
+/// top-left tile; the stone wall along its base is made solid so the player and
+/// townsfolk walk *in front of* it, while its grassy upper rows blend into the
+/// map. Purely decorative otherwise — houses aren't entered.
+#[derive(Clone, Debug, Deserialize)]
+pub struct HouseSpawn {
+    /// Tile column / row of the house's top-left corner.
+    pub col: u32,
+    pub row: u32,
+}
+
 /// A named group of enemies used to seed a battle.
 #[derive(Clone, Debug, Deserialize)]
 pub struct EncounterDef {
@@ -690,6 +794,12 @@ pub struct ScreenDef {
     /// Treasure chests on this screen (walk up + Confirm to open).
     #[serde(default)]
     pub chests: Vec<ChestSpawn>,
+    /// Talkable townsfolk on this screen (walk up + Confirm to speak).
+    #[serde(default)]
+    pub npcs: Vec<NpcSpawn>,
+    /// Houses stamped onto this screen (decorative buildings with a solid base).
+    #[serde(default)]
+    pub houses: Vec<HouseSpawn>,
     /// Mimics disguised as chests, lying in ambush on this screen.
     #[serde(default)]
     pub mimics: Vec<MimicSpawn>,
@@ -800,6 +910,10 @@ pub struct GameData {
     /// shops just omits it.
     #[serde(default)]
     pub shops: Vec<ShopDef>,
+    /// Townsfolk appearances referenced by screens via [`NpcSpawn::npc`].
+    /// Optional — a game with no NPCs just omits it.
+    #[serde(default)]
+    pub npcs: Vec<NpcDef>,
     pub encounters: Vec<EncounterDef>,
     /// Character ids that make up the party at the start of the game.
     pub starting_party: Vec<String>,
@@ -820,6 +934,7 @@ pub struct Registry {
     equipment: HashMap<String, usize>,
     items: HashMap<String, usize>,
     shops: HashMap<String, usize>,
+    npcs: HashMap<String, usize>,
     encounters: HashMap<String, usize>,
     cutscenes: HashMap<String, usize>,
 }
@@ -848,6 +963,7 @@ fn load_game_data() -> GameData {
         equipment: load_collection("equipment"),
         items: load_collection("items"),
         shops: load_collection("shops"),
+        npcs: load_collection("npcs"),
         encounters: load_collection("encounters"),
         cutscenes: load_collection("cutscenes"),
         levels: meta.levels.iter().map(|id| load_level(id)).collect(),
@@ -939,6 +1055,7 @@ impl Registry {
         let equipment = index(&|| data.equipment.iter().map(|c| c.id.clone()).collect());
         let items = index(&|| data.items.iter().map(|c| c.id.clone()).collect());
         let shops = index(&|| data.shops.iter().map(|c| c.id.clone()).collect());
+        let npcs = index(&|| data.npcs.iter().map(|c| c.id.clone()).collect());
         let encounters = index(&|| data.encounters.iter().map(|c| c.id.clone()).collect());
         let cutscenes = index(&|| data.cutscenes.iter().map(|c| c.id.clone()).collect());
         Self {
@@ -950,6 +1067,7 @@ impl Registry {
             equipment,
             items,
             shops,
+            npcs,
             encounters,
             cutscenes,
         }
@@ -1007,6 +1125,10 @@ impl Registry {
         self.shops.get(id).map(|&i| &self.data.shops[i])
     }
 
+    pub fn npc(&self, id: &str) -> Option<&NpcDef> {
+        self.npcs.get(id).map(|&i| &self.data.npcs[i])
+    }
+
     pub fn encounter(&self, id: &str) -> Option<&EncounterDef> {
         self.encounters.get(id).map(|&i| &self.data.encounters[i])
     }
@@ -1028,8 +1150,24 @@ impl EnemyDef {
 /// a compile-time `match` (rather than a filesystem read) is what lets the web
 /// build ship every asset inside the wasm bundle.
 pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
+    // House tiles are addressed by index (`house_0`..`house_23`) and served from
+    // the embedded tileset folder rather than an explicit match arm each.
+    if let Some(n) = key.strip_prefix("house_") {
+        return HOUSE_DIR.get_file(format!("{n}.png")).map(|f| f.contents());
+    }
     Some(match key {
         "swordsman" => include_bytes!("../assets/textures/entities/playables/swordsman.png"),
+        // The AXEMAN — a garrison soldier recruited in the HARBORWATCH village.
+        // A 6x6 sheet: walk rows 0-3 (down/up/right/left), attack row 4, spin
+        // attack row 5.
+        "axeman" => include_bytes!("../assets/textures/entities/playables/axeman.png"),
+        // Village townsfolk sprite (swordsman-style 5x12 walk sheet, rows 0-3).
+        "farmer" => include_bytes!("../assets/textures/entities/npcs/farmer.png"),
+        // Emote bubbles that bob over a talkable NPC's head.
+        "talk_emote" => include_bytes!("../assets/textures/ui/talk_emote.png"),
+        "exclaim_emote" => include_bytes!("../assets/textures/ui/exclaim_emote.png"),
+        "question_emote" => include_bytes!("../assets/textures/ui/question_emote.png"),
+        "love_emote" => include_bytes!("../assets/textures/ui/love_emote.png"),
         "mage" => include_bytes!("../assets/textures/entities/playables/mage.png"),
         // GARETH, the mountain hermit — Roland's sheet minus the four unused
         // bottom rows (6x8: walk rows 0-3, attack rows 4-7).
@@ -1088,6 +1226,9 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "bolt" => include_bytes!("../assets/textures/entities/animation_helpers/bolt.png"),
         // The pirate gunners' lead shot.
         "bullet" => include_bytes!("../assets/textures/entities/animation_helpers/bullet.png"),
+        // BRENN the axeman's thrown/boomerang axe — a 4×2 spin sheet (8 frames,
+        // see `projectile_grid`), used by both AXE THROW and AXE BOOMERANG.
+        "axe" => include_bytes!("../assets/textures/entities/animation_helpers/axe.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
         "water" => include_bytes!("../assets/textures/tiles/water.png"),
         "tree" => include_bytes!("../assets/textures/tiles/tree.png"),
@@ -1108,6 +1249,24 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "sand" => include_bytes!("../assets/textures/tiles/sand.png"),
         _ => return None,
     })
+}
+
+/// How a projectile texture's spin frames are laid out on its sheet, as
+/// `(columns, rows)`. The frames are read left-to-right, top-to-bottom, so the
+/// total tumble is `columns * rows`.
+///
+/// Most projectiles ([`AttackAnim::Projectile`]) are a single still sprite (an
+/// arrow, a bullet) — the default `(1, 1)`. A spin sheet is a grid of square
+/// frames the projectile cycles through as it flies: the thrown `axe` (both
+/// [`AttackAnim::Projectile`] and [`AttackAnim::Boomerang`]) is a 4×2 sheet, an
+/// 8-frame tumble through a full rotation. Kept here beside [`embedded_texture`]
+/// because the frame layout is a property of the art, registered in code the
+/// same way the bytes are.
+pub fn projectile_grid(key: &str) -> (u32, u32) {
+    match key {
+        "axe" => (4, 2),
+        _ => (1, 1),
+    }
 }
 
 /// The embedded UI font (TrueType). Rendered with macroquad's text rasteriser.

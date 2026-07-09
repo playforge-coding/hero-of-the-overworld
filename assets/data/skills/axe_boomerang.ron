@@ -1,0 +1,10 @@
+// BRENN the axeman's signature: a spinning axe flung in a wide arc that carves
+// through the whole enemy line and loops back to his hand. Unblockable, like any
+// thrown blow, and hits every foe as it sweeps out through them.
+SkillDef(
+    id: "axe_boomerang", name: "AXE BOOMERANG",
+    description: "A spinning axe arcs through every foe and returns.",
+    mp_cost: 8, power: 110, kind: Physical, target: AllEnemies,
+    unblockable: true,
+    anim: Boomerang(texture: "axe"),   // one axe, out across the line and back
+)

@@ -118,12 +118,14 @@ gives it a signature motion (it's purely cosmetic — damage, targets and
 | Animation | Looks like | Used by |
 | --------- | ---------- | ------- |
 | **Lunge** (default) | The attacker steps in, strikes, and steps back. | Most melee skills and the basic attack. |
-| **Projectile** | A sprite (a fireball) flies from the caster to the target, and the blow lands as it arrives. An all-targets skill fans one out at **every** foe (or hero) at once. | ELARA's **FIREBOLT**, the demon's **FIREBALL**, and the dragon's **FLAME BREATH** (a fireball at each party member). |
+| **Projectile** | A sprite (a fireball) flies from the caster to the target, and the blow lands as it arrives. An all-targets skill fans one out at **every** foe (or hero) at once; a spinning sprite (a thrown axe) tumbles as it flies. | ELARA's **FIREBOLT**, the demon's **FIREBALL**, the dragon's **FLAME BREATH**, and BRENN's **AXE THROW**. |
+| **Boomerang** | A **single** spinning axe is flung in a wide arc that carves through the whole enemy line and **loops back** to the thrower's hand, hitting every foe as it sweeps out. | BRENN the axeman's signature **AXE BOOMERANG**. |
 | **Charge** | The attacker dashes clear across the battlefield through its target(s), off the edge, **wrapping around the screen** and back to its post — striking as it sweeps past. | The dark knight's **LANCE CHARGE** and **TRAMPLE**, and GARETH's darting **SWALLOW CUT**. |
 | **Crowd** | The attacker holds its post and calls in a **swarm of allies** who flood the whole screen for a beat and then clear out, the blow landing at the crowded peak. | The [Captain](entities/captain.md)'s finale **ALL HANDS** — his whole pirate crew boils up over the rail onto every foe at once. |
 
 Like everything else, an animation is a data choice on the skill — so giving a new
-move its own projectile, charge, or crowd is a content edit, no engine change. See
+move its own projectile, boomerang, charge, or crowd is a content edit, no engine
+change. See
 **[Extending the Game](modding.md#add-a-skill)**.
 
 ## Status effects

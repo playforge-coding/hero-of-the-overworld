@@ -19,6 +19,7 @@ assets/data/
   equipment/<id>.ron           # weapons & armor
   items/<id>.ron               # consumables
   shops/<id>.ron               # shop stock
+  npcs/<id>.ron                # townsfolk appearances (talkable NPCs)
   encounters/<id>.ron          # named enemy groups
   cutscenes/<id>.ron           # scripted dialogue / recruits
   levels/<id>.ron              # a stage: metadata + its screens (minus tilemaps)
@@ -178,8 +179,16 @@ SkillDef(
   — a purely cosmetic motion. It's one of:
     - `Lunge` — the default step-in-and-strike (used if omitted).
     - `Projectile(texture: "fireball")` — fires a sprite from the caster to each
-      target, landing as it arrives. `texture` is a key in `embedded_texture` (the
-      bundled `fireball` art lives in `assets/textures/entities/animation_helpers/`).
+      target, landing as it arrives (one bolt per target, so an `AllEnemies` skill
+      fans a volley). `texture` is a key in `embedded_texture` (the bundled
+      `fireball` art lives in `assets/textures/entities/animation_helpers/`). A
+      multi-frame **spin sheet** (see below) tumbles as it flies — that's the thrown
+      `axe`; a single-frame sprite just flies straight.
+    - `Boomerang(texture: "axe")` — hurls a **single** spinning projectile out
+      across the whole line and loops it back to the caster in a curving arc, the
+      blow landing on every target as it sweeps out through them (BRENN's **AXE
+      BOOMERANG**). Unlike `Projectile` it spawns one sprite no matter the target
+      count; pairs naturally with an `AllEnemies` target.
     - `Charge` — the attacker dashes through the target(s), wraps around the
       screen, and returns.
     - `Crowd(texture: "pirate_grunt")` — the caster holds its post and summons a
@@ -188,6 +197,14 @@ SkillDef(
       a **16px-frame walk sheet** — a roaming/character sprite like `pirate_grunt` —
       and the crowd is drawn from its front-facing walk row. Pairs naturally with an
       `AllEnemies` target.
+
+    A `Projectile` / `Boomerang` sprite may be a **spin sheet**: a grid of equal
+    frames the projectile cycles through as it flies, read left-to-right then
+    top-to-bottom (the `axe` is a 4×2 sheet — an 8-frame tumble). A texture's grid
+    layout is registered in code beside its bytes — in `projectile_grid` in
+    [`src/data.rs`](https://github.com/playforge-coding/hero-of-the-overworld/blob/main/src/data.rs)
+    as `(columns, rows)` (default `(1, 1)` = a still sprite like the `fireball` or
+    `bullet`). Add one line there for a new spinning projectile.
 
 ## Add equipment
 
@@ -372,6 +389,93 @@ ScreenDef(
 - The copy-the-party's-moves ability lives on the **enemy**, not the placement —
   see [Make it a mimic](#make-it-a-mimic) below.
 - Slain mimics are saved per level, exactly like chests and enemies.
+
+## Add townsfolk and houses
+
+A level with **no `spawns` anywhere** is treated as a peaceful **town** — the
+overworld drops the "cleared" banner and the foe counter, so you can build a hub
+(like [Harborwatch](world.md#townsfolk-and-towns)) with nothing to fight, only
+people to meet. Two pure-data pieces furnish one: **townsfolk** you talk to, and
+**houses** you walk past.
+
+A **townsfolk** is two things, mirroring shops: an `NpcDef` **appearance** in
+`npcs/<id>.ron` (a reusable look), and a **placement** on a screen. The appearance
+is just a name and an [`OverworldWalk`](#sprite-sheets) sheet (register the texture
+key like any other art); one look can dress a whole town:
+
+```ron
+// npcs/farmer.ron — a reusable villager look (5×12 walk sheet, rows 0-3)
+NpcDef(
+    id: "farmer", name: "TOWNSFOLK",
+    sprite: OverworldWalk(
+        texture: "farmer",              // register the key in embedded_texture
+        frame_w: 16, frame_h: 16,
+        draw_w: 20.0, draw_h: 20.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 4, fps: 8.0,
+    ),
+),
+```
+
+Then place them on a screen with an `npcs` entry (alongside `spawns`, `shops`, …).
+Everything but the look is per-placement, so the same sprite populates a town with
+distinct lines:
+
+```ron
+ScreenDef(
+    // tilemap lives in maps/<level>/<screen>.csv, not here
+    npcs: [
+        // Ambient villager: repeatable dialogue, an emote bubble over the head.
+        NpcSpawn(
+            col: 8, row: 7, npc: "farmer",
+            facing: Down,                // Down (default) / Up / Left / Right
+            emote: "question",           // talk / exclaim / question / love → *_emote texture
+            lines: ["STRANGERS OFF A PIRATE DECK? STRANGE DAYS INDEED."],
+        ),
+        // A recruit: a one-time scripted talk that adds them to the party.
+        NpcSpawn(
+            col: 11, row: 7, npc: "axeman",
+            facing: Down, emote: "exclaim",
+            cutscene: Some("axeman_joins"),   // played once (may Recruit — below)
+            recruits: Some("axeman"),         // hidden once this character is in the party
+        ),
+    ],
+),
+```
+
+- Walk up and press **Confirm** on the **PRESS Z** prompt to talk. `col`/`row` must
+  be **standable**, like a spawn.
+- `emote` is a short key — `talk`, `exclaim`, `question`, or `love` — resolved to the
+  `<emote>_emote` texture and bobbed over the NPC's head as a talk-to-me marker.
+- `lines` (optional) are shown one box at a time and are **repeatable** — talk again
+  and they replay. `portrait` (optional) draws a character/enemy sprite beside them.
+- `cutscene` (optional) is a **one-time** [scripted talk](#add-a-cutscene) played the
+  first time you speak to them (tracked like any played cutscene); afterwards they
+  fall back to their `lines`. Use it for a scene that should happen once.
+- `recruits` (optional) names the character an NPC **joins as**. Pair it with a
+  `cutscene` whose `Recruit` step does the joining: talking starts the scene, and once
+  that character is in the party the NPC is **no longer spawned** (they've moved into
+  the ranks). This is how Harborwatch's **BRENN** the axeman is enlisted.
+
+A **house** is a decorative building stamped from a shared **6×4 tileset** (its 24
+tiles are `assets/textures/tiles/house/0.png`..`23.png`, laid out row-major). Place
+one by its **top-left tile**; its grassy upper rows blend into the map and only the
+**stone base row** is made solid, so the player walks in front of the door (houses
+aren't entered):
+
+```ron
+ScreenDef(
+    houses: [
+        HouseSpawn(col: 2,  row: 1),   // occupies a 6-wide × 4-tall block
+        HouseSpawn(col: 12, row: 1),
+    ],
+),
+```
+
+- Keep the whole 6×4 footprint **on the map** (the tests check this) and clear of
+  spawns/NPCs/chests you want reachable, since its base row becomes wall.
+- The tileset ships ready; no new art or `embedded_texture` edit is needed to place
+  houses (the pieces are served by index as `house_0`..`house_23`).
 
 ## Add an enemy and an encounter
 
@@ -584,8 +688,9 @@ T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T
   player can walk through it; on arrival they step out of the opening on the far
   screen's edge nearest to where they left, so the gaps needn't line up.
 - A roaming enemy takes its on-map look from its encounter's **first** enemy.
-- A screen can also carry `shops`, [`chests`, and `mimics`](#add-a-chest-or-a-mimic)
-  alongside its `spawns`.
+- A screen can also carry `shops`, [`chests`, and `mimics`](#add-a-chest-or-a-mimic),
+  and [`npcs` and `houses`](#add-townsfolk-and-houses), alongside its `spawns`. A
+  level with **no spawns at all** becomes a peaceful [town](#add-townsfolk-and-houses).
 - Remember to add the level id to `meta.ron`'s `levels:` list, in the position you
   want it in the progression.
 - `chapter` (optional, defaults to `1`) groups the level into a story **chapter**.
@@ -613,7 +718,8 @@ CutsceneDef(
 - `Say` shows a dialogue line; `portrait` is any character/enemy id whose sprite
   is drawn beside the text.
 - `Recruit` adds a character to the party (a no-op if they're already in it).
-- Reference the cutscene from a level's `intro_cutscene` or `clear_cutscene`.
+- Reference the cutscene from a level's `intro_cutscene` or `clear_cutscene`, or
+  from a [townsfolk](#add-townsfolk-and-houses)'s `cutscene` (a recruit-on-talk).
   Each fires only once per run.
 
 ## Check your work
@@ -622,7 +728,9 @@ The fast test suite parses the data file and cross-checks every reference — th
 each skill (including a character's `learnset` and any `Projectile` animation
 texture), enemy, encounter, texture, cutscene, shop, item, and drop id resolves,
 that shop wares and keeper placements are valid, that chest loot and mimic
-encounters resolve and sit on standable ground, that item effects and enemy drops
+encounters resolve and sit on standable ground, that **townsfolk** name a real
+appearance / emote / cutscene (and that a recruiting NPC's scene actually adds
+them), that every **house** fits on its screen, that item effects and enemy drops
 point at real statuses/items at sane odds, and that every level's screens are
 linked and traversable. It also exercises level-up skill unlocks. Run it after
 editing:

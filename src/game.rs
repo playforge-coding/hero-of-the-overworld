@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 use crate::audio::{Audio, Track};
 use crate::battle::{Battle, BattleOutcome};
 use crate::cutscene::{Cutscene, CutsceneOutcome};
-use crate::data::Registry;
+use crate::data::{CutsceneStep, Registry};
 #[cfg(debug_assertions)]
 use crate::devtools::{DevTools, DevToolsEvent};
 use crate::input::{Button, Controllers, Input, InputAssignment, TouchScheme};
@@ -734,6 +734,35 @@ impl Game {
                 }
             }
             Some(Event::OpenInventory) => Scene::Inventory(Inventory::new()),
+            Some(Event::TalkNpc {
+                cutscene,
+                name,
+                lines,
+                portrait,
+            }) => {
+                // A one-time scripted talk (which may recruit the NPC) plays first;
+                // once it has been seen — or if the NPC has none — fall back to its
+                // repeatable lines as a throwaway dialogue. Either way it's shown
+                // through the cutscene player, which returns to the level after.
+                let scripted = cutscene
+                    .as_deref()
+                    .and_then(|id| self.build_cutscene(id, renderer));
+                match scripted {
+                    Some(cs) => Scene::Cutscene(cs),
+                    None if !lines.is_empty() => {
+                        let steps = lines
+                            .into_iter()
+                            .map(|text| CutsceneStep::Say {
+                                speaker: Some(name.clone()),
+                                text,
+                                portrait: portrait.clone(),
+                            })
+                            .collect();
+                        Scene::Cutscene(Cutscene::new(renderer, &mut self.cache, &self.reg, steps))
+                    }
+                    None => Scene::Level,
+                }
+            }
             Some(Event::Battle(trigger)) => {
                 // Members who fell in a previous fight rejoin this one with a
                 // sliver of health instead of staying gone.
