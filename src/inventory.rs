@@ -17,7 +17,7 @@
 
 use crate::data::{EquipSlot, Registry};
 use crate::input::{Button, Input};
-use crate::party::{FieldUse, Party};
+use crate::party::{FieldUse, Party, ACTIVE_PARTY};
 use crate::renderer::{color, virtual_w, Renderer, VIRTUAL_H};
 use crate::shop::summarize;
 
@@ -54,8 +54,11 @@ enum Pending {
 /// Sentinel first entry of the bag chooser: "take the current item off".
 const UNEQUIP: usize = usize::MAX;
 
-/// The chosen hero's action menu.
-const ACTIONS: [&str; 3] = ["EQUIP", "USE ITEM", "USE MOVE"];
+/// The chosen hero's action menu. The last two entries reorder the party
+/// **line-up**: only the first [`ACTIVE_PARTY`](crate::party::ACTIVE_PARTY) members
+/// fight, so MOVE UP / MOVE DOWN are how you swap a reserve into (or an active hero
+/// out of) the battle line from the overworld.
+const ACTIONS: [&str; 5] = ["EQUIP", "USE ITEM", "USE MOVE", "MOVE UP", "MOVE DOWN"];
 
 /// A rectangular panel's geometry, bundled so the chooser draw helpers take one
 /// argument instead of four loose floats.
@@ -161,14 +164,25 @@ impl Inventory {
                     self.action_cursor = (self.action_cursor + 1) % n;
                 } else if input.pressed(Button::Confirm) {
                     self.list_cursor = 0;
-                    self.focus = match self.action_cursor {
+                    match self.action_cursor {
                         0 => {
                             self.bag_cursor = 0;
-                            Focus::Bag
+                            self.focus = Focus::Bag;
                         }
-                        1 => Focus::ItemList,
-                        _ => Focus::MoveList,
-                    };
+                        1 => self.focus = Focus::ItemList,
+                        2 => self.focus = Focus::MoveList,
+                        // Reorder the line-up: swap this hero up/down the roster
+                        // (the first ACTIVE_PARTY are the ones who fight), then drop
+                        // back to the roster so the new order is visible.
+                        3 => {
+                            self.move_member(party, -1);
+                            self.focus = Focus::Party;
+                        }
+                        _ => {
+                            self.move_member(party, 1);
+                            self.focus = Focus::Party;
+                        }
+                    }
                 }
             }
             Focus::Bag => {
@@ -252,6 +266,30 @@ impl Inventory {
             }
         }
         None
+    }
+
+    /// Move the selected member one place up (`dir = -1`) or down (`dir = 1`) the
+    /// roster, swapping with its neighbour; the cursor follows the member. Clamped
+    /// at the ends (no wrap). Reordering is how the player sets the **battle
+    /// line-up**: the first [`ACTIVE_PARTY`](crate::party::ACTIVE_PARTY) members are
+    /// the ones who fight, so pulling a reserve up past that mark deploys them.
+    ///
+    /// **Slot 0 is fixed:** the party **leader** (Roland) always walks the overworld
+    /// (see [`leader_walk`](crate::overworld::leader_walk)), so he can't be moved and
+    /// no one can be swapped into his place — reordering only shuffles slots `1..`.
+    fn move_member(&mut self, party: &mut Party, dir: isize) {
+        let n = party.members.len();
+        let j = self.member as isize + dir;
+        if j < 0 || j as usize >= n {
+            return;
+        }
+        let j = j as usize;
+        // The leader (slot 0) is locked in place — never move him, never displace him.
+        if self.member == 0 || j == 0 {
+            return;
+        }
+        party.members.swap(self.member, j);
+        self.member = j;
     }
 
     /// Resolve the queued item/move on the chosen target, set the feedback line,
@@ -349,10 +387,15 @@ impl Inventory {
                     color::rgba(30, 70, 40, 255),
                 );
             }
+            // Members past the active line-up are reserves — they don't fight until
+            // swapped up (MOVE UP), so their rows read dimmer.
+            let reserve = i >= ACTIVE_PARTY;
             let name_col = if targeted {
                 color::rgb(150, 240, 160)
             } else if selected {
                 color::rgb(255, 240, 150)
+            } else if reserve {
+                color::rgb(140, 140, 155)
             } else {
                 color::WHITE
             };
@@ -362,6 +405,12 @@ impl Inventory {
                 r.draw_text(">", px + 3.0, y, 1.0, color::rgb(255, 240, 150));
             }
             r.draw_text(&m.name, px + 12.0, y, 1.0, name_col);
+            // The leader (slot 0) walks the overworld and is locked in the line-up;
+            // tag him so it's clear he can't be reordered or benched.
+            if i == 0 {
+                let lx = px + 12.0 + r.text_width(&m.name, 1.0) + 4.0;
+                r.draw_text("LEAD", lx, y, 1.0, color::rgb(150, 165, 120));
+            }
 
             // Live HP / MP, so the effect of a heal is visible at a glance.
             let vitals = format!(
@@ -411,6 +460,13 @@ impl Inventory {
                 };
                 r.draw_text(item, px + 38.0, sy, 1.0, col);
             }
+        }
+
+        // When the roster runs deeper than the battle line-up, draw the divide: the
+        // first ACTIVE_PARTY rows are who fights, the (dimmed) rest wait in reserve.
+        if party.members.len() > ACTIVE_PARTY {
+            let dy = py + 3.0 + ACTIVE_PARTY as f32 * 34.0;
+            r.draw_rect(px + 3.0, dy, pw - 6.0, 1.0, color::rgba(170, 145, 95, 230));
         }
     }
 
@@ -722,8 +778,8 @@ impl Inventory {
 
     fn draw_hint(&self, r: &mut Renderer) {
         let hint = match self.focus {
-            Focus::Party => "MOVE: PICK HERO/SLOT   CONFIRM: OPEN   MENU/CANCEL: CLOSE",
-            Focus::Action => "UP/DOWN: ACTION   CONFIRM: CHOOSE   CANCEL: BACK",
+            Focus::Party => "MOVE: HERO/SLOT   CONFIRM: OPEN   MENU: CLOSE   (TOP 3 FIGHT)",
+            Focus::Action => "UP/DOWN: ACTION   CONFIRM: CHOOSE   (MOVE UP/DN = LINE-UP)",
             Focus::Bag => "MOVE: PICK GEAR   CONFIRM: EQUIP   CANCEL: BACK",
             Focus::ItemList => "MOVE: PICK ITEM   CONFIRM: USE   CANCEL: BACK",
             Focus::MoveList => "MOVE: PICK MOVE   CONFIRM: CAST   CANCEL: BACK",

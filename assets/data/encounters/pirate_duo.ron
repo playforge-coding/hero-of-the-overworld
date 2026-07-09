@@ -1,0 +1,2 @@
+// Two PIRATE GRUNTS on patrol — cutlasses and bad tempers.
+EncounterDef(id: "pirate_duo", enemies: ["pirate_grunt", "pirate_grunt"])

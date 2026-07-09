@@ -1,0 +1,11 @@
+// The PIRATE CAPTAIN's musket — a longarm's answer to the gunner's pistol. Same
+// lead ball, but a heavier charge: it hits harder and, like every ranged shot,
+// cannot be blocked. Carried by the captain both as the boss you fight and as the
+// hero he becomes.
+SkillDef(
+    id: "musket_shot", name: "MUSKET SHOT",
+    description: "A captain's musket ball, cracked across the field at one foe. It hits hard.",
+    mp_cost: 0, power: 175, kind: Physical, target: OneEnemy,
+    unblockable: true,
+    anim: Projectile(texture: "bullet"),
+)

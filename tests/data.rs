@@ -3,9 +3,9 @@
 //! and cross-referenced correctly.
 
 use hero_of_the_overworld::data::{
-    embedded_texture, AttackAnim, CutsceneStep, EquipSlot, Registry,
+    embedded_texture, AttackAnim, CutsceneStep, EquipSlot, Registry, TargetKind,
 };
-use hero_of_the_overworld::party::{FieldUse, Party};
+use hero_of_the_overworld::party::{FieldUse, Party, ACTIVE_PARTY};
 
 fn registry() -> Registry {
     Registry::load()
@@ -70,10 +70,16 @@ fn all_references_resolve() {
                 s.id
             );
         }
-        if let AttackAnim::Projectile { texture } = &s.anim {
+        // A projectile or crowd animation names an embedded texture (the bolt art,
+        // or the swarm's walk sheet).
+        let anim_tex = match &s.anim {
+            AttackAnim::Projectile { texture } | AttackAnim::Crowd { texture } => Some(texture),
+            _ => None,
+        };
+        if let Some(texture) = anim_tex {
             assert!(
                 embedded_texture(texture).is_some(),
-                "skill {} projectile texture '{texture}' not embedded",
+                "skill {} animation texture '{texture}' not embedded",
                 s.id
             );
         }
@@ -305,6 +311,82 @@ fn demon_king_is_the_unwinnable_chapter_boss() {
     assert!(placed, "the demon king is not placed in the demon facility");
 }
 
+/// The CASTAWAY SHORE is the first region of chapter 2 — where the party washes up
+/// after the DEMON KING flings them to the surface. Guards its chapter tag, its
+/// beach theming (sand / barricade / coconut palms), and that it fields the new
+/// shore foes; and confirms the chapter mechanism it depends on lines up (the
+/// king's defeat advances into exactly the chapter this level lives in).
+#[test]
+fn castaway_shore_is_the_chapter_2_landing() {
+    let reg = registry();
+
+    let shore = reg
+        .data
+        .levels
+        .iter()
+        .find(|l| l.id == "castawayshore")
+        .expect("missing castawayshore level");
+    assert_eq!(shore.chapter, 2, "the castaway shore is a chapter 2 region");
+    assert_eq!(shore.ground.as_deref(), Some("sand"), "the shore is sand");
+    assert_eq!(
+        shore.wall.as_deref(),
+        Some("barricade"),
+        "the shore's walls are the pirates' wooden barricades"
+    );
+    assert_eq!(
+        shore.tree.as_deref(),
+        Some("coconut_tree"),
+        "the shore is lined with coconut palms"
+    );
+
+    // It is the landing region the DEMON KING's defeat delivers the party into: the
+    // first (and, for now, only) chapter-2 level in progression order.
+    let first_ch2 = reg.data.levels.iter().find(|l| l.chapter == 2);
+    assert_eq!(
+        first_ch2.map(|l| l.id.as_str()),
+        Some("castawayshore"),
+        "the castaway shore should be the first chapter 2 region"
+    );
+
+    // The pirate gunner is a real ranged foe: its shot resolves and flies a bullet.
+    let gunner = reg.enemy("pirate_gunner").expect("missing pirate_gunner");
+    assert!(
+        gunner.skills.iter().any(|s| s == "pistol_shot"),
+        "the gunner should carry a pistol shot"
+    );
+    let shot = reg.skill("pistol_shot").expect("missing pistol_shot skill");
+    assert!(
+        matches!(&shot.anim, AttackAnim::Projectile { texture } if embedded_texture(texture).is_some()),
+        "the pistol shot should fire an embedded projectile"
+    );
+
+    // Every foe the shore fields resolves and is a shore denizen (crabs, the
+    // pirate crew, and their captain — the boss who then joins the party).
+    let shore_foes = [
+        "beach_crab",
+        "pirate_grunt",
+        "pirate_gunner",
+        "pirate_captain",
+    ];
+    for id in shore_foes {
+        assert!(reg.enemy(id).is_some(), "missing shore enemy '{id}'");
+    }
+    for sp in shore.screens.iter().flat_map(|s| &s.spawns) {
+        let enc = reg.encounter(&sp.encounter).unwrap_or_else(|| {
+            panic!(
+                "shore spawn references unknown encounter '{}'",
+                sp.encounter
+            )
+        });
+        for eid in &enc.enemies {
+            assert!(
+                shore_foes.contains(&eid.as_str()),
+                "castaway shore fields a non-shore foe '{eid}'"
+            );
+        }
+    }
+}
+
 #[test]
 fn levels_are_valid_and_linked() {
     let reg = registry();
@@ -526,9 +608,9 @@ fn overworld_textures_are_embedded() {
             );
         }
     }
-    // Per-level ground/wall overrides (stone, dark_floor, dark_wall, …).
+    // Per-level ground/wall/tree overrides (stone, dark_floor, coconut_tree, …).
     for lv in &reg.data.levels {
-        for key in [&lv.ground, &lv.wall].into_iter().flatten() {
+        for key in [&lv.ground, &lv.wall, &lv.tree].into_iter().flatten() {
             assert!(
                 embedded_texture(key).is_some(),
                 "level {} tileset texture '{key}' not embedded",
@@ -622,6 +704,155 @@ fn recruit_step_adds_the_mage_once() {
     recruit(&mut party); // replay must be a no-op
     assert_eq!(party.members.len(), before + 1, "mage joined exactly once");
     assert!(party.members.iter().any(|m| m.def_id == "mage"));
+}
+
+/// The PIRATE CAPTAIN is a boss you fight who then joins the party: the enemy and
+/// the recruited character share one sprite, the boss encounter is winnable (not
+/// invincible), and the shore's clear cutscene recruits him. Guards the whole
+/// fight-then-join wiring, including the musket both forms carry.
+#[test]
+fn pirate_captain_is_a_boss_who_joins() {
+    let reg = registry();
+
+    // The recruitable hero form, with his musket and a resolvable learnset.
+    let hero = reg.character("captain").expect("missing captain character");
+    assert!(
+        hero.skills.iter().any(|s| s == "musket_shot"),
+        "the captain fights with a musket"
+    );
+    for ls in &hero.learnset {
+        assert!(
+            reg.skill(&ls.skill).is_some(),
+            "captain learnset skill '{}' does not resolve",
+            ls.skill
+        );
+    }
+
+    // The boss form: winnable (NOT invincible), sharing the hero's sprite so foe and
+    // ally look the same, and fielded by a boss encounter.
+    let boss = reg
+        .enemy("pirate_captain")
+        .expect("missing pirate_captain enemy");
+    assert!(!boss.invincible, "the captain must be beatable");
+    assert_eq!(
+        boss.sprite.texture, hero.sprite.texture,
+        "the captain boss and ally should share a sprite"
+    );
+    let enc = reg
+        .encounter("pirate_captain")
+        .expect("missing pirate_captain encounter");
+    assert!(enc.boss, "the captain fight should play the boss theme");
+
+    // The shore recruits him on clear: its clear cutscene has a Recruit(captain)
+    // step, and he is actually placed as a spawn in the level.
+    let shore = reg
+        .data
+        .levels
+        .iter()
+        .find(|l| l.id == "castawayshore")
+        .expect("missing castawayshore");
+    assert_eq!(
+        shore.clear_cutscene.as_deref(),
+        Some("captain_joins"),
+        "clearing the shore should play captain_joins"
+    );
+    let cs = reg
+        .cutscene("captain_joins")
+        .expect("missing captain_joins");
+    let recruits_captain = cs
+        .steps
+        .iter()
+        .any(|s| matches!(s, CutsceneStep::Recruit { character } if character == "captain"));
+    assert!(recruits_captain, "captain_joins must recruit the captain");
+    let placed = shore
+        .screens
+        .iter()
+        .flat_map(|s| &s.spawns)
+        .any(|sp| sp.encounter == "pirate_captain");
+    assert!(placed, "the captain boss is not placed on the shore");
+}
+
+/// The captain's finale, ALL HANDS, is a `Crowd` attack — the new animation type
+/// that floods the screen with allies. Guards the whole wiring: the skill is a
+/// screen-wide crowd whose swarm art is embedded, and the captain learns it as his
+/// **final** move (his highest-level learnset entry).
+#[test]
+fn captains_finale_is_a_crowd_attack() {
+    let reg = registry();
+
+    let all_hands = reg.skill("all_hands").expect("missing all_hands skill");
+    assert_eq!(
+        all_hands.target,
+        TargetKind::AllEnemies,
+        "ALL HANDS should sweep the whole enemy line"
+    );
+    match &all_hands.anim {
+        AttackAnim::Crowd { texture } => assert!(
+            embedded_texture(texture).is_some(),
+            "the crowd's swarm texture '{texture}' is not embedded"
+        ),
+        other => panic!("ALL HANDS should be a Crowd attack, got {other:?}"),
+    }
+
+    // It is the captain's final learned move: present, and the deepest learnset entry.
+    let captain = reg.character("captain").expect("missing captain");
+    let last = captain
+        .learnset
+        .iter()
+        .max_by_key(|ls| ls.level)
+        .expect("captain has a learnset");
+    assert_eq!(
+        last.skill, "all_hands",
+        "ALL HANDS should be the captain's final (highest-level) move"
+    );
+}
+
+/// Only the active line-up fights: the roster can hold more than [`ACTIVE_PARTY`]
+/// members, and the overworld reorder (mirrored here by a plain swap) is what pulls
+/// a reserve into the first `ACTIVE_PARTY` slots — the ones the battle seats.
+#[test]
+fn battle_line_up_caps_the_active_party() {
+    assert_eq!(ACTIVE_PARTY, 3, "a battle seats three heroes");
+
+    let reg = registry();
+    let mut party = Party::from_registry(&reg);
+    for id in ["mage", "hermit", "captain"] {
+        party.recruit(&reg, id);
+    }
+    assert!(
+        party.members.len() > ACTIVE_PARTY,
+        "the roster can run deeper than the battle line-up"
+    );
+
+    // The captain joins last, so he starts on the bench (outside the first
+    // ACTIVE_PARTY). Reordering (a menu MOVE UP, here a swap) deploys him.
+    let bench = party.members.len() - 1;
+    assert!(bench >= ACTIVE_PARTY, "captain starts in reserve");
+    let active_before: Vec<_> = party.members[..ACTIVE_PARTY]
+        .iter()
+        .map(|m| m.def_id.clone())
+        .collect();
+    assert!(
+        !active_before.contains(&"captain".to_string()),
+        "captain should not fight until swapped in"
+    );
+    // The leader (Roland, slot 0) is fixed — he walks the overworld, so reordering
+    // never touches slot 0. Deploying a reserve swaps within slots 1.., here slot 2.
+    assert_eq!(
+        party.members[0].def_id, "swordsman",
+        "Roland leads the roster at slot 0"
+    );
+    party.members.swap(ACTIVE_PARTY - 1, bench);
+    assert_eq!(
+        party.members[0].def_id, "swordsman",
+        "the leader stays put when the rest reorder"
+    );
+    assert!(
+        party.members[..ACTIVE_PARTY]
+            .iter()
+            .any(|m| m.def_id == "captain"),
+        "swapping a reserve up puts them in the active line-up"
+    );
 }
 
 #[test]
@@ -1113,7 +1344,9 @@ fn item_and_drop_references_resolve() {
 #[test]
 fn equipping_gear_changes_effective_stats() {
     let reg = registry();
-    let sword = &reg.data.characters[0]; // ROLAND, with iron_sword + leather_armor
+    // ROLAND, with iron_sword + leather_armor (looked up by id — the characters
+    // collection is filename-sorted, so index 0 isn't necessarily him).
+    let sword = reg.character("swordsman").expect("missing swordsman");
     let base = &sword.stats;
     let eq = reg.equipped(base, sword.weapon.as_deref(), sword.armor.as_deref());
     assert!(

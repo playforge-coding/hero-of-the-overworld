@@ -1,0 +1,9 @@
+// The PIRATE GUNNER's shot: a lead ball from a flintlock, cracking across the
+// sand at one foe. Like every ranged/piercing blow it ignores a timed block.
+SkillDef(
+    id: "pistol_shot", name: "PISTOL SHOT",
+    description: "A pirate's flintlock ball punches through one foe from range.",
+    mp_cost: 0, power: 135, kind: Physical, target: OneEnemy,
+    unblockable: true,
+    anim: Projectile(texture: "bullet"),   // cracks a lead ball at the target
+)

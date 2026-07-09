@@ -35,6 +35,11 @@ preserve the turn order.
 | [Roland](roland.md) | 120 | 24 | 22 | 14 | 10 | 12 | Start (party leader) |
 | [Elara](elara.md) | 78 | 60 | 10 | 9 | 26 | 13 | After clearing Greenwood |
 | [Gareth](gareth.md) | 94 | 30 | 20 | 11 | 8 | 21 | After clearing Traveller's End |
+| [Captain](captain.md) | 104 | 20 | 24 | 15 | 6 | 14 | After clearing the Castaway Shore (a boss you fight first) |
+
+Once the party runs past three heroes, only your **top three fight at once** — the
+rest wait in reserve, and you set the **[battle line-up](../gameplay.md#the-battle-line-up)**
+from the party menu.
 
 ## Enemies
 
@@ -54,6 +59,10 @@ preserve the turn order.
 | [Mimic](mimic.md) | 132 | 40 | 26 | 14 | 24 | 14 | 55 XP · 80 gold | Traveller's End, Demon Fortress, Charred Depths (disguised as chests) |
 | [Demon Elite](demon_elite.md) | 140 | 34 | 30 | 14 | 18 | 11 | 40 XP · 34 gold | Demon Facility (its rank-and-file patrols) |
 | [Demon King](demon_king.md) | ∞ | 0 | 45 | 30 | 60 | 40 | — (never defeated) | Demon Facility (unwinnable throne-room boss) |
+| [Beach Crab](beach_crab.md) | 42 | 0 | 15 | 17 | 0 | 6 | 14 XP · 10 gold | Castaway Shore (Chapter 2) |
+| [Pirate Grunt](pirate_grunt.md) | 78 | 0 | 26 | 13 | 0 | 13 | 28 XP · 22 gold | Castaway Shore (Chapter 2) |
+| [Pirate Gunner](pirate_gunner.md) | 54 | 0 | 22 | 9 | 0 | 16 | 30 XP · 24 gold | Castaway Shore (Chapter 2) |
+| [Pirate Captain](captain.md#the-boss-fight) | 150 | 0 | 28 | 15 | 6 | 15 | 60 XP · 55 gold | Castaway Shore (boss — then joins you) |
 | [Minotaur](minotaur.md) | 240 | 50 | 30 | 18 | 20 | 10 | 90 XP · 70 gold | Unplaced (dev fight menu, boss theme) |
 | [Dark Roland](clones.md#dark-roland) | 120 | 24 | 22 | 14 | 10 | 12 | 70 XP · 55 gold | Unplaced (mirror-match boss) |
 | [Dark Elara](clones.md#dark-elara) | 78 | 60 | 10 | 9 | 26 | 13 | 68 XP · 55 gold | Unplaced (mirror-match boss) |
@@ -76,10 +85,16 @@ underworld's **Charred Depths**, the war's remade prisoners lie in wait: the
 even that, in the iron halls of the **[Demon Facility](../world.md#progression-is-linear)**,
 war-plated **[demon elites](demon_elite.md)** muster two and three abreast, all the
 way down to the throne of the **[Demon King](demon_king.md)** — an unwinnable boss
-whose fight ends Chapter 1. Enemies are placed as roaming overworld sprites that chase
-you and start a battle on contact — see [The Overworld](../world.md#roaming-enemies).
-The dragon's and the Demon King's fights each play a dedicated **boss theme** in place
-of the usual battle music.
+whose fight ends Chapter 1. Then **Chapter 2** opens an ocean away on the sandy
+**[Castaway Shore](../world.md#progression-is-linear)**, where the party washes up: its
+tideline is worked by hardy **[beach crabs](beach_crab.md)** and held higher up by
+cutlass-swinging **[pirate grunts](pirate_grunt.md)** and flintlock
+**[gunners](pirate_gunner.md)** dug in behind barricades — all the way to their
+**[captain](captain.md)**, a musket-wielding boss at the back of the last camp who
+**joins the party** once beaten. Enemies are placed as roaming
+overworld sprites that chase you and start a battle on contact — see [The
+Overworld](../world.md#roaming-enemies). The dragon's and the Demon King's fights each
+play a dedicated **boss theme** in place of the usual battle music.
 
 The **deep** regions — Traveller's End, the Demon Fortress, the Charred Depths, and
 the Demon Facility — hide **[mimics](mimic.md)**: powerful ambush predators disguised as

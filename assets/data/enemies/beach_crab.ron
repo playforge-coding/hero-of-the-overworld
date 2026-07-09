@@ -1,0 +1,34 @@
+// ------ CASTAWAY SHORE (chapter 2) denizens ------------------------------
+// BEACH CRAB: the shore's answer to the mountain crab — a hardier, salt-crusted
+// shell-back that skitters the tideline. Slow and weak on offense but well
+// armored, so it soaks hits like its mountain cousin, only tougher. beach_crab.png
+// is a tiny 3x1 sheet (one front-facing scuttle row), so the "attack" clip just
+// replays the idle row a touch faster, exactly like the mountain crab.
+EnemyDef(
+    id: "beach_crab",
+    name: "BEACH CRAB",
+    stats: Stats(max_hp: 42, max_mp: 0, attack: 15, defense: 17, magic: 0, speed: 6),
+    sprite: BattlerSprite(
+        texture: "beach_crab",
+        frame_w: 16, frame_h: 16,
+        draw_w: 40.0, draw_h: 40.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 3, fps: 3.0),
+        attack: AnimClip(row: 0, first_col: 0, frames: 3, fps: 8.0),
+    ),
+    // One-row sheet: every facing reads the same scuttle row.
+    overworld: Some(OverworldWalk(
+        texture: "beach_crab",
+        frame_w: 16, frame_h: 16,
+        draw_w: 18.0, draw_h: 18.0,
+        row_down: 0, row_up: 0, row_right: 0, row_left: 0,
+        frames: 3, fps: 6.0,
+    )),
+    skills: [],
+    ai: Basic,
+    xp: 14,
+    gold: 10,
+    // Slow scuttle — easy to sidestep on the sand.
+    overworld_speed: Some(26.0),
+    drops: [ItemDrop(item: "potion", chance: 0.22)],
+)

@@ -1,0 +1,2 @@
+// A firing line of two PIRATE GUNNERS — close the gap fast or eat their shots.
+EncounterDef(id: "gunner_line", enemies: ["pirate_gunner", "pirate_gunner"])

@@ -1,0 +1,2 @@
+// A full shore squad: two GRUNTS screening a GUNNER, the pirate camps' muster.
+EncounterDef(id: "pirate_squad", enemies: ["pirate_grunt", "pirate_grunt", "pirate_gunner"])

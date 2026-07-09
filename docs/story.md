@@ -4,6 +4,11 @@ comments: true
 
 # The Story
 
+!!! warning "Spoiler alert"
+    This page tells the **whole story so far**, start to finish — every twist, every
+    reveal, and how each chapter ends. If you'd rather play it first, turn back now.
+    The rest of the docs avoid spoilers; this page does not.
+
 The overworld had been at peace for as long as anyone in the barracks could
 remember. A **good king** kept the roads safe and the harvests fair, the demons
 stayed shut away in the dark places under the world, and a young man could grow up
@@ -97,8 +102,37 @@ simply *removes* them, as an afterthought, and returns to whatever he was doing.
 
 That is where **Chapter 1 ends** and **Chapter 2 begins** — the party alive but flung
 far away, the roads they knew leagues behind them, and a new, larger question hanging
-over everything: **why did he let them live?** The regions of Chapter 2 are not built
-**yet**, so the tale pauses here, on that turning.
+over everything: **why did he let them live?**
+
+They wake where the blow dropped them: a **[Castaway Shore](world.md#progression-is-linear)**
+an ocean from home, white sand and coconut palms under a hard sun — and already
+someone else's ground. The tideline is held by **pirates**, cutlass-swinging grunts
+and flintlock gunners dug in behind wooden barricades, with skittering beach crabs
+worked into the bargain. If anyone on this coast knows the way back across the sea,
+it is them, so the party fights up the beach to find out.
+
+At the back of the last camp waits their **[captain](entities/captain.md)** — and
+beating him turns the whole encounter over. He yields, and then he *stares*: he knows
+that face. He was a **captain in the kingdom's navy** once, and stood watch after
+watch at the old king's court, where he saw the princess often enough to never forget
+her. The mage the party has fought beside all this way — **Elara** — *is* that
+princess, travelling under a plain name. The reveal lands hard on **Roland**, who had
+no idea; it lands on no one else. Elara admits it quietly — she buried the title the
+day the throne fell, because a crown with a price on it is safer left unspoken. And
+**Gareth** admits more: as the old king's scout, he has **known since Greenwood**, and
+said nothing on purpose — a princess in the ranks is a target and a distraction, and
+he wanted every eye on the mission, not on her. Roland takes it hard for a breath,
+then lets it go: it changes nothing between them.
+
+The captain and Gareth, it turns out, go back years — the navy's best helmsman and
+the king's own scout. When the advisor seized the crown, half the captain's crew
+refused to serve a usurper, so they took a ship and made their own law out on these
+far waters. Now, with the princess alive and set on putting the kingdom right, the
+captain throws in with them — musket, deck, and a course back across the sea — and
+**[joins the party](entities/captain.md)**.
+
+That is as far as the built world reaches for now: past the pirate camps the coast
+runs on into country not yet made, and the tale pauses there — **to be continued**.
 
 ## An alternate timeline
 

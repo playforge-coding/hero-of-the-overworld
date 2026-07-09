@@ -109,9 +109,27 @@ CharacterDef(
 ```
 
 Then either list its `id` in `starting_party` so it begins in the party, or add
-it via a cutscene `Recruit` step (below). The battle scene iterates the whole
-party, so a second or third hero fights with **no engine changes**. A character
-can also start with a `weapon` and/or `armor` — see [Add equipment](#add-equipment).
+it via a cutscene `Recruit` step (below). A character can also start with a `weapon`
+and/or `armor` — see [Add equipment](#add-equipment).
+
+The roster can hold as many heroes as you recruit, but a **battle seats only the
+first `ACTIVE_PARTY` (3)** of them — the rest wait in reserve and are swapped in from
+the [party menu](gameplay.md#the-battle-line-up) (MOVE UP / MOVE DOWN reorder the
+line-up). Reserves still earn XP, so benching a hero never leaves them behind. Adding
+a fourth-and-beyond hero needs **no engine changes** — the line-up cap is `ACTIVE_PARTY`
+in `src/party.rs` if you ever want to widen it. **Slot 0 is the party leader** (the
+first `starting_party` member, Roland): he walks the overworld, so he's pinned to the
+front of the line-up and can't be reordered — only slots `1..` shuffle.
+
+!!! tip "A boss who joins you"
+    A recruit doesn't have to be met in a quiet cutscene — you can **fight** them
+    first, like the Castaway Shore's [captain](entities/captain.md). Define **two**
+    things that share a sprite: an `EnemyDef` (the boss you fight, in a `boss`
+    [encounter](#add-an-enemy-and-an-encounter)) and a `CharacterDef` (the ally). Place
+    the boss in the level, and put a `Recruit(character: …)` step in the level's
+    **`clear_cutscene`** — so felling the boss (and clearing the level) is what makes
+    them join. The enemy and character are separate ids (`pirate_captain` the foe,
+    `captain` the hero), so their battle stats and their party stats can differ.
 
 The optional **`learnset`** unlocks skills as the hero **levels up**: each entry
 teaches its `skill` (an id from the [skills](#add-a-skill) list) once the hero
@@ -164,6 +182,12 @@ SkillDef(
       bundled `fireball` art lives in `assets/textures/entities/animation_helpers/`).
     - `Charge` — the attacker dashes through the target(s), wraps around the
       screen, and returns.
+    - `Crowd(texture: "pirate_grunt")` — the caster holds its post and summons a
+      **swarm of allies** that floods the whole screen for a beat and then clears out,
+      the blow landing at the crowded peak (the Captain's **ALL HANDS**). `texture` is
+      a **16px-frame walk sheet** — a roaming/character sprite like `pirate_grunt` —
+      and the crowd is drawn from its front-facing walk row. Pairs naturally with an
+      `AllEnemies` target.
 
 ## Add equipment
 
@@ -550,6 +574,11 @@ T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T
 ```
 
 - `node` places the marker; the map cursor moves between markers by direction.
+- `ground`, `wall`, and `tree` (all optional) **re-theme the region** by swapping the
+  texture drawn for the base ground, `#` walls, and `T` trees — with no change to the
+  tile legend. They default to `grass` / `barricade` / `tree`; the Castaway Shore, for
+  instance, sets `ground: Some("sand")`, `wall: Some("barricade")` (its pirate
+  palisades), and `tree: Some("coconut_tree")` (palms).
 - `north`/`south`/`east`/`west` are **indices into this level's `screens`**. Leave
   an opening anywhere in the matching wall (a walkable cell on that edge) so the
   player can walk through it; on arrival they step out of the opening on the far

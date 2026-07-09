@@ -53,14 +53,33 @@ healed HP. (Healing [items](items.md) only top up the living; reviving is MEND's
 
 New heroes join through the story. After you clear the **Greenwood**, a cutscene
 introduces **ELARA**, a mage; clear **Traveller's End** and **GARETH**, a swift
-mountain hermit and the fastest hero in the game, joins next. The battle system
-simply iterates whoever is in the party, so a second (or third) hero fights
-alongside you with no fuss. See **[Extending the Game](modding.md)** to add your
-own.
+mountain hermit and the fastest hero in the game, joins next; and in Chapter 2 the
+**[Captain](entities/captain.md)** — a boss you *fight first* — yields and comes
+aboard. See **[Extending the Game](modding.md)** to add your own.
 
 A hero who joins mid-game arrives **at the party's current level**, not level 1 —
 their base stats are grown up the same curve as [levelling up](#levelling-up), so
 a newcomer fights on par with Roland instead of joining as dead weight.
+
+### The battle line-up { #the-battle-line-up }
+
+As the party grows past three, only your **top three heroes fight at once**. The
+roster can hold as many recruits as the story gives you, but a battle **seats
+three**; the rest wait in **reserve**. A newly recruited hero joins on the bench, so
+you choose who actually takes the field.
+
+**Roland always leads.** As the party's leader he's the one who walks the overworld,
+so he's **locked into the front of the line-up** — he can't be benched or moved, and
+no one can take his slot. Everyone *else* you arrange freely.
+
+You set the line-up from the **[party menu](#inventory-and-equipment)** (press
+**Menu** in a level). Roland is tagged **LEAD**; below him a line marks the cut, with
+everyone above it **active** and everyone below (dimmed) in **reserve**. To change it,
+pick a hero *other than Roland*, open their actions, and choose **MOVE UP** / **MOVE
+DOWN** to shuffle them through the order — pull a reserve up past the line to
+**deploy** them, or push an active hero down to **bench** them. Reserves keep their
+HP/MP and still **earn XP** alongside the fighters, so benching a hero never leaves
+them behind.
 
 ## Levelling up
 
@@ -110,17 +129,19 @@ you where you fell; it plays a story cutscene and carries you into the next
 ## Chapters
 
 The story is told in **chapters**, and the world map only ever offers the
-**current chapter's** regions. All six bundled levels belong to **Chapter 1**; you
-clear them in order (see [Progression](world.md#progression-is-linear)) down to the
-Demon Facility.
+**current chapter's** regions (its header reads `CH 1`, `CH 2`, …). The six
+**Chapter 1** levels run in order (see
+[Progression](world.md#progression-is-linear)) down to the Demon Facility.
 
 Facing the **[Demon King](entities/demon_king.md)** there ends Chapter 1 the only
 way it can: he cannot be beaten, and losing to him **flings the party back up to the
 surface**, far from everywhere they'd unlocked. The world map ticks over to
-**Chapter 2** — the header reads `CH 2`, the Chapter 1 regions fall out of reach
-(they're leagues away now), and, since Chapter 2's regions aren't built **yet**, the
-map shows a **"TO BE CONTINUED..."** cliffhanger. Your cleared Chapter 1 progress is
-still [saved](#saving); the story simply pauses there for now.
+**Chapter 2** — the Chapter 1 regions fall out of reach (they're leagues away now)
+and the party washes up on the **[Castaway Shore](world.md#progression-is-linear)**,
+Chapter 2's opening region, which they walk straight into off the launch cutscene.
+Clearing that reaches the **edge of the built world** — the report ends on
+**"TO BE CONTINUED..."** — since the coast beyond it isn't made **yet**. Your cleared
+progress is [saved](#saving) per chapter, so the tale simply pauses there for now.
 
 ## The party menu { #inventory-and-equipment }
 
@@ -154,6 +175,13 @@ Heal up on the map, without waiting for the next battle:
 - **USE MOVE** lists the healing **[skills](battles.md#skills)** the selected hero
   knows (like **MEND**). Pick one and a **target ally**; it restores HP and spends
   the caster's **MP**, exactly as in battle. Moves you can't afford are greyed out.
+
+### Move up / move down
+
+The last two actions set the **[battle line-up](#the-battle-line-up)** once the party
+runs deeper than three. **MOVE UP** / **MOVE DOWN** shuffle the selected hero through
+the roster order; the top three are who fights, so pull a reserve up to deploy them or
+push an active hero down to bench them.
 
 Each hero's live **HP/MP** is shown in the roster, so you can watch a heal land.
 

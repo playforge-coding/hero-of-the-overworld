@@ -1,0 +1,41 @@
+// THE PIRATE CAPTAIN — a party member recruited on the CASTAWAY SHORE. Once a
+// captain in the KINGDOM'S NAVY, he turned corsair alongside much of his crew
+// after the advisor's takeover, and has worked these far waters since. He knew
+// GARETH well in the old days and saw the princess — ELARA — often enough at court
+// to know her face under her alter ego. Joins after the shore is cleared (via the
+// `captain_joins` cutscene, which is also where he recognises her); not in
+// `starting_party`.
+//
+// A ranged fighter like his gunners, but far stronger: he opens with the MUSKET
+// (`musket_shot`) and falls back on a cutlass. captain.png is an 8x8 playable sheet
+// (walk rows 0-3, attack rows 4-7); the battle sprite reads the right-facing
+// walk/attack rows, matching the boss version so ally and foe look the same.
+CharacterDef(
+    id: "captain",
+    name: "CAPTAIN",
+    stats: Stats(max_hp: 104, max_mp: 20, attack: 24, defense: 15, magic: 6, speed: 14),
+    sprite: BattlerSprite(
+        texture: "captain",
+        frame_w: 16, frame_h: 16,
+        draw_w: 50.0, draw_h: 50.0,
+        faces_left: false,
+        // Walk-right row as a ready stance; attack-right row when he fires.
+        idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+        attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 12.0),
+    ),
+    // Overworld walk: rows 0-3 are walk down/up/right/left (4 frames).
+    overworld: Some(OverworldWalk(
+        texture: "captain",
+        frame_w: 16, frame_h: 16,
+        draw_w: 20.0, draw_h: 20.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 4, fps: 8.0,
+    )),
+    skills: ["musket_shot"],
+    // A seasoned officer's heavier volley comes with a few more levels together,
+    // and his ultimate — ALL HANDS, calling up the whole crew — is his final move.
+    learnset: [
+        LearnedSkill(level: 5, skill: "broadside"),
+        LearnedSkill(level: 9, skill: "all_hands"),
+    ],
+)

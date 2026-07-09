@@ -1,0 +1,2 @@
+// The camp's crew, mustered to hold the strand: two GRUNTS and two GUNNERS.
+EncounterDef(id: "pirate_crew", enemies: ["pirate_grunt", "pirate_gunner", "pirate_grunt", "pirate_gunner"])

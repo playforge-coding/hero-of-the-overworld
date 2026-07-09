@@ -9,6 +9,14 @@ is cleared. She isn't in the starting party — she introduces herself in the
 level-clear [cutscene](../battles.md#story-and-cutscenes) ("*I am Elara, a wandering
 mage. Your cause is mine now.*") and fights alongside you for the rest of the run.
 
+??? warning "Who is Elara, really? (Chapter 2 spoiler)"
+    "Elara" is an **alter ego**. She is the **princess of the kingdom**, travelling
+    under a plain name since the throne fell — a crown with a price on it is safer left
+    unspoken. The [Captain](captain.md) recognises her on the Castaway Shore, and
+    [Gareth](gareth.md) — her father's old scout — turns out to have known since
+    Greenwood and kept it quiet to keep the party's focus on the mission. It's a story
+    beat only: **nothing about how she plays changes.** See [The Story](../story.md).
+
 | Stat | Value |
 |---|---|
 | **HP** | 78 |

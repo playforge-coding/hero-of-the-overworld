@@ -7,6 +7,13 @@
 
 use crate::data::{BattlerSprite, CharacterDef, EquipSlot, ItemEffect, Registry, SkillKind, Stats};
 
+/// How many party members fight in a single battle. The party roster can hold
+/// more than this (recruits pile up as the story grows); the **first
+/// `ACTIVE_PARTY`** members in roster order are the battle line-up, and the rest
+/// are reserves you swap in from the overworld [party menu](crate::inventory). The
+/// battle layout seats exactly this many heroes, so it doubles as the hard cap.
+pub const ACTIVE_PARTY: usize = 3;
+
 /// One level a member gained from an XP award, together with any skills that
 /// level unlocked — enough for the battle-victory report to announce both the
 /// level and every newly learned move.

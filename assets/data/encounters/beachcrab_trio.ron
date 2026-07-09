@@ -1,0 +1,2 @@
+// Three BEACH CRABS clustered on the wet sand — a wall of shells to crack.
+EncounterDef(id: "beachcrab_trio", enemies: ["beach_crab", "beach_crab", "beach_crab"])

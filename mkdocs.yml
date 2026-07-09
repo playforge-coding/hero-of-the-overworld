@@ -73,6 +73,7 @@ nav:
       - Roland: entities/roland.md
       - Elara: entities/elara.md
       - Gareth: entities/gareth.md
+      - Captain: entities/captain.md
       - Slime: entities/slime.md
       - Mimic: entities/mimic.md
       - Mountain Crab: entities/mountain_crab.md
@@ -87,6 +88,9 @@ nav:
       - Ballista: entities/ballista.md
       - Demon Elite: entities/demon_elite.md
       - Demon King: entities/demon_king.md
+      - Beach Crab: entities/beach_crab.md
+      - Pirate Grunt: entities/pirate_grunt.md
+      - Pirate Gunner: entities/pirate_gunner.md
       - Minotaur: entities/minotaur.md
       - The Clones: entities/clones.md
   - Extending the Game: modding.md

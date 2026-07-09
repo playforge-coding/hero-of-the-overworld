@@ -29,10 +29,12 @@ FIRST"* instead of the usual prompt, so the world opens up as you win. And you
 rarely need the map to move forward: clearing a level **carries you straight into
 the next one** (see [Clearing a level](#roaming-enemies) below).
 
-The bundled world has six levels across two realms — the surface, and the
-**underworld** beneath it, reached once the Demon Fortress falls — ending at the
-iron **Demon Facility** deep below, the seat of the horde's power and the climax of
-**[Chapter 1](gameplay.md#chapters)**:
+The bundled world spans two **[chapters](gameplay.md#chapters)**. **Chapter 1** is
+six levels across two realms — the surface, and the **underworld** beneath it,
+reached once the Demon Fortress falls — ending at the iron **Demon Facility** deep
+below, the seat of the horde's power. **Chapter 2** opens on a far **Castaway Shore**,
+where the Demon King flings the party once Chapter 1 ends. The map shows one chapter
+at a time; these are Chapter 1's regions, in order:
 
 | Level | Screens | Enemies | Notes |
 | ----- | ------- | ------- | ----- |
@@ -42,6 +44,13 @@ iron **Demon Facility** deep below, the seat of the horde's power and the climax
 | **DEMON FORTRESS** | 6 | [Demon](entities/demon.md) packs (duos and trios) + a [dragon](entities/dragon.md) boss | A **very mazelike** warren of dark-brick corridors: a gatehouse into a crossing that branches to a dead-end cell block or deeper east through twisting galleries to the dragon's lair. Felling the dragon opens the advisor's **portal** and carries the party down into the underworld. Unlocks after Traveller's End. |
 | **CHARRED DEPTHS** | 11 | [Club](entities/club_goblin.md) & [archer goblins](entities/archer_goblin.md), [orc brutes](entities/orc_brute.md) + [demons](entities/demon.md) | The **first level of the underworld** and the **toughest descent** in the game — a long warren of scorched flagstone that winds ever deeper, its foes escalating like the climb of Traveller's End. Goblin packs (clubbers screening their archers) hold the upper halls, orc brutes wall the middle chambers two and three abreast, and demon-led warbands hold the depths — down to the deep hall's guardian, a demon flanked by two remade orc thralls. Unlocks after the Demon Fortress — a **[portal cutscene](story.md)** takes you there, and it stands open on the map from then on. |
 | **DEMON FACILITY** | 11 | [Demon elites](entities/demon_elite.md) (singly and in packs) + a [Demon King](entities/demon_king.md) boss | The **climax of Chapter 1**: past the Charred Depths the raw stone turns to **iron**, an underground forge-hall where the horde plates its demons for war. A long, winding descent in the mould of the Charred Depths — war-plated elites two and three abreast, a barracks cache guarded by a mimic, a throne-hall guard — ending at the throne of the invincible **[Demon King](entities/demon_king.md)**. That fight **cannot be won**: losing it hurls the party back to the surface and opens **[Chapter 2](gameplay.md#chapters)**. Unlocks after the Charred Depths. |
+
+And **Chapter 2** so far is a single region — where the party washes up, an ocean
+from anywhere they knew:
+
+| Level | Screens | Enemies | Notes |
+| ----- | ------- | ------- | ----- |
+| **CASTAWAY SHORE** | 6 | [Beach crabs](entities/beach_crab.md), [pirate grunts](entities/pirate_grunt.md) & [gunners](entities/pirate_gunner.md) + a [Pirate Captain](entities/captain.md) boss | The **opening of Chapter 2**: a sun-blasted beach of pale sand and coconut palms where the Demon King's blow drops the party, an ocean away from home. Skittering beach crabs work the tideline; higher up, cutlass-swinging pirate grunts and flintlock gunners hold the coast from behind wooden **barricades** — up to their **[captain](entities/captain.md)**, a musket-wielding boss at the back of the last camp who **yields and joins the party** once beaten. The party lands here automatically when Chapter 1 ends; clearing it reaches the edge of the built world — **"TO BE CONTINUED..."**. |
 
 ## Screens
 
@@ -69,8 +78,11 @@ period after arriving stops a demon from instantly pouncing on you.
 
 Each level sets its own **base ground** (grassy Greenwood, stony Stone Pass and
 Traveller's End, dark-tiled Demon Fortress, scorched **charred stone** in the
-underworld's Charred Depths), drawn under everything; trees, rocks,
-water and barricades are props on top of it that block movement. A **grass patch**
+underworld's Charred Depths, pale **sand** on the Castaway Shore), drawn under
+everything; trees, rocks, water and barricades are props on top of it that block
+movement. A level can even re-theme its **props** the same way: the Castaway Shore
+draws its `T` trees as **coconut palms** and its `#` walls as the pirates' wooden
+**barricades**, without any change to the tile legend above. A **grass patch**
 (`G`) is the exception that goes the other way — a *walkable* tuft of greenery
 drawn over the base, which is how Traveller's End dots its bare stone with patches
 of grass without re-theming the whole floor.
@@ -103,9 +115,10 @@ its own boss theme.
 Clear every enemy in every screen and the level is done: the victory report leads
 with **"{LEVEL} CLEARED!  ONWARD TO {NEXT}"** and, after any [clear
 cutscene](story.md), the party is **carried straight into the next region** — no trip
-back to the map to pick it. (Clearing the *final* level ends the run instead —
-**"THE OVERWORLD IS SAVED!"** — and leaves you free to return to the map with
-**Cancel**/**Menu**.) Every cleared level still shows green on the map if you visit it,
+back to the map to pick it. Auto-advance stops at a **[chapter](gameplay.md#chapters)**
+boundary (chapters turn over by story, not by clearing), and clearing the **last built
+region** ends on **"TO BE CONTINUED..."**, leaving you free to return to the map with
+**Cancel**/**Menu**. Every cleared level still shows green on the map if you visit it,
 and you can always **Cancel**/**Menu** out of a level to the map by hand.
 
 ## Shops

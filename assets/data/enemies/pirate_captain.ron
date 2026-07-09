@@ -1,0 +1,37 @@
+// The PIRATE CAPTAIN — the boss of the CASTAWAY SHORE, waiting at the back of his
+// camp. A former navy officer turned corsair after the takeover, he fights with a
+// MUSKET (a heavier reach than his gunners' pistols) and a cutlass, and hits far
+// harder than the crew he commands. Flagged `boss` for the boss theme; beat him and
+// the level's `clear_cutscene` (`captain_joins`) recruits him — see
+// `characters/captain.ron` and `cutscenes/captain_joins.ron`.
+//
+// captain.png is an 8x8 sheet on the playable layout (walk rows 0-3, attack rows
+// 4-7); the battle sprite reads the right-facing walk/attack rows so the boss looks
+// exactly like the ally he becomes.
+EnemyDef(
+    id: "pirate_captain",
+    name: "PIRATE CAPTAIN",
+    stats: Stats(max_hp: 150, max_mp: 0, attack: 28, defense: 15, magic: 6, speed: 15),
+    sprite: BattlerSprite(
+        texture: "captain",
+        frame_w: 16, frame_h: 16,
+        draw_w: 50.0, draw_h: 50.0,
+        faces_left: false,
+        idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+        attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 12.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "captain",
+        frame_w: 16, frame_h: 16,
+        draw_w: 22.0, draw_h: 22.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 4, fps: 8.0,
+    )),
+    skills: ["musket_shot"],
+    ai: Random,
+    xp: 60,
+    gold: 55,
+    // Holds the back of his camp at a steady, watchful pace.
+    overworld_speed: Some(30.0),
+    drops: [ItemDrop(item: "hi_potion", chance: 1.0)],
+)

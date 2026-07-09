@@ -7,7 +7,9 @@ comments: true
 The young knight you start as — one month into mandatory service when the demons
 invade. Roland is the party leader: the hero who walks the [overworld](../world.md),
 and the sturdy front-liner your party is built around. His [story](../story.md) is
-the game's story.
+the game's story. Because he's the one on the map, he's a **permanent fixture of the
+[battle line-up](../gameplay.md#the-battle-line-up)** — always in the front, never
+benched or reordered, however many heroes you recruit.
 
 | Stat | Value |
 |---|---|

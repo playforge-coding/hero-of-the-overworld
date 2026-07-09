@@ -1,0 +1,31 @@
+// PIRATE GRUNT: the cutlass-swinging muscle of the shore's marauders. No tricks
+// — just a hard, reliable melee bruiser who wades in and hacks. Tougher and
+// harder-hitting than the goblins of the depths, it anchors the pirate crews.
+// pirate_grunt.png shares the hermit's sheet layout — a 5x8 grid of 16x16 frames:
+// walk rows 0-3 (down/up/right/left), attack rows 4-7. Its battle idle reads the
+// front-facing walk row and its swing the front-facing attack row.
+EnemyDef(
+    id: "pirate_grunt",
+    name: "PIRATE GRUNT",
+    stats: Stats(max_hp: 78, max_mp: 0, attack: 26, defense: 13, magic: 0, speed: 13),
+    sprite: BattlerSprite(
+        texture: "pirate_grunt",
+        frame_w: 16, frame_h: 16,
+        draw_w: 48.0, draw_h: 48.0,
+        faces_left: false,
+        idle:   AnimClip(row: 0, first_col: 0, frames: 4, fps: 5.0),
+        attack: AnimClip(row: 4, first_col: 0, frames: 4, fps: 10.0),
+    ),
+    overworld: Some(OverworldWalk(
+        texture: "pirate_grunt",
+        frame_w: 16, frame_h: 16,
+        draw_w: 22.0, draw_h: 22.0,
+        row_down: 0, row_up: 1, row_right: 2, row_left: 3,
+        frames: 4, fps: 8.0,
+    )),
+    skills: [],
+    ai: Basic,
+    xp: 28,
+    gold: 22,
+    drops: [ItemDrop(item: "potion", chance: 0.20)],
+)

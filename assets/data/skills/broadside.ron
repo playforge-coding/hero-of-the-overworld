@@ -1,0 +1,11 @@
+// BROADSIDE — the CAPTAIN's command to fire as one: a raking volley of musket
+// balls that sweeps the whole enemy line at once. His signature move once he has
+// fought alongside the party a while (learnset level 5). Unblockable, like all
+// shot.
+SkillDef(
+    id: "broadside", name: "BROADSIDE",
+    description: "A raking volley of musket fire that sweeps every foe at once.",
+    mp_cost: 8, power: 130, kind: Physical, target: AllEnemies,
+    unblockable: true,
+    anim: Projectile(texture: "bullet"),
+)

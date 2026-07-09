@@ -1,0 +1,5 @@
+// The PIRATE CAPTAIN boss at the back of his CASTAWAY SHORE camp — the climax of
+// the shore. Flagged `boss` for the boss theme. Beating him (and clearing the rest
+// of the beach) fires the level's `captain_joins` clear cutscene, which recruits
+// him. Not invincible — a hard but winnable fight.
+EncounterDef(id: "pirate_captain", enemies: ["pirate_captain"], boss: true)

@@ -18,5 +18,8 @@ Meta(
     starting_party: ["swordsman"],
     // Levels in progression order (each unlocks the next). Index-sensitive:
     // screen neighbour links and auto-advance step through this order.
-    levels: ["greenwood", "stonepass", "travellersend", "demonfortress", "charreddepths", "demonfacility"],
+    // Chapter 1: greenwood … demonfacility (the DEMON KING ends chapter 1).
+    // Chapter 2: castawayshore — where the party washes up after being flung to
+    // the surface. Chapter is a per-level field; the map shows one chapter at a time.
+    levels: ["greenwood", "stonepass", "travellersend", "demonfortress", "charreddepths", "demonfacility", "castawayshore"],
 )

@@ -1,0 +1,3 @@
+// A GRUNT and a GUNNER working together: the grunt closes while the gunner
+// plinks from behind it.
+EncounterDef(id: "pirate_ambush", enemies: ["pirate_grunt", "pirate_gunner"])

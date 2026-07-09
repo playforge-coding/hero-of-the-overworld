@@ -60,8 +60,11 @@ menus, up/down in battle. See
 Press Enter on the title to reach the **world map**, pick a level, and enter it. You walk
 the tiled overworld freely; roaming enemies chase you inside an aggro radius and start a
 **battle** on contact — but you move faster than they do, so encounters can be dodged. In
-battle each living party member chooses **ATTACK**, a **SKILL**, an **ITEM**, or
-**DEFEND**, then everyone acts in speed order. Hits can **miss** or land a **critical**
+battle your **active line-up of up to three heroes** each chooses **ATTACK**, a
+**SKILL**, an **ITEM**, or **DEFEND**, then everyone acts in speed order. The roster
+can grow past three as you recruit (a **cutscene** ally, or even a **boss you beat and
+then recruit**); extra heroes wait in reserve and swap into the line-up from the party
+menu. Hits can **miss** or land a **critical**
 for extra damage, and each hero's **weapon and armor** tilt those odds. **Items** are
 consumables — potions, bombs, stat tonics — spent from a shared stash, bought at shops or
 dropped by beaten foes. Walk up to a **shopkeeper** on the map to step into a store and
@@ -164,9 +167,11 @@ crumbling once none remain — an optional **mimicry** marker that lets a mimic 
 the party's last move, wearing that hero's shape as it strikes, and an optional
 **invincible** flag for scripted, unwinnable bosses like the Demon King), **encounters**
 (named groups of enemies, optionally a **boss** fight or one whose **defeat** plays a
-cutscene and advances the story **chapter**), **levels** (a map marker, a **chapter**, and a
-set of connected ASCII-tile screens with enemy spawns, shop
-entrances, **treasure chests**, and disguised **mimics**), **shops** (a keeper, a facing/exit
+cutscene and advances the story **chapter**), **levels** (a map marker, a **chapter**,
+per-level **ground / wall / tree** textures to re-theme a region — sand and coconut
+palms for a beach, dark brick for a keep — and a set of connected ASCII-tile screens
+with enemy spawns, shop entrances, **treasure chests**, and disguised **mimics**),
+**shops** (a keeper, a facing/exit
 wall, and priced wares — gear or items), and **cutscenes** (scripted dialogue lines and
 recruits).
 

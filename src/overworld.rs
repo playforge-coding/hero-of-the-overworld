@@ -263,6 +263,7 @@ struct TileTex {
     /// Grass, drawn over the ground for `G` grass-patch tiles.
     grass: TextureHandle,
     water: TextureHandle,
+    /// Object drawn on `T` tiles (per-level: forest tree / coconut palm).
     tree: TextureHandle,
     rock: TextureHandle,
 }
@@ -311,7 +312,7 @@ impl Overworld {
             wall: cache.get(r, level.wall.as_deref().unwrap_or("barricade")),
             grass: cache.get(r, "grass"),
             water: cache.get(r, "water"),
-            tree: cache.get(r, "tree"),
+            tree: cache.get(r, level.tree.as_deref().unwrap_or("tree")),
             rock: cache.get(r, "rock"),
         };
 

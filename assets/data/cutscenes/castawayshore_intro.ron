@@ -1,0 +1,21 @@
+// Plays on first entry to the CASTAWAY SHORE (its `intro_cutscene`) — the opening
+// of CHAPTER 2. The party wakes where the DEMON KING's blow dropped them: a
+// sun-blasted beach an ocean away from anything they knew, and it is already
+// someone else's turf.
+CutsceneDef(
+    id: "castawayshore_intro",
+    steps: [
+        Say(speaker: None, portrait: None,
+            text: "SALT WIND. THE HISS OF SURF. THE PARTY WAKES FACE-DOWN ON HOT SAND, AN OCEAN WHERE THE WORLD SHOULD BE."),
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "A SHORE. WE'RE ALIVE. WHATEVER HE DID - HE THREW US CLEAR ACROSS THE SEA, NOT INTO IT."),
+        Say(speaker: Some("ELARA"), portrait: Some("mage"),
+            text: "PALMS. WHITE SAND. NONE OF IT ON ANY MAP I'VE READ. WE ARE VERY FAR FROM HOME."),
+        Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+            text: "AND NOT ALONE. LOOK - BARRICADES ABOVE THE TIDELINE. CAMPS. THIS COAST IS HELD."),
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "PIRATES. WELL - IF THEY KNOW THESE WATERS, THEY KNOW THE WAY BACK. WE GO THROUGH THEM."),
+        Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+            text: "MIND THE ONES WITH FLINTLOCKS - THEY'LL PLINK YOU FROM ACROSS THE SAND. CLOSE THE GAP AND THEY FOLD."),
+    ],
+)

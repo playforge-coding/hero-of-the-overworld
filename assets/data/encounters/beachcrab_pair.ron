@@ -1,0 +1,2 @@
+// A brace of BEACH CRABS skittering the tideline — the shore's fodder.
+EncounterDef(id: "beachcrab_pair", enemies: ["beach_crab", "beach_crab"])

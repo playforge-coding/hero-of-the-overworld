@@ -804,7 +804,9 @@ impl Game {
         let (cx, cy) = (cur.node.0 as i32, cur.node.1 as i32);
         let mut best: Option<(i32, usize)> = None;
         for (i, lv) in levels.iter().enumerate() {
-            if i == self.map_cursor {
+            // Only navigate between the current chapter's markers (the only ones the
+            // map draws).
+            if i == self.map_cursor || lv.chapter != self.chapter {
                 continue;
             }
             let dx = lv.node.0 as i32 - cx;
@@ -853,10 +855,18 @@ impl Game {
                 cleared_name = Some(self.reg.data.levels[self.current_level].name.clone());
                 // Auto-advance: beating the last foe carries the party straight into
                 // the next region (once the report and any clear cutscene finish),
-                // rather than dropping them back on the map. The last level has no
-                // next, so it simply ends the clear on the (now-won) map.
+                // rather than dropping them back on the map. Only within the same
+                // chapter — a chapter boundary is crossed by story (a boss), not by
+                // clearing — so the last region of a chapter simply ends the clear.
+                let cur_chapter = self.reg.data.levels[self.current_level].chapter;
                 let next = self.current_level + 1;
-                if next < self.reg.data.levels.len() {
+                if self
+                    .reg
+                    .data
+                    .levels
+                    .get(next)
+                    .is_some_and(|l| l.chapter == cur_chapter)
+                {
                     self.pending_advance = Some(next);
                     next_name = Some(self.reg.data.levels[next].name.clone());
                 }
@@ -878,7 +888,8 @@ impl Game {
                     lines.push(format!("{name} CLEARED!"));
                     match &next_name {
                         Some(next) => lines.push(format!("ONWARD TO {next}")),
-                        None => lines.push("THE OVERWORLD IS SAVED!".to_string()),
+                        // The last built region of a chapter: the tale pauses here.
+                        None => lines.push("TO BE CONTINUED...".to_string()),
                     }
                 }
                 lines.push(format!("GAINED {xp} XP  {gold} GOLD"));
@@ -933,23 +944,38 @@ impl Game {
                 if advances_chapter {
                     // The unwinnable boss hurls the party back to the surface and the
                     // story turns over: leave the level (they land far from every
-                    // region they'd unlocked), tick the chapter (which re-gates the
-                    // world map — see `unlocked`), and drop straight into the launch
-                    // cutscene, which gives way to the (now chapter-2) map.
+                    // region they'd unlocked) and tick the chapter, which re-gates the
+                    // world map (see `unlocked`).
                     self.chapter += 1;
                     self.level = None;
                     self.pending_advance = None;
-                    self.map_cursor = self
+                    // Where the party washes up: the first region of the new chapter,
+                    // if one is built. They walk straight into it once the launch
+                    // cutscene ends; a chapter with no regions yet lands them on the
+                    // (region-less) map — a "to be continued" cliffhanger.
+                    let landing = self
                         .reg
                         .data
                         .levels
                         .iter()
-                        .position(|l| l.chapter == self.chapter)
-                        .unwrap_or(0);
-                    let scene = defeat_cutscene
-                        .as_deref()
-                        .and_then(|id| self.build_cutscene(id, renderer))
-                        .map_or(Scene::Map, Scene::Cutscene);
+                        .position(|l| l.chapter == self.chapter);
+                    self.map_cursor = landing.unwrap_or(0);
+                    // Play the launch cutscene first; after it, `after_clear_sequence`
+                    // carries the party into the landing region (whose own intro then
+                    // plays) via `pending_advance`.
+                    if let Some(id) = &defeat_cutscene {
+                        if let Some(cs) = self.build_cutscene(id, renderer) {
+                            self.pending_advance = landing;
+                            self.save();
+                            return Scene::Cutscene(cs);
+                        }
+                    }
+                    // No launch cutscene: step straight into the landing region, or
+                    // land on the map if the new chapter has none yet.
+                    let scene = match landing {
+                        Some(idx) => self.enter_level(idx, renderer),
+                        None => Scene::Map,
+                    };
                     self.save();
                     return scene;
                 }
@@ -1067,8 +1093,17 @@ impl Game {
             1.0,
             color::rgb(220, 225, 200),
         );
-        let cleared_count = self.cleared.iter().filter(|&&c| c).count();
-        let prog = format!("CLEARED {}/{}", cleared_count, self.reg.data.levels.len());
+        // Progress is scoped to the current chapter (the only regions on the map).
+        let (cleared_count, chapter_total) = self.reg.data.levels.iter().enumerate().fold(
+            (0usize, 0usize),
+            |(done, total), (i, lv)| {
+                if lv.chapter != self.chapter {
+                    return (done, total);
+                }
+                (done + self.cleared[i] as usize, total + 1)
+            },
+        );
+        let prog = format!("CLEARED {cleared_count}/{chapter_total}");
         let pw = r.text_width(&prog, 1.0);
         r.draw_text(
             &prog,
@@ -1091,21 +1126,27 @@ impl Game {
 
         let levels = &self.reg.data.levels;
 
-        // Faint path connecting the levels in order (a travel route).
+        // The map only shows the party's **current chapter** — earlier chapters are
+        // leagues behind them, later ones not yet reached. Faint path connecting this
+        // chapter's regions in order (a travel route); links across a chapter boundary
+        // are skipped so each chapter reads as its own map.
         for pair in levels.windows(2) {
+            if pair[0].chapter != self.chapter || pair[1].chapter != self.chapter {
+                continue;
+            }
             let a = node_px(pair[0].node);
             let b = node_px(pair[1].node);
             draw_dotted_line(r, a, b, color::rgba(90, 110, 130, 150));
         }
 
-        // Level markers.
+        // Level markers (current chapter only).
         for (i, lv) in levels.iter().enumerate() {
+            if lv.chapter != self.chapter {
+                continue;
+            }
             let p = node_px(lv.node);
             let selected = i == self.map_cursor;
-            // A region from another chapter (a cleared chapter-1 level once the
-            // party has been flung into chapter 2) reads as locked/out-of-reach,
-            // never as a green "cleared" marker — the party has moved on from it.
-            let done = lv.chapter == self.chapter && self.cleared[i];
+            let done = self.cleared[i];
             let unlocked = self.unlocked(i);
             if selected {
                 r.draw_rect_outline(

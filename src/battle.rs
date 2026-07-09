@@ -317,6 +317,13 @@ const CHARGE_END: f32 = 1.1;
 /// The default lunge's end-of-action time (unchanged classic timing).
 const LUNGE_END: f32 = 0.9;
 
+/// Crowd attacks: a swarm of allies floods the screen, the blow landing at peak
+/// density, then they clear out — the grandest, longest beat (a summoned finale).
+const CROWD_IMPACT: f32 = 0.55;
+const CROWD_END: f32 = 1.25;
+/// How many allies fill the screen during a [`AttackAnim::Crowd`] swarm.
+const CROWD_SIZE: usize = 14;
+
 /// How often a [`Random`](EnemyAi::Random) enemy reaches for one of its skills on
 /// its turn (rolled fresh each turn); the rest of the time it throws a plain
 /// attack. High enough that a skilled foe leads with its moves, not its fists.
@@ -616,6 +623,10 @@ pub struct Battle {
     /// [`AttackAnim::Projectile`], so a projectile in flight can be drawn without
     /// touching the texture cache mid-frame.
     projectile_textures: HashMap<String, ProjTex>,
+    /// Crowd art (keyed by texture key) preloaded from every skill's
+    /// [`AttackAnim::Crowd`], so the swarm can be drawn without touching the cache
+    /// mid-frame. Just the handle — the crowd draws fixed 16px walk frames.
+    crowd_textures: HashMap<String, TextureHandle>,
     /// The last skill a **hero** cast this battle, as `(battler index, skill id)` —
     /// the move a [mimic](MimicryDef) apes (and whose caster's shape it borrows).
     /// Recorded whenever a hero resolves a skill; `None` until the party casts one.
@@ -632,8 +643,12 @@ impl Battle {
     ) -> Self {
         let mut battlers = Vec::new();
 
-        // Heroes on the left.
-        let living: Vec<usize> = (0..party.members.len())
+        // Heroes on the left: only the **active line-up** — the first
+        // `ACTIVE_PARTY` members in roster order — fight; the rest are reserves
+        // swapped in from the overworld party menu. Among the active line-up, the
+        // living take the field (a downed one sits the fight out).
+        let active = party.members.len().min(crate::party::ACTIVE_PARTY);
+        let living: Vec<usize> = (0..active)
             .filter(|&i| party.members[i].is_alive())
             .collect();
         for (slot, &pi) in living.iter().enumerate() {
@@ -761,12 +776,23 @@ impl Battle {
             }
         }
 
+        // Preload any crowd art the same way (a swarm's walk sheet), once.
+        let mut crowd_textures = HashMap::new();
+        for skill in &reg.data.skills {
+            if let AttackAnim::Crowd { texture } = &skill.anim {
+                crowd_textures
+                    .entry(texture.clone())
+                    .or_insert_with(|| cache.get(renderer, texture));
+            }
+        }
+
         Battle {
             battlers,
             state: State::Intro(0.6),
             turn_order: Vec::new(),
             turn_idx: 0,
             encounter_name: name,
+            crowd_textures,
             items: party.items.clone(),
             projectile_textures,
             last_hero_skill: None,
@@ -1675,6 +1701,21 @@ impl Battle {
                 let drawn = band_lo + (raw - band_lo).rem_euclid(band_w);
                 Vec2::new(drawn - home_x, 0.0)
             }
+            AttackAnim::Crowd { .. } => {
+                // The captain holds his post and gives the order — a small backward
+                // brace as he calls the crowd in; his allies do the charging.
+                let brace = 4.0 * FIELD_SCALE;
+                let x = if t < 0.2 {
+                    -dir * brace * (t / 0.2)
+                } else if t < 0.9 {
+                    -dir * brace
+                } else if t < end_t {
+                    -dir * brace * (1.0 - (t - 0.9) / (end_t - 0.9))
+                } else {
+                    0.0
+                };
+                Vec2::new(x, 0.0)
+            }
         }
     }
 
@@ -2324,6 +2365,12 @@ impl Battle {
                         );
                     }
                 }
+                // A crowd attack floods the field with the caller's allies.
+                if let AttackAnim::Crowd { texture } = &exec.anim {
+                    if let Some(&tex) = self.crowd_textures.get(texture) {
+                        Self::draw_crowd(r, tex, exec.elapsed);
+                    }
+                }
                 if !exec.banner.is_empty() {
                     draw_banner(r, &exec.banner);
                 }
@@ -2362,6 +2409,51 @@ impl Battle {
         // DEV-ONLY hint for the hidden instant-win hotkey (compiled out of release).
         #[cfg(debug_assertions)]
         r.draw_text("DEV: TAB WINS", 4.0, 4.0, 1.0, color::rgb(120, 130, 150));
+    }
+
+    /// Draw an [`AttackAnim::Crowd`] swarm: allies swell in to flood the whole
+    /// screen at peak density, then clear out, drawn from the sheet's front-facing
+    /// walk row. `t` is the action's elapsed time; scatter is deterministic (no RNG
+    /// in a draw). Purely decorative — the damage is applied by `apply_action`.
+    fn draw_crowd(r: &mut Renderer, tex: TextureHandle, t: f32) {
+        let s = (t / CROWD_END).clamp(0.0, 1.0);
+        // Fade/scale envelope: swell in, hold the crowded peak, clear out.
+        let env = if s < 0.25 {
+            s / 0.25
+        } else if s > 0.75 {
+            ((1.0 - s) / 0.25).max(0.0)
+        } else {
+            1.0
+        };
+        let w = virtual_w();
+        // Cycle the four walk frames for a running mob.
+        let frame = (t * 12.0) as i32;
+        for i in 0..CROWD_SIZE {
+            // Deterministic scatter across the whole field (no RNG in a draw).
+            let fx = ((i * 97 + 13) % 100) as f32 / 100.0;
+            let fy = ((i * 57 + 29) % 100) as f32 / 100.0;
+            let x = 16.0 + fx * (w - 32.0) + (s - 0.5) * 12.0;
+            let bob = (t * 9.0 + i as f32).sin() * 2.0;
+            let y = 52.0 + fy * 98.0 + bob;
+            let col = (frame + i as i32).rem_euclid(4) as f32;
+            let sz = 26.0 * (0.6 + 0.4 * env);
+            let a = (env.clamp(0.0, 1.0) * 255.0) as u8;
+            let shadow = (a as u32 * 90 / 255) as u8;
+            r.draw_rect(
+                x - sz * 0.28,
+                y - 2.0,
+                sz * 0.56,
+                3.0,
+                color::rgba(0, 0, 0, shadow),
+            );
+            r.draw_sprite(
+                tex,
+                [x - sz / 2.0, y - sz, sz, sz],
+                [col * 16.0, 0.0, 16.0, 16.0],
+                false,
+                color::rgba(255, 255, 255, a),
+            );
+        }
     }
 
     fn draw_battler(&self, r: &mut Renderer, i: usize) {
@@ -2656,6 +2748,7 @@ fn anim_impact_t(anim: &AttackAnim, window_close: f32) -> f32 {
         AttackAnim::Lunge => window_close,
         AttackAnim::Projectile { .. } => PROJ_IMPACT.max(window_close),
         AttackAnim::Charge => CHARGE_IMPACT.max(window_close),
+        AttackAnim::Crowd { .. } => CROWD_IMPACT.max(window_close),
     }
 }
 
@@ -2665,6 +2758,7 @@ fn anim_end_t(anim: &AttackAnim) -> f32 {
         AttackAnim::Lunge => LUNGE_END,
         AttackAnim::Projectile { .. } => PROJ_END,
         AttackAnim::Charge => CHARGE_END,
+        AttackAnim::Crowd { .. } => CROWD_END,
     }
 }
 

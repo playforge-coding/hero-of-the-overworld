@@ -1,0 +1,11 @@
+// ALL HANDS — the CAPTAIN's ultimate: he bellows the order and his whole crew
+// boils up over the rail, flooding the field with pirates who fall on every foe at
+// once before melting back to the ship. His final learned move (a `Crowd` attack —
+// a new animation type). Hits the whole enemy line hard.
+SkillDef(
+    id: "all_hands", name: "ALL HANDS",
+    description: "The captain calls up his crew - a boarding party swarms every foe at once.",
+    mp_cost: 14, power: 165, kind: Physical, target: AllEnemies,
+    unblockable: true,
+    anim: Crowd(texture: "pirate_grunt"),
+)

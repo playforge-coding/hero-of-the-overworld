@@ -134,6 +134,13 @@ pub enum AttackAnim {
     /// far edge, wrapping around the screen and back to its post — striking as it
     /// sweeps past. A mounted charge / darting sweep.
     Charge,
+    /// The attacker calls in a **crowd of allies** who flood the whole screen for a
+    /// beat and then clear out, the blow landing as they swarm — the CAPTAIN's
+    /// BROADSIDE-turned-boarding-party finale. `texture` is a 16px-frame walk sheet
+    /// (a roaming sprite, e.g. `pirate_grunt`) resolved by [`embedded_texture`]; the
+    /// crowd is drawn from its front-facing walk row. The actor holds its post and
+    /// commands — the allies do the charging.
+    Crowd { texture: String },
 }
 
 /// An action a battler can perform. "Attack" is just the built-in basic skill.
@@ -730,6 +737,11 @@ pub struct LevelDef {
     /// `dark_wall` for the keep's brickwork.
     #[serde(default)]
     pub wall: Option<String>,
+    /// Texture key for the object drawn on `T` tree tiles. Defaults to `tree` (the
+    /// forest tree); set to `coconut_tree` to line a beach with palms. Like
+    /// `ground`/`wall`, it re-themes a region without touching the tile legend.
+    #[serde(default)]
+    pub tree: Option<String>,
     pub screens: Vec<ScreenDef>,
     /// Cutscene id played the first time this level is entered.
     #[serde(default)]
@@ -1022,6 +1034,9 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         // GARETH, the mountain hermit — Roland's sheet minus the four unused
         // bottom rows (6x8: walk rows 0-3, attack rows 4-7).
         "hermit" => include_bytes!("../assets/textures/entities/playables/hermit.png"),
+        // The PIRATE CAPTAIN — fought on the CASTAWAY SHORE, then a party member.
+        // An 8x8 sheet on the playable layout (walk rows 0-3, attack rows 4-7).
+        "captain" => include_bytes!("../assets/textures/entities/playables/captain.png"),
         "demon" => include_bytes!("../assets/textures/entities/monsters/demon.png"),
         // The DEMON ELITE: the demon's sheet re-drawn in armor, same 6x8 layout.
         "demon_elite" => include_bytes!("../assets/textures/entities/monsters/demon_elite.png"),
@@ -1054,6 +1069,13 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "orc_brute" => include_bytes!("../assets/textures/entities/monsters/orc_brute.png"),
         // The BALLISTA: a siege engine tool, worked by the foes fighting beside it.
         "ballista" => include_bytes!("../assets/textures/entities/monsters/ballista.png"),
+        // CHAPTER 2 shore denizens: a hardier beach crab (mountain-crab layout — a
+        // 3x1 scuttle row) and the PIRATE grunts and gunners that hold the coast.
+        // The pirate sheets share the hermit's layout (walk rows 0-3, attack rows
+        // 4-7), just 5 columns wide.
+        "beach_crab" => include_bytes!("../assets/textures/entities/monsters/beach_crab.png"),
+        "pirate_grunt" => include_bytes!("../assets/textures/entities/monsters/pirate_grunt.png"),
+        "pirate_gunner" => include_bytes!("../assets/textures/entities/monsters/pirate_gunner.png"),
         "starter_sword" => include_bytes!("../assets/textures/items/starter_sword.png"),
         "starter_gear" => include_bytes!("../assets/textures/items/starter_gear.png"),
         // Generic pouch icon shared by consumable items until they get bespoke art.
@@ -1064,9 +1086,13 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "arrow" => include_bytes!("../assets/textures/entities/animation_helpers/arrow.png"),
         // The ballista's loosed bolt.
         "bolt" => include_bytes!("../assets/textures/entities/animation_helpers/bolt.png"),
+        // The pirate gunners' lead shot.
+        "bullet" => include_bytes!("../assets/textures/entities/animation_helpers/bullet.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
         "water" => include_bytes!("../assets/textures/tiles/water.png"),
         "tree" => include_bytes!("../assets/textures/tiles/tree.png"),
+        // A beach's coconut palm — a per-level `tree` override for the shore.
+        "coconut_tree" => include_bytes!("../assets/textures/tiles/coconut_tree.png"),
         "rock" => include_bytes!("../assets/textures/tiles/rock.png"),
         "barricade" => include_bytes!("../assets/textures/tiles/barricade.png"),
         // Shop interior: a warm wood plank floor.
@@ -1078,6 +1104,8 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "dark_wall" => include_bytes!("../assets/textures/tiles/dark_wall.png"),
         // Scorched flagstones of the UNDERWORLD's CHARRED DEPTHS.
         "charred_stone" => include_bytes!("../assets/textures/tiles/charred_stone.png"),
+        // CHAPTER 2's shore: pale beach sand.
+        "sand" => include_bytes!("../assets/textures/tiles/sand.png"),
         _ => return None,
     })
 }
