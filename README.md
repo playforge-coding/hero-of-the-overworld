@@ -12,8 +12,9 @@ turn-based battles — then watch a scripted cutscene recruit a new party member
   (native + web)
 - **Content:** a plain-text [RON](https://github.com/ron-rs/ron) data file — add heroes,
   enemies, skills, items, levels, shops, and cutscenes without touching engine code
-- **Saves:** progress persists automatically in a small custom binary format — a
-  file (via [`dirs`](https://crates.io/crates/dirs)) natively, IndexedDB on the web
+- **Saves:** progress autosaves into one of **three save slots** (pick or start a
+  playthrough on the save-select menu) in a small custom binary format — a file per
+  slot (via [`dirs`](https://crates.io/crates/dirs)) natively, IndexedDB on the web
 - **Tests:** fast data/logic tests plus a real end-to-end suite that drives the actual game
   window with [`rustautogui`](https://crates.io/crates/rustautogui) (keyboard + screenshots +
   template matching)
@@ -96,10 +97,10 @@ the window, so game code never deals with real pixels or DPI.
 | [`src/overworld.rs`](src/overworld.rs) | tile-mapped levels: screens, walking, camera, roaming enemies, chests & mimics, townsfolk & houses |
 | [`src/battle.rs`](src/battle.rs) | the turn-based battle scene (commands → AI → resolve) |
 | [`src/shop.rs`](src/shop.rs) | the shop interior scene: walk-in store + buy-and-equip / buy-item UI |
-| [`src/cutscene.rs`](src/cutscene.rs) | data-driven scripted dialogue + party recruitment |
+| [`src/cutscene.rs`](src/cutscene.rs) | data-driven scripted dialogue + party recruitment, choreographed over the live map (cast actors walk, turn, exit) |
 | [`src/audio.rs`](src/audio.rs) | background music via `macroquad::audio` (native + web) |
-| [`src/save.rs`](src/save.rs) | custom binary save format + storage (native file via `dirs`, web IndexedDB) |
-| [`src/game.rs`](src/game.rs) | scene state machine (title → map → level → cutscene → battle → shop → inventory → controls → report) |
+| [`src/save.rs`](src/save.rs) | custom binary save format + per-slot storage (native file via `dirs`, web IndexedDB) |
+| [`src/game.rs`](src/game.rs) | scene state machine (title → save-select → map → level → cutscene → battle → shop → inventory → controls → report) |
 | [`src/input.rs`](src/input.rs) | logical buttons polled from the keyboard, gamepads (`gilrs` natively, the browser Gamepad API on web), and on-screen touch controls each frame; maps input sources to players |
 | [`src/app.rs`](src/app.rs) | the macroquad main loop + window config |
 
@@ -224,7 +225,7 @@ They need a display (X11 here) and the `libX11`/`libXtst` runtime libs. What the
 | --- | --- |
 | `boots_and_survives` | window + macroquad + data + textures come up without panicking |
 | `title_screen_renders_content` | the title actually renders (not a blank frame) |
-| `enter_map_then_level_via_cutscene` | title → map → intro cutscene → tiled level, each transition visibly changing the screen |
+| `enter_map_then_level_via_cutscene` | title → save-select → map → intro cutscene → tiled level, each transition visibly changing the screen |
 | `walking_into_slime_starts_battle` | walking into a roaming enemy starts a battle; hero and slime sprites are found on screen via template match |
 | `enter_shop_and_buy` | walk to the keeper → enter the shop → open the buy menu → buy an item, each step visibly changing the screen |
 

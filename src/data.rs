@@ -863,6 +863,16 @@ pub struct LevelDef {
 
 /// One step of a [`CutsceneDef`]. This enum is the extension point: new kinds of
 /// scripted moments (set a flag, move an actor, fade, …) are new variants.
+///
+/// Steps split into two kinds. **Dialogue / timed** steps hold the scene until
+/// they resolve: a [`Say`](Self::Say) waits for the player to dismiss the line, a
+/// [`Walk`](Self::Walk) waits for the actor to reach its tile, a
+/// [`Wait`](Self::Wait) counts down a beat. **Instant** steps
+/// ([`Recruit`](Self::Recruit), [`Place`](Self::Place), [`Turn`](Self::Turn),
+/// [`Leave`](Self::Leave), [`Pan`](Self::Pan)) fire the moment they are reached
+/// and the scene runs straight on to the next step. Interleaving the two is what
+/// makes a cutscene *choreographed*: actors are placed and sent walking across the
+/// **live overworld map** between (and during) the lines that narrate them.
 #[derive(Clone, Debug, Deserialize)]
 pub enum CutsceneStep {
     /// A line of dialogue. `portrait` is a character/enemy id whose sprite is
@@ -875,8 +885,41 @@ pub enum CutsceneStep {
         portrait: Option<String>,
     },
     /// Add a character to the party (no-op if already recruited). This is how
-    /// new party members join the story.
+    /// new party members join the story. Instant.
     Recruit { character: String },
+    /// Place a **choreography actor** on the current overworld screen (or snap an
+    /// already-placed one to a new spot). `actor` is a handle later steps address;
+    /// `character` is a character/enemy id whose overworld walk sprite is used;
+    /// `at` is a `(col, row)` tile. These actors are extra cast brought on for the
+    /// scene — the roaming player and townsfolk are untouched. Instant.
+    Place {
+        actor: String,
+        character: String,
+        at: (u32, u32),
+        #[serde(default)]
+        facing: Facing,
+    },
+    /// Send a placed actor walking to a `(col, row)` tile, playing its walk cycle
+    /// and turning to face the way it moves. Timed: the scene waits until the
+    /// actor arrives (a Confirm/Cancel press snaps it there). `speed` overrides the
+    /// default walking pace in pixels/second.
+    Walk {
+        actor: String,
+        to: (u32, u32),
+        #[serde(default)]
+        speed: Option<f32>,
+    },
+    /// Turn a placed actor to face a direction without moving it. Instant.
+    Turn { actor: String, facing: Facing },
+    /// Remove a choreography actor from the screen. Instant.
+    Leave { actor: String },
+    /// Glide the camera to centre a `(col, row)` tile. Instant — the pan eases in
+    /// over the following steps, so it can drift while a line is spoken; follow it
+    /// with a [`Wait`](Self::Wait) to hold on the new framing before continuing.
+    Pan { at: (u32, u32) },
+    /// Hold the scene for `secs` seconds with no dialogue — a beat for the action
+    /// to breathe. Timed (a Confirm/Cancel press skips the remainder).
+    Wait { secs: f32 },
 }
 
 /// A named, ordered script of [`CutsceneStep`]s.

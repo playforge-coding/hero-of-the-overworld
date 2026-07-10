@@ -722,6 +722,55 @@ CutsceneDef(
   from a [townsfolk](#add-townsfolk-and-houses)'s `cutscene` (a recruit-on-talk).
   Each fires only once per run.
 
+### Choreograph the map
+
+A cutscene plays out **on the live level** — the map stays on screen behind the
+dialogue box. Extra **cast actors** can be walked around it, timed against the
+lines, so a scene is a little scripted play rather than a wall of text. In this
+GREENWOOD intro a SLIME oozes across the trail while ROLAND warns of the swarm:
+
+```ron
+CutsceneDef(
+    id: "greenwood_intro",
+    steps: [
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "THE GREENWOOD SWARMS WITH SLIMES - AND A DEMON LURKS DEEP WITHIN."),
+        Place(actor: "slime", character: "slime", at: (17, 2), facing: Left),
+        Walk(actor: "slime", to: (11, 5)),          // creeps onto the trail...
+        Turn(actor: "slime", facing: Down),
+        Wait(secs: 0.4),                            // ...a beat to be noticed
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "THERE'S ONE NOW. STAY SHARP - WHERE ONE SLIME OOZES, A DOZEN FOLLOW."),
+        Walk(actor: "slime", to: (11, 9), speed: Some(40.0)),   // slips away south
+        Leave(actor: "slime"),
+    ],
+),
+```
+
+The choreography steps fall into two groups:
+
+| Step | Effect | Timing |
+|---|---|---|
+| `Place(actor, character, at: (col, row), facing?)` | Bring a cast actor on, drawn from any character/enemy's overworld sprite, at a tile. Re-placing the same `actor` snaps it. | instant |
+| `Turn(actor, facing)` | Face a placed actor `Down`/`Up`/`Left`/`Right`. | instant |
+| `Leave(actor)` | Remove a cast actor from the screen. | instant |
+| `Pan(at: (col, row))` | Ease the camera to centre a tile (a no-op on maps smaller than the screen, which stay centred). | instant — drifts under the following steps |
+| `Walk(actor, to: (col, row), speed?)` | Walk a placed actor to a tile, animating its walk cycle and turning to face the way it moves. | **waits** for arrival |
+| `Wait(secs)` | Hold the scene for a beat with no dialogue. | **waits** `secs` |
+
+- `actor` is a handle you pick, used to address the same cast member across steps;
+  `character` is the content id its sprite comes from. The roaming player and the
+  screen's own townsfolk are left untouched — cast actors are extra players
+  brought on just for the scene.
+- **Instant** steps fire the moment they're reached and the scene runs straight on.
+  **Waiting** steps (`Say`, `Walk`, `Wait`) hold until the line is dismissed, the
+  actor arrives, or the beat ends — a <kbd>Z</kbd>/<kbd>X</kbd> press skips ahead in
+  every case. Interleaving the two is the whole trick: place and walk actors between
+  (and during) the lines that narrate them.
+- Cast walks are scripted straight lines that ignore tile collision, so route them
+  over open ground (the `(col, row)` tiles are the same grid the level's
+  [maps](#add-a-level) use).
+
 ## Check your work
 
 The fast test suite parses the data file and cross-checks every reference — that
@@ -730,7 +779,9 @@ texture), enemy, encounter, texture, cutscene, shop, item, and drop id resolves,
 that shop wares and keeper placements are valid, that chest loot and mimic
 encounters resolve and sit on standable ground, that **townsfolk** name a real
 appearance / emote / cutscene (and that a recruiting NPC's scene actually adds
-them), that every **house** fits on its screen, that item effects and enemy drops
+them), that every cutscene `Recruit`/`portrait`/`Place` names a real
+character/enemy, that every **house** fits on its screen, that item effects and
+enemy drops
 point at real statuses/items at sane odds, and that every level's screens are
 linked and traversable. It also exercises level-up skill unlocks. Run it after
 editing:

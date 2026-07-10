@@ -85,10 +85,18 @@ are single-player.
 
 ### Title
 
-- **Confirm** — begin (or **CONTINUE** a saved game), opening the
-  [world map](world.md#the-world-map).
+- **Confirm** — open the [save-select menu](gameplay.md#save-slots) to pick a
+  slot to continue or start a new game in.
 - **Menu** — open the **CONTROLS** screen to
   [assign inputs to players](#assigning-inputs-to-players) for local co-op.
+
+### Save-select menu
+
+- **Move** — highlight a [save slot](gameplay.md#save-slots).
+- **Confirm** — continue the highlighted playthrough, or start a new game in an
+  empty slot.
+- **Menu** — delete the highlighted slot (asks to confirm first).
+- **Cancel** — back out to the title.
 
 ### World map
 

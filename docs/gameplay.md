@@ -10,10 +10,9 @@ roam them, and grow stronger — until every level is cleared.
 
 ## The title screen
 
-The game opens on the title. It shows your current party and their levels; press
-**Confirm** to head to the [world map](world.md#the-world-map). If you have a
-saved game the prompt reads **CONTINUE** and picks up where you left off;
-otherwise it reads **BEGIN**.
+The game opens on the title; press **Confirm** to open the **[save-select
+menu](#save-slots)**, where you pick a slot to continue or start a new
+playthrough in before heading to the [world map](world.md#the-world-map).
 
 ## The core loop
 
@@ -198,9 +197,9 @@ never marked cleared — reaching and losing to him ends the chapter instead. Se
 
 ## Saving
 
-Your progress is **saved automatically** — there's nothing to manage. The game
-writes a save after each battle, whenever you leave a level, and after a story
-cutscene, capturing:
+Your progress is **saved automatically** into the **save slot** you're playing —
+there's nothing to manage. The game writes a save after each battle, whenever you
+leave a level, and after a story cutscene, capturing:
 
 - your **party** — members, levels, XP, live HP/MP, equipped gear, the shared
   [item bag](#inventory-and-equipment), your [items](items.md) stash, and gold;
@@ -212,9 +211,22 @@ cutscene, capturing:
   a save taken mid-level puts you right back there rather than on the world map.
   (Leaving a level to the map clears this, so you resume on the map instead.)
 
-Next launch, the title offers **CONTINUE** and drops you back into that state —
-straight into the level and spot where you saved, if you were in one.
-The save lives in a small custom binary file: on desktop under your OS data
-directory (e.g. `~/.local/share/hero-of-the-overworld/save.bin` on Linux,
-`%APPDATA%` on Windows), and in the browser's **IndexedDB** for the
-[web build](getting-started.md).
+### Save slots
+
+The game keeps **three independent save slots**, so several playthroughs can run
+side by side. Pressing Enter on the title opens the **save-select** menu:
+
+- **arrows** move between the slots — each shows its lead hero and level, party
+  size, chapter, gold, and where the save was taken (a level name, or *WORLD MAP*);
+- **Enter** on a filled slot **continues** it, dropping you straight back into the
+  level and spot where you saved (or the world map, if that's where you left off);
+- **Enter** on an *empty* slot starts a **new game** there;
+- **Menu** deletes the highlighted slot (with a confirmation) to free it for a
+  fresh start;
+- **Esc** backs out to the title.
+
+Whichever slot you load or start becomes the **active** slot, and every autosave
+from then on writes to it. Each slot is a separate file: on desktop under your OS
+data directory (e.g. `~/.local/share/hero-of-the-overworld/save-0.bin` on Linux,
+`%APPDATA%` on Windows), and a per-slot entry in the browser's **IndexedDB** for
+the [web build](getting-started.md).

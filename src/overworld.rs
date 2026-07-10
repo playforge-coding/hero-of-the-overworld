@@ -167,6 +167,38 @@ struct Npc {
     gone: bool,
 }
 
+/// A pre-resolved overworld sprite handed to [`Overworld::cast_place`]. The
+/// cutscene resolves each cast member's texture **up front** (it has the renderer
+/// and cache), so placing an actor mid-scene — from the renderer-less update loop
+/// — is just a data move. Build one with [`walk_sprite_for`] + the texture cache.
+pub struct CastSprite {
+    pub walk: OverworldWalk,
+    pub tex: TextureHandle,
+    pub tint: Color,
+}
+
+/// An actor placed on the field purely to be **choreographed** during a cutscene
+/// (see [`crate::cutscene`]). Unlike an [`Npc`] it carries no interaction — just a
+/// walk sprite the director slides around the map. `target`, when set, is a tile
+/// the actor is walking toward at `speed`; on arrival it clears and the actor
+/// rests. Cast actors live on the [`Overworld`] itself (not a [`Screen`]) so a
+/// scene isn't tied to the screen the actors were spawned on.
+struct CutsceneActor {
+    /// Handle the cutscene script uses to address this actor.
+    id: String,
+    walk: OverworldWalk,
+    tex: TextureHandle,
+    tint: Color,
+    pos: Vec2,
+    facing: Facing,
+    /// Seconds spent walking, for the walk-cycle frame; `0` when at rest.
+    walk_t: f32,
+    /// Destination the actor is walking toward, if any.
+    target: Option<Vec2>,
+    /// Walking pace in pixels/second while a `target` is set.
+    speed: f32,
+}
+
 /// A decorative building stamped from the shared 6×4 house tileset at a tile
 /// origin. It draws its 24 pieces over the ground; the stone wall along its base
 /// row is made solid (see [`Tile::Building`]) so actors pass in front of it.
@@ -342,6 +374,13 @@ pub struct Overworld {
     has_foes: bool,
     player: Player,
     cam: Vec2,
+    /// Where the camera is easing toward while a cutscene directs it (see
+    /// [`cam_focus_tile`](Self::cam_focus_tile)). `None` during normal play, when
+    /// the camera simply follows the player.
+    cam_target: Option<Vec2>,
+    /// Choreography actors brought on for a cutscene (see [`CutsceneActor`]). Empty
+    /// during ordinary exploration.
+    cast: Vec<CutsceneActor>,
     /// Brief window during which contact can't trigger a fight (post-battle or
     /// just after a screen transition).
     grace: f32,
@@ -581,6 +620,8 @@ impl Overworld {
             has_foes,
             player,
             cam: Vec2::ZERO,
+            cam_target: None,
+            cast: Vec::new(),
             grace: 0.0,
             time: 0.0,
         };
@@ -945,13 +986,144 @@ impl Overworld {
         )
     }
 
+    // ---- Cutscene choreography ----------------------------------------------
+    //
+    // While a [`crate::cutscene::Cutscene`] plays it keeps the map on screen and
+    // directs it through this API: spawn cast actors, send them walking, turn
+    // them, pan the camera. The cutscene owns the clock — it calls
+    // [`cutscene_update`](Self::cutscene_update) each frame instead of the normal
+    // input-driven [`update`](Self::update), so the player and enemies hold still
+    // while the scene is choreographed on top of the live world.
+
+    /// Advance choreography-only motion: cast walking and the camera pan. Reads no
+    /// input and doesn't move the player or enemies — the cutscene director drives
+    /// everything else through the `cast_*` / `cam_*` methods.
+    pub fn cutscene_update(&mut self, dt: f32) {
+        self.time += dt;
+        for a in &mut self.cast {
+            let Some(target) = a.target else {
+                a.walk_t = 0.0;
+                continue;
+            };
+            let to = target - a.pos;
+            let step = a.speed * dt;
+            if to.length() <= step.max(0.5) {
+                a.pos = target;
+                a.target = None;
+                a.walk_t = 0.0;
+            } else {
+                a.facing = facing_of(to);
+                a.pos += to.normalize() * step;
+                a.walk_t += dt;
+            }
+        }
+        // Ease the camera toward its cutscene focus, if one is set.
+        if let Some(target) = self.cam_target {
+            self.cam += (target - self.cam) * 0.12;
+        }
+    }
+
+    /// Index of the cast actor with handle `id`, if placed.
+    fn cast_idx(&self, id: &str) -> Option<usize> {
+        self.cast.iter().position(|a| a.id == id)
+    }
+
+    /// Place (or reposition) cast actor `id` at tile `(col, row)` using a
+    /// [`CastSprite`] the cutscene resolved up front (it holds the renderer; this
+    /// runs from the input-driven update loop, which doesn't).
+    pub fn cast_place(
+        &mut self,
+        id: &str,
+        sprite: &CastSprite,
+        col: u32,
+        row: u32,
+        facing: DataFacing,
+    ) {
+        let pos = tile_center(col, row);
+        let facing = facing_from(facing);
+        if let Some(i) = self.cast_idx(id) {
+            let a = &mut self.cast[i];
+            a.walk = sprite.walk.clone();
+            a.tex = sprite.tex;
+            a.tint = sprite.tint;
+            a.pos = pos;
+            a.facing = facing;
+            a.target = None;
+            a.walk_t = 0.0;
+        } else {
+            self.cast.push(CutsceneActor {
+                id: id.to_string(),
+                walk: sprite.walk.clone(),
+                tex: sprite.tex,
+                tint: sprite.tint,
+                pos,
+                facing,
+                walk_t: 0.0,
+                target: None,
+                speed: PLAYER_SPEED,
+            });
+        }
+    }
+
+    /// Send cast actor `id` walking toward tile `(col, row)` at `speed` (defaulting
+    /// to the player's pace). No-op for an unknown handle.
+    pub fn cast_walk_to(&mut self, id: &str, col: u32, row: u32, speed: Option<f32>) {
+        if let Some(i) = self.cast_idx(id) {
+            self.cast[i].target = Some(tile_center(col, row));
+            self.cast[i].speed = speed.unwrap_or(PLAYER_SPEED).max(1.0);
+        }
+    }
+
+    /// Turn cast actor `id` to face `facing` without moving it.
+    pub fn cast_turn(&mut self, id: &str, facing: DataFacing) {
+        if let Some(i) = self.cast_idx(id) {
+            self.cast[i].facing = facing_from(facing);
+        }
+    }
+
+    /// Remove cast actor `id` from the screen.
+    pub fn cast_leave(&mut self, id: &str) {
+        self.cast.retain(|a| a.id != id);
+    }
+
+    /// True once cast actor `id` has reached its destination (or has none). An
+    /// unknown handle counts as arrived so a mistyped step can't wedge the scene.
+    pub fn cast_arrived(&self, id: &str) -> bool {
+        self.cast_idx(id)
+            .is_none_or(|i| self.cast[i].target.is_none())
+    }
+
+    /// Snap cast actor `id` to its destination immediately (used to skip a walk).
+    pub fn cast_snap(&mut self, id: &str) {
+        if let Some(i) = self.cast_idx(id) {
+            if let Some(target) = self.cast[i].target.take() {
+                self.cast[i].pos = target;
+                self.cast[i].walk_t = 0.0;
+            }
+        }
+    }
+
+    /// Start easing the camera to centre tile `(col, row)`. The pan plays out over
+    /// following [`cutscene_update`](Self::cutscene_update) calls.
+    pub fn cam_focus_tile(&mut self, col: u32, row: u32) {
+        let center = tile_center(col, row);
+        self.cam_target = Some(self.clamp_cam(center - Vec2::new(virtual_w(), VIRTUAL_H) * 0.5));
+    }
+
     // ---- Rendering ----------------------------------------------------------
 
     pub fn draw(&self, r: &mut Renderer) {
+        self.draw_world(r);
+        self.draw_hud(r);
+    }
+
+    /// The map and everything standing on it — tiles then depth-sorted actors —
+    /// without the exploration HUD. This is the backdrop a [`crate::cutscene`]
+    /// draws its dialogue box over, so a scene plays out on the live world.
+    pub fn draw_world(&self, r: &mut Renderer) {
         r.set_clear_color(color::rgb(24, 30, 22));
         self.draw_tiles(r);
         self.draw_actors(r);
-        self.draw_hud(r);
     }
 
     fn draw_tiles(&self, r: &mut Renderer) {
@@ -1012,6 +1184,7 @@ impl Overworld {
             Chest(usize),
             Npc(usize),
             Mimic(usize),
+            Cast(usize),
         }
         let mut items: Vec<(f32, Item)> = vec![(self.player.pos.y, Item::Player)];
         for (i, e) in self.cur().enemies.iter().enumerate() {
@@ -1035,6 +1208,9 @@ impl Overworld {
                 items.push((m.pos.y, Item::Mimic(i)));
             }
         }
+        for (i, a) in self.cast.iter().enumerate() {
+            items.push((a.pos.y, Item::Cast(i)));
+        }
         items.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         for (_, item) in &items {
@@ -1045,8 +1221,25 @@ impl Overworld {
                 Item::Chest(i) => self.draw_chest(r, &self.cur().chests[*i]),
                 Item::Npc(i) => self.draw_npc(r, &self.cur().npcs[*i]),
                 Item::Mimic(i) => self.draw_mimic(r, &self.cur().mimics[*i]),
+                Item::Cast(i) => self.draw_cast(r, &self.cast[*i]),
             }
         }
+    }
+
+    /// Draw a cutscene cast actor: its directional walk sprite at feet-position,
+    /// cycling while it walks and resting on frame 0 when still.
+    fn draw_cast(&self, r: &mut Renderer, a: &CutsceneActor) {
+        let src = walk_src(&a.walk, a.facing, a.walk_t);
+        self.blit_sprite(
+            r,
+            a.tex,
+            a.pos,
+            a.walk.draw_w,
+            a.walk.draw_h,
+            src,
+            false,
+            a.tint,
+        );
     }
 
     /// Draw the treasure-chest prop at feet-position `pos` with `tint`: a soft
@@ -1527,6 +1720,32 @@ pub(crate) fn leader_walk(reg: &Registry, party: &Party) -> OverworldWalk {
     reg.character(&leader.def_id)
         .and_then(|c| c.overworld.clone())
         .unwrap_or_else(|| fallback_walk(&leader.sprite))
+}
+
+/// Resolve the overworld walk sprite and tint for any character **or** enemy id,
+/// for cutscene choreography ([`Overworld::cast_place`]). Uses the entity's
+/// dedicated `overworld` art, or synthesizes one from its battle sprite so even a
+/// battler with no map art can be walked around. `None` for an unknown id.
+pub(crate) fn walk_sprite_for(reg: &Registry, id: &str) -> Option<(OverworldWalk, Color)> {
+    let tint_of = |t: Option<(u8, u8, u8)>| {
+        t.map(|(r, g, b)| color::rgb(r, g, b))
+            .unwrap_or(color::WHITE)
+    };
+    if let Some(c) = reg.character(id) {
+        let walk = c
+            .overworld
+            .clone()
+            .unwrap_or_else(|| fallback_walk(&c.sprite));
+        return Some((walk, tint_of(c.sprite.tint)));
+    }
+    if let Some(e) = reg.enemy(id) {
+        let walk = e
+            .overworld
+            .clone()
+            .unwrap_or_else(|| fallback_walk(&e.sprite));
+        return Some((walk, tint_of(e.sprite.tint)));
+    }
+    None
 }
 
 /// Build a serviceable overworld walk sprite from a battle sprite when a

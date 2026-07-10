@@ -21,6 +21,11 @@ const MAGIC: [u8; 4] = *b"HOTO";
 /// versions rather than misreading them.
 const VERSION: u16 = 2;
 
+/// How many independent save slots the player can keep. Each is a wholly separate
+/// playthrough; the game autosaves into whichever slot is active (see
+/// [`Game`](crate::game::Game)). Slots are addressed by index `0..SLOTS`.
+pub const SLOTS: usize = 3;
+
 /// One party member's mutable, save-worthy state. The immutable bits (name,
 /// sprite, known skills) are rebuilt from the registry via `def_id` on load, so
 /// only what actually changes during play is stored.
@@ -493,43 +498,45 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
 
 // ---- Platform storage -------------------------------------------------------
 
-/// Load and decode the saved game, or `None` if there is no (valid) save.
-pub fn load() -> Option<SaveData> {
-    let bytes = storage::read()?;
+/// Load and decode the game saved in `slot`, or `None` if that slot is empty or
+/// holds an invalid save. Slots are `0..SLOTS`.
+pub fn load(slot: usize) -> Option<SaveData> {
+    let bytes = storage::read(slot)?;
     from_bytes(&bytes)
 }
 
-/// Encode and persist `data`. Best-effort: failures are logged, never fatal —
-/// losing a save must not crash the game.
-pub fn store(data: &SaveData) {
-    storage::write(&to_bytes(data));
+/// Encode and persist `data` into `slot`. Best-effort: failures are logged, never
+/// fatal — losing a save must not crash the game.
+pub fn store(slot: usize, data: &SaveData) {
+    storage::write(slot, &to_bytes(data));
 }
 
-/// Erase any existing save (used when starting a brand-new game).
-pub fn clear() {
-    storage::remove();
+/// Erase the save in `slot` (used to free it for a new game).
+pub fn clear(slot: usize) {
+    storage::remove(slot);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 mod storage {
     use std::path::PathBuf;
 
-    /// `<data_dir>/hero-of-the-overworld/save.bin`, e.g. `~/.local/share/...`
-    /// on Linux or `%APPDATA%\...` on Windows.
-    fn path() -> Option<PathBuf> {
+    /// `<data_dir>/hero-of-the-overworld/save-<slot>.bin`, e.g. `~/.local/share/...`
+    /// on Linux or `%APPDATA%\...` on Windows. Each slot is its own file, so the
+    /// slots are wholly independent playthroughs.
+    fn path(slot: usize) -> Option<PathBuf> {
         Some(
             dirs::data_dir()?
                 .join("hero-of-the-overworld")
-                .join("save.bin"),
+                .join(format!("save-{slot}.bin")),
         )
     }
 
-    pub fn read() -> Option<Vec<u8>> {
-        std::fs::read(path()?).ok()
+    pub fn read(slot: usize) -> Option<Vec<u8>> {
+        std::fs::read(path(slot)?).ok()
     }
 
-    pub fn write(bytes: &[u8]) {
-        let Some(p) = path() else {
+    pub fn write(slot: usize, bytes: &[u8]) {
+        let Some(p) = path(slot) else {
             log::warn!("no data dir available; not saving");
             return;
         };
@@ -544,8 +551,8 @@ mod storage {
         }
     }
 
-    pub fn remove() {
-        if let Some(p) = path() {
+    pub fn remove(slot: usize) {
+        if let Some(p) = path(slot) {
             let _ = std::fs::remove_file(p);
         }
     }
@@ -556,16 +563,17 @@ mod storage {
     use sapp_jsutils::JsObject;
 
     // Implemented in JS by the `hoto_storage` miniquad plugin (see
-    // `hoto_storage.js`), backed by IndexedDB. `load` returns whatever the plugin
-    // preloaded into its cache at startup (nil if there is no save yet).
+    // `hoto_storage.js`), backed by IndexedDB. Each function takes a slot index so
+    // the several slots persist independently. `load` returns whatever the plugin
+    // preloaded into its cache at startup (nil if that slot is empty).
     extern "C" {
-        fn hoto_storage_save(data: JsObject);
-        fn hoto_storage_load() -> JsObject;
-        fn hoto_storage_clear();
+        fn hoto_storage_save(slot: u32, data: JsObject);
+        fn hoto_storage_load(slot: u32) -> JsObject;
+        fn hoto_storage_clear(slot: u32);
     }
 
-    pub fn read() -> Option<Vec<u8>> {
-        let obj = unsafe { hoto_storage_load() };
+    pub fn read(slot: usize) -> Option<Vec<u8>> {
+        let obj = unsafe { hoto_storage_load(slot as u32) };
         if obj.is_nil() || obj.is_undefined() {
             return None;
         }
@@ -574,13 +582,13 @@ mod storage {
         (!buf.is_empty()).then_some(buf)
     }
 
-    pub fn write(bytes: &[u8]) {
+    pub fn write(slot: usize, bytes: &[u8]) {
         let obj = JsObject::buffer(bytes);
-        unsafe { hoto_storage_save(obj) };
+        unsafe { hoto_storage_save(slot as u32, obj) };
     }
 
-    pub fn remove() {
-        unsafe { hoto_storage_clear() };
+    pub fn remove(slot: usize) {
+        unsafe { hoto_storage_clear(slot as u32) };
     }
 }
 

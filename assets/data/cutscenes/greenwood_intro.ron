@@ -1,7 +1,25 @@
+// Plays on first entry to the GREENWOOD (its `intro_cutscene`) — the opening of
+// the game. A choreographed beat on the live map: ROLAND takes in the wood, and
+// as he warns of the swarm a SLIME oozes out of the eastern trees, creeps across
+// the trail, and slips away south — foreshadowing the fights ahead. The `Place`,
+// `Walk`, `Turn`, and `Leave` steps direct that cast SLIME across the field
+// between (and during) the lines that narrate it; see `src/cutscene.rs`.
 CutsceneDef(
     id: "greenwood_intro",
     steps: [
         Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
             text: "THE GREENWOOD SWARMS WITH SLIMES - AND A DEMON LURKS DEEP WITHIN."),
+        // A slime slides out of the eastern treeline and creeps onto the trail.
+        Place(actor: "slime", character: "slime", at: (17, 2), facing: Left),
+        Walk(actor: "slime", to: (11, 5)),
+        Turn(actor: "slime", facing: Down),
+        Wait(secs: 0.4),
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "THERE'S ONE NOW. STAY SHARP - WHERE ONE SLIME OOZES, A DOZEN FOLLOW CLOSE BEHIND."),
+        // It oozes off south into the undergrowth and is gone.
+        Walk(actor: "slime", to: (11, 9), speed: Some(40.0)),
+        Leave(actor: "slime"),
+        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+            text: "INTO THE WOOD, THEN. THE SOONER THAT DEMON FALLS, THE SOONER GREENWOOD BREATHES EASY."),
     ],
 )

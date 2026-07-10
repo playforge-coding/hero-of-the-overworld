@@ -26,6 +26,17 @@ use crate::util::{Rng, TextureCache};
 
 enum Scene {
     Title,
+    /// The save-slot menu, reached from the title. Pick a slot to continue a
+    /// playthrough, start a new one in an empty slot, or delete one to free it.
+    SaveSelect {
+        /// Highlighted slot, `0..save::SLOTS`.
+        cursor: usize,
+        /// A summary of each slot's save (parallel to the slots), or `None` for an
+        /// empty slot. Read once on entry so the menu doesn't hit storage per frame.
+        slots: Vec<Option<SlotSummary>>,
+        /// Whether the highlighted slot is pending a delete confirmation.
+        confirm_delete: bool,
+    },
     Map,
     Level,
     Cutscene(Cutscene),
@@ -51,6 +62,19 @@ enum Scene {
     },
 }
 
+/// A one-line digest of a save slot, shown on the save-select menu without having
+/// to fully load the playthrough: who leads the party and how strong, how far the
+/// story has come, and where the save was taken.
+struct SlotSummary {
+    lead_name: String,
+    lead_level: i32,
+    party_size: usize,
+    chapter: u32,
+    gold: i32,
+    /// The level the save sits in, or "WORLD MAP" if taken between levels.
+    place: String,
+}
+
 pub struct Game {
     reg: Registry,
     party: Party,
@@ -67,8 +91,9 @@ pub struct Game {
     /// keyed by level id. Persisted so quitting mid-level keeps the enemies you've
     /// already cleared and the treasure you've already looted.
     level_progress: HashMap<String, LevelProgress>,
-    /// Whether a save was loaded at startup (drives the title's CONTINUE prompt).
-    has_save: bool,
+    /// Which save slot (`0..save::SLOTS`) the game autosaves into. Chosen on the
+    /// save-select menu when a playthrough is loaded or started.
+    active_slot: usize,
     /// Selected level on the map screen.
     map_cursor: usize,
     /// The enemy that started the current battle, so the level can update on end.
@@ -96,7 +121,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(renderer: &mut Renderer, audio: Audio) -> Self {
+    pub fn new(_renderer: &mut Renderer, audio: Audio) -> Self {
         let reg = Registry::load();
         let party = Party::from_registry(&reg);
         let cleared = vec![false; reg.data.levels.len()];
@@ -110,7 +135,7 @@ impl Game {
             current_level: 0,
             cleared,
             level_progress: HashMap::new(),
-            has_save: false,
+            active_slot: 0,
             map_cursor: 0,
             pending: None,
             pending_advance: None,
@@ -121,10 +146,18 @@ impl Game {
             time: 0.0,
             input_assignment: InputAssignment::default(),
         };
-        // Resume a prior session if one is on disk / in the browser.
-        if let Some(data) = save::load() {
-            game.apply_save(data, renderer);
-            game.has_save = true;
+        // Load the global input mapping (shared by every slot) from whichever save
+        // has one, so the controls the player set persist even before a slot is
+        // picked. The playthrough itself isn't loaded until they choose a slot on
+        // the save-select menu.
+        for slot in 0..save::SLOTS {
+            if let Some(data) = save::load(slot) {
+                game.input_assignment = InputAssignment {
+                    keyboard: data.input_keyboard as usize,
+                    gamepads: data.input_gamepads.iter().map(|&p| p as usize).collect(),
+                };
+                break;
+            }
         }
         game
     }
@@ -133,6 +166,14 @@ impl Game {
     /// sprite, skills) is rebuilt from the registry via `def_id`; unknown members
     /// or level ids are skipped so an old save still loads against edited content.
     fn apply_save(&mut self, data: SaveData, renderer: &mut Renderer) {
+        // Full reset first, so loading a slot never inherits stray state from a
+        // previously loaded one (a lingering level, a queued cutscene, …).
+        self.level = None;
+        self.current_level = 0;
+        self.map_cursor = 0;
+        self.pending = None;
+        self.pending_advance = None;
+        self.pending_cutscene = None;
         self.party.gold = data.gold;
         self.party.members.clear();
         for sm in &data.members {
@@ -317,8 +358,7 @@ impl Game {
             chest_levels,
             mimic_levels,
         };
-        save::store(&data);
-        self.has_save = true;
+        save::store(self.active_slot, &data);
     }
 
     /// Record the active level's progress (beaten enemies, opened chests, slain
@@ -431,11 +471,11 @@ impl Game {
         self.scene = match scene {
             Scene::Title => {
                 if input.pressed(Button::Confirm) {
-                    // Resume straight into the level if the save restored one.
-                    if self.level.is_some() {
-                        Scene::Level
-                    } else {
-                        Scene::Map
+                    // Open the save-slot menu to pick a playthrough to load or start.
+                    Scene::SaveSelect {
+                        cursor: 0,
+                        slots: self.read_slot_summaries(),
+                        confirm_delete: false,
                     }
                 } else if input.pressed(Button::Menu) {
                     // Open the controls / input-mapping config.
@@ -446,18 +486,25 @@ impl Game {
                     Scene::Title
                 }
             }
+            Scene::SaveSelect {
+                cursor,
+                slots,
+                confirm_delete,
+            } => self.update_save_select(input, renderer, cursor, slots, confirm_delete),
             Scene::Map => self.update_map(input, renderer),
             Scene::Level => self.update_level(input, renderer, dt),
-            Scene::Cutscene(mut cs) => match cs.update(input, &mut self.party, &self.reg, dt) {
-                Some(CutsceneOutcome::Finished) => {
-                    // A cutscene can recruit a new member, so persist afterwards.
-                    self.save();
-                    // A clear cutscene is the tail of a clear sequence — carry on
-                    // into the next level if one is queued.
-                    self.after_clear_sequence(renderer)
+            Scene::Cutscene(mut cs) => {
+                match cs.update(input, &mut self.party, &self.reg, dt, self.level.as_mut()) {
+                    Some(CutsceneOutcome::Finished) => {
+                        // A cutscene can recruit a new member, so persist afterwards.
+                        self.save();
+                        // A clear cutscene is the tail of a clear sequence — carry on
+                        // into the next level if one is queued.
+                        self.after_clear_sequence(renderer)
+                    }
+                    None => Scene::Cutscene(cs),
                 }
-                None => Scene::Cutscene(cs),
-            },
+            }
             Scene::Battle(mut battle) => {
                 match battle.update(controllers, &mut self.rng, &self.reg, dt) {
                     Some(outcome) => {
@@ -545,6 +592,145 @@ impl Game {
                 }
             }
         };
+    }
+
+    /// Read a digest of every save slot for the save-select menu.
+    fn read_slot_summaries(&self) -> Vec<Option<SlotSummary>> {
+        (0..save::SLOTS)
+            .map(|slot| save::load(slot).map(|data| self.summarize(&data)))
+            .collect()
+    }
+
+    /// Distil a decoded save into the one-liner the save-select menu shows.
+    fn summarize(&self, data: &SaveData) -> SlotSummary {
+        let (lead_name, lead_level) = data
+            .members
+            .first()
+            .map(|m| {
+                let name = self
+                    .reg
+                    .character(&m.def_id)
+                    .map(|c| c.name.clone())
+                    .unwrap_or_else(|| m.def_id.clone());
+                (name, m.level)
+            })
+            .unwrap_or_else(|| ("—".to_string(), 0));
+        let place = match &data.location {
+            Some(loc) => self
+                .reg
+                .data
+                .levels
+                .iter()
+                .find(|l| l.id == loc.level_id)
+                .map(|l| l.name.clone())
+                .unwrap_or_else(|| loc.level_id.clone()),
+            None => "WORLD MAP".to_string(),
+        };
+        SlotSummary {
+            lead_name,
+            lead_level,
+            party_size: data.members.len(),
+            chapter: data.chapter.max(1),
+            gold: data.gold,
+            place,
+        }
+    }
+
+    /// Drive the save-select menu: move the cursor, load or start a playthrough on
+    /// Confirm, delete a slot (with a confirm step) on Menu, or back out on Cancel.
+    fn update_save_select(
+        &mut self,
+        input: &Input,
+        renderer: &mut Renderer,
+        mut cursor: usize,
+        slots: Vec<Option<SlotSummary>>,
+        confirm_delete: bool,
+    ) -> Scene {
+        // While a delete is pending, the only choices are confirm (Menu) or cancel.
+        if confirm_delete {
+            if input.pressed(Button::Menu) {
+                save::clear(cursor);
+                return Scene::SaveSelect {
+                    cursor,
+                    slots: self.read_slot_summaries(),
+                    confirm_delete: false,
+                };
+            }
+            let stay = !input.pressed(Button::Cancel);
+            return Scene::SaveSelect {
+                cursor,
+                slots,
+                confirm_delete: stay && confirm_delete,
+            };
+        }
+
+        if input.pressed(Button::Cancel) {
+            return Scene::Title;
+        }
+        if input.pressed(Button::Up) {
+            cursor = (cursor + save::SLOTS - 1) % save::SLOTS;
+        }
+        if input.pressed(Button::Down) {
+            cursor = (cursor + 1) % save::SLOTS;
+        }
+        // Menu asks to delete a non-empty slot (a confirm step guards it).
+        if input.pressed(Button::Menu) && slots.get(cursor).is_some_and(|s| s.is_some()) {
+            return Scene::SaveSelect {
+                cursor,
+                slots,
+                confirm_delete: true,
+            };
+        }
+        if input.pressed(Button::Confirm) {
+            let occupied = slots.get(cursor).is_some_and(|s| s.is_some());
+            if occupied {
+                return self.load_slot(cursor, renderer);
+            }
+            return self.start_new_game(cursor);
+        }
+        Scene::SaveSelect {
+            cursor,
+            slots,
+            confirm_delete,
+        }
+    }
+
+    /// Load the playthrough in `slot`, making it the active (autosave) slot, and
+    /// return the scene to resume in — the saved level, or the world map.
+    fn load_slot(&mut self, slot: usize, renderer: &mut Renderer) -> Scene {
+        match save::load(slot) {
+            Some(data) => {
+                self.apply_save(data, renderer);
+                self.active_slot = slot;
+                if self.level.is_some() {
+                    Scene::Level
+                } else {
+                    Scene::Map
+                }
+            }
+            // The slot emptied out from under us; fall back to a fresh game there.
+            None => self.start_new_game(slot),
+        }
+    }
+
+    /// Begin a brand-new playthrough in `slot`: reset all progress to defaults,
+    /// make it the active slot, and write the opening save so the slot reads as
+    /// occupied if the player backs out.
+    fn start_new_game(&mut self, slot: usize) -> Scene {
+        self.party = Party::from_registry(&self.reg);
+        self.cleared = vec![false; self.reg.data.levels.len()];
+        self.level_progress = HashMap::new();
+        self.played_cutscenes = HashSet::new();
+        self.pending = None;
+        self.pending_advance = None;
+        self.pending_cutscene = None;
+        self.chapter = 1;
+        self.level = None;
+        self.current_level = 0;
+        self.map_cursor = 0;
+        self.active_slot = slot;
+        self.save();
+        Scene::Map
     }
 
     fn update_map(&mut self, input: &Input, renderer: &mut Renderer) -> Scene {
@@ -1025,14 +1211,19 @@ impl Game {
 
     pub fn draw(&mut self, renderer: &mut Renderer) {
         match &mut self.scene {
-            Scene::Title => Self::draw_title(&self.party, self.time, self.has_save, renderer),
+            Scene::Title => Self::draw_title(&self.party, self.time, renderer),
+            Scene::SaveSelect {
+                cursor,
+                slots,
+                confirm_delete,
+            } => Self::draw_save_select(*cursor, slots, *confirm_delete, self.time, renderer),
             Scene::Map => self.draw_map(renderer),
             Scene::Level => {
                 if let Some(level) = &self.level {
                     level.draw(renderer);
                 }
             }
-            Scene::Cutscene(cs) => cs.draw(renderer),
+            Scene::Cutscene(cs) => cs.draw(renderer, self.level.as_ref()),
             Scene::Battle(battle) => battle.draw(renderer, &self.reg),
             Scene::Shop(shop) => shop.draw(renderer, &self.reg, &self.party),
             Scene::Inventory(inv) => inv.draw(renderer, &self.party, &self.reg),
@@ -1043,7 +1234,7 @@ impl Game {
         }
     }
 
-    fn draw_title(party: &Party, time: f32, has_save: bool, r: &mut Renderer) {
+    fn draw_title(party: &Party, time: f32, r: &mut Renderer) {
         r.set_clear_color(color::rgb(10, 10, 20));
         r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(14, 12, 26));
         r.draw_rect(0.0, 40.0, virtual_w(), 40.0, color::rgba(40, 30, 70, 255));
@@ -1086,14 +1277,9 @@ impl Game {
         }
 
         if (time * 2.0) as i32 % 2 == 0 {
-            // A resumed session says CONTINUE; a fresh one says BEGIN.
-            let prompt = if has_save {
-                "PRESS ENTER TO CONTINUE"
-            } else {
-                "PRESS ENTER TO BEGIN"
-            };
+            // Enter leads to the save-slot menu (continue a save or start anew).
             r.draw_text_centered(
-                prompt,
+                "PRESS ENTER TO PLAY",
                 virtual_w() / 2.0,
                 160.0,
                 1.0,
@@ -1109,6 +1295,133 @@ impl Game {
             1.0,
             color::rgb(110, 110, 140),
         );
+    }
+
+    /// The save-slot menu: one panel per slot showing its playthrough digest (or
+    /// "EMPTY"), the highlighted one framed. A pending delete dims the screen and
+    /// asks for confirmation.
+    fn draw_save_select(
+        cursor: usize,
+        slots: &[Option<SlotSummary>],
+        confirm_delete: bool,
+        time: f32,
+        r: &mut Renderer,
+    ) {
+        r.set_clear_color(color::rgb(10, 10, 20));
+        r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(14, 12, 26));
+        r.draw_text_centered(
+            "SELECT A SAVE",
+            virtual_w() / 2.0,
+            14.0,
+            1.4,
+            color::rgb(255, 226, 120),
+        );
+
+        let panel_x = 24.0;
+        let panel_w = virtual_w() - 48.0;
+        let panel_h = 34.0;
+        let top = 34.0;
+        let gap = 6.0;
+        for (i, slot) in slots.iter().enumerate() {
+            let y = top + i as f32 * (panel_h + gap);
+            let selected = i == cursor;
+            let bg = if selected {
+                color::rgba(30, 34, 60, 255)
+            } else {
+                color::rgba(18, 20, 36, 255)
+            };
+            r.draw_rect(panel_x, y, panel_w, panel_h, bg);
+            if selected {
+                r.draw_rect_outline(
+                    panel_x,
+                    y,
+                    panel_w,
+                    panel_h,
+                    1.0,
+                    color::rgba(120, 140, 200, 255),
+                );
+            }
+            let label = format!("SLOT {}", i + 1);
+            r.draw_text(
+                &label,
+                panel_x + 6.0,
+                y + 4.0,
+                1.0,
+                color::rgb(160, 200, 255),
+            );
+            match slot {
+                Some(s) => {
+                    r.draw_text(
+                        &format!("{} LV{}  x{}", s.lead_name, s.lead_level, s.party_size),
+                        panel_x + 6.0,
+                        y + 16.0,
+                        1.0,
+                        color::WHITE,
+                    );
+                    let right = format!("CH {}  {}G", s.chapter, s.gold);
+                    let rw = r.text_width(&right, 1.0);
+                    r.draw_text(
+                        &right,
+                        panel_x + panel_w - rw - 6.0,
+                        y + 4.0,
+                        1.0,
+                        color::rgb(150, 210, 160),
+                    );
+                    let pw = r.text_width(&s.place, 1.0);
+                    r.draw_text(
+                        &s.place,
+                        panel_x + panel_w - pw - 6.0,
+                        y + 16.0,
+                        1.0,
+                        color::rgb(180, 180, 210),
+                    );
+                }
+                None => {
+                    r.draw_text(
+                        "- EMPTY -   START A NEW GAME",
+                        panel_x + 6.0,
+                        y + 16.0,
+                        1.0,
+                        color::rgb(120, 120, 150),
+                    );
+                }
+            }
+        }
+
+        let occupied = slots.get(cursor).is_some_and(|s| s.is_some());
+        let hint = if occupied {
+            "ENTER: CONTINUE   MENU: DELETE   ESC: BACK"
+        } else {
+            "ENTER: NEW GAME   ESC: BACK"
+        };
+        r.draw_text_centered(
+            hint,
+            virtual_w() / 2.0,
+            VIRTUAL_H - 10.0,
+            1.0,
+            color::rgb(140, 140, 170),
+        );
+
+        // Delete confirmation: darken the screen and ask before wiping the slot.
+        if confirm_delete {
+            r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgba(0, 0, 0, 180));
+            r.draw_text_centered(
+                &format!("DELETE SLOT {}?", cursor + 1),
+                virtual_w() / 2.0,
+                VIRTUAL_H / 2.0 - 8.0,
+                1.4,
+                color::rgb(255, 150, 150),
+            );
+            if (time * 2.0) as i32 % 2 == 0 {
+                r.draw_text_centered(
+                    "MENU: CONFIRM   ESC: CANCEL",
+                    virtual_w() / 2.0,
+                    VIRTUAL_H / 2.0 + 10.0,
+                    1.0,
+                    color::rgb(210, 210, 180),
+                );
+            }
+        }
     }
 
     fn draw_map(&self, r: &mut Renderer) {

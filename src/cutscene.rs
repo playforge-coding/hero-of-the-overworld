@@ -1,13 +1,28 @@
-//! Cutscene playback: a scripted sequence of [`CutsceneStep`]s.
+//! Cutscene playback: a scripted sequence of [`CutsceneStep`]s that plays out
+//! **on the live overworld map**.
 //!
-//! Cutscenes are pure data (one `assets/data/cutscenes/<id>.ron` each), so adding story beats — including
-//! new party members joining — is a data edit. A `Say` step shows a dialogue
-//! box with an optional portrait and a typewriter reveal; a `Recruit` step adds
-//! a character to the party. Non-visual steps (like `Recruit`) execute the
-//! moment they are reached and the scene advances to the next line.
+//! Cutscenes are pure data (one `assets/data/cutscenes/<id>.ron` each), so adding
+//! story beats — including new party members joining — is a data edit. A `Say`
+//! step shows a dialogue box with an optional portrait and a typewriter reveal; a
+//! `Recruit` step adds a character to the party.
+//!
+//! The rest of the steps **choreograph the map underneath the dialogue**. While a
+//! cutscene runs, the [`Overworld`] it was launched from stays on screen but stops
+//! taking input: the cutscene drives it instead ([`Overworld::cutscene_update`]),
+//! placing cast actors ([`Place`](CutsceneStep::Place)), walking them across the
+//! field ([`Walk`](CutsceneStep::Walk)), turning them ([`Turn`](CutsceneStep::Turn)),
+//! panning the camera ([`Pan`](CutsceneStep::Pan)), and holding beats
+//! ([`Wait`](CutsceneStep::Wait)). Interleaving those with `Say` lines is what makes
+//! a scene *choreographed* — the movement is timed against the words that narrate
+//! it. Instant steps fire the moment they're reached; `Say`/`Walk`/`Wait` hold the
+//! scene until the player dismisses the line, the actor arrives, or the beat ends
+//! (a Confirm/Cancel press skips ahead in every case).
+
+use std::collections::HashMap;
 
 use crate::data::{CutsceneStep, Registry};
 use crate::input::{Button, Input};
+use crate::overworld::{walk_sprite_for, CastSprite, Overworld};
 use crate::party::Party;
 use crate::renderer::{color, virtual_w, Color, Renderer, TextureHandle, VIRTUAL_H};
 use crate::util::TextureCache;
@@ -32,15 +47,24 @@ pub struct Cutscene {
     steps: Vec<CutsceneStep>,
     /// Portrait for each step (only `Say` steps have one); parallel to `steps`.
     portraits: Vec<Option<Portrait>>,
+    /// Overworld walk sprites for every actor a `Place` step brings on, resolved
+    /// up front (keyed by character/enemy id) so placing one mid-scene needs no
+    /// renderer — mirroring how `portraits` are pre-resolved.
+    cast_sprites: HashMap<String, CastSprite>,
     idx: usize,
     /// Characters currently revealed of the active line.
     reveal: f32,
+    /// Elapsed time in the active timed step (a `Wait`'s countdown).
+    step_time: f32,
+    /// Whether the active timed step has been kicked off (a `Walk`'s order issued).
+    /// Reset on every advance so each step begins exactly once.
+    started: bool,
     time: f32,
 }
 
 impl Cutscene {
-    /// Build a runtime for `steps`, resolving portrait textures up front so
-    /// drawing needs no mutable access to the renderer/cache.
+    /// Build a runtime for `steps`, resolving portrait and cast-actor textures up
+    /// front so update/draw need no mutable access to the renderer/cache.
     pub fn new(
         renderer: &mut Renderer,
         cache: &mut TextureCache,
@@ -56,13 +80,29 @@ impl Cutscene {
                 _ => None,
             })
             .collect();
-        // Instant steps (e.g. a leading `Recruit`) are applied on the first
-        // update(), where the party is available.
+        // Resolve one walk sprite per distinct character named by a `Place` step.
+        let mut cast_sprites = HashMap::new();
+        for step in &steps {
+            if let CutsceneStep::Place { character, .. } = step {
+                if cast_sprites.contains_key(character) {
+                    continue;
+                }
+                if let Some((walk, tint)) = walk_sprite_for(reg, character) {
+                    let tex = cache.get(renderer, &walk.texture);
+                    cast_sprites.insert(character.clone(), CastSprite { walk, tex, tint });
+                } else {
+                    log::warn!("cutscene Place references unknown character '{character}'");
+                }
+            }
+        }
         Cutscene {
             steps,
             portraits,
+            cast_sprites,
             idx: 0,
             reveal: 0.0,
+            step_time: 0.0,
+            started: false,
             time: 0.0,
         }
     }
@@ -72,27 +112,68 @@ impl Cutscene {
         matches!(self.steps.get(self.idx), Some(CutsceneStep::Say { .. }))
     }
 
-    fn active_text(&self) -> Option<&str> {
-        match self.steps.get(self.idx) {
-            Some(CutsceneStep::Say { text, .. }) => Some(text),
-            _ => None,
-        }
+    /// Move the play-head to the next step, clearing the per-step timers so the
+    /// next `Say`/`Walk`/`Wait` starts fresh.
+    fn advance(&mut self) {
+        self.idx += 1;
+        self.reveal = 0.0;
+        self.step_time = 0.0;
+        self.started = false;
     }
 
-    /// Execute non-visual steps (e.g. `Recruit`) until the active step is a line
-    /// of dialogue or the script ends.
-    fn apply_instant_steps(&mut self, party: &mut Party, reg: &Registry) {
+    /// Execute every **instant** step at the play-head — party recruits and stage
+    /// direction (place / turn / leave / pan) — stopping at the first dialogue or
+    /// timed step (`Say`/`Walk`/`Wait`) or the end of the script.
+    fn run_instant(
+        &mut self,
+        party: &mut Party,
+        reg: &Registry,
+        mut level: Option<&mut Overworld>,
+    ) {
         while let Some(step) = self.steps.get(self.idx) {
             match step {
-                CutsceneStep::Say { .. } => break,
+                CutsceneStep::Say { .. }
+                | CutsceneStep::Walk { .. }
+                | CutsceneStep::Wait { .. } => break,
                 CutsceneStep::Recruit { character } => {
-                    let already = party.members.iter().any(|m| m.def_id == *character);
-                    if !already {
+                    if !party.members.iter().any(|m| m.def_id == *character) {
                         party.recruit(reg, character);
                     }
-                    self.idx += 1;
+                }
+                CutsceneStep::Place {
+                    actor,
+                    character,
+                    at,
+                    facing,
+                } => {
+                    if let (Some(ov), Some(spr)) =
+                        (level.as_deref_mut(), self.cast_sprites.get(character))
+                    {
+                        ov.cast_place(actor, spr, at.0, at.1, *facing);
+                    }
+                }
+                CutsceneStep::Turn { actor, facing } => {
+                    if let Some(ov) = level.as_deref_mut() {
+                        ov.cast_turn(actor, *facing);
+                    }
+                }
+                CutsceneStep::Leave { actor } => {
+                    if let Some(ov) = level.as_deref_mut() {
+                        ov.cast_leave(actor);
+                    }
+                }
+                CutsceneStep::Pan { at } => {
+                    if let Some(ov) = level.as_deref_mut() {
+                        ov.cam_focus_tile(at.0, at.1);
+                    }
                 }
             }
+            // Direct field bumps (not `advance()`) so the immutable borrow of
+            // `self.steps` held by `step` stays valid through the loop.
+            self.idx += 1;
+            self.reveal = 0.0;
+            self.step_time = 0.0;
+            self.started = false;
         }
     }
 
@@ -102,37 +183,90 @@ impl Cutscene {
         party: &mut Party,
         reg: &Registry,
         dt: f32,
+        mut level: Option<&mut Overworld>,
     ) -> Option<CutsceneOutcome> {
         self.time += dt;
-        self.apply_instant_steps(party, reg);
+        // Advance the choreographed motion (cast walking, camera pan) each frame.
+        if let Some(ov) = level.as_deref_mut() {
+            ov.cutscene_update(dt);
+        }
+
+        self.run_instant(party, reg, level.as_deref_mut());
         if self.idx >= self.steps.len() {
             return Some(CutsceneOutcome::Finished);
         }
 
-        // Active step is a Say line: reveal it, then advance on confirm/cancel.
-        self.reveal += dt * REVEAL_CPS;
-        let full = self.active_text().map(|t| t.chars().count()).unwrap_or(0) as f32;
-        if input.pressed(Button::Confirm) || input.pressed(Button::Cancel) {
-            if self.reveal < full {
-                self.reveal = full; // first press: reveal the whole line
-            } else {
-                self.idx += 1;
-                self.reveal = 0.0;
-                self.apply_instant_steps(party, reg);
-                if self.idx >= self.steps.len() {
-                    return Some(CutsceneOutcome::Finished);
+        // Kick off the active timed step once: a `Walk` issues its order here so
+        // the actor is moving by the next frame.
+        if !self.started {
+            self.started = true;
+            if let Some(CutsceneStep::Walk { actor, to, speed }) = self.steps.get(self.idx) {
+                if let Some(ov) = level.as_deref_mut() {
+                    ov.cast_walk_to(actor, to.0, to.1, *speed);
                 }
+            }
+        }
+
+        let skip = input.pressed(Button::Confirm) || input.pressed(Button::Cancel);
+        let mut advanced = false;
+        match self.steps.get(self.idx) {
+            Some(CutsceneStep::Say { text, .. }) => {
+                self.reveal += dt * REVEAL_CPS;
+                let full = text.chars().count() as f32;
+                if skip {
+                    if self.reveal < full {
+                        self.reveal = full; // first press: reveal the whole line
+                    } else {
+                        advanced = true;
+                    }
+                }
+            }
+            Some(CutsceneStep::Walk { actor, .. }) => {
+                let arrived = level
+                    .as_deref()
+                    .map(|o| o.cast_arrived(actor))
+                    .unwrap_or(true);
+                if skip && !arrived {
+                    if let Some(ov) = level.as_deref_mut() {
+                        ov.cast_snap(actor);
+                    }
+                    advanced = true;
+                } else if arrived {
+                    advanced = true;
+                }
+            }
+            Some(CutsceneStep::Wait { secs }) => {
+                self.step_time += dt;
+                if self.step_time >= *secs || skip {
+                    advanced = true;
+                }
+            }
+            _ => {}
+        }
+
+        if advanced {
+            self.advance();
+            self.run_instant(party, reg, level);
+            if self.idx >= self.steps.len() {
+                return Some(CutsceneOutcome::Finished);
             }
         }
         None
     }
 
-    pub fn draw(&self, r: &mut Renderer) {
-        r.set_clear_color(color::rgb(6, 6, 12));
-        r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(10, 10, 18));
+    /// Draw the scene: the live map as a backdrop (or a plain void if the cutscene
+    /// is playing with no level attached), then the dialogue box for a `Say` line.
+    pub fn draw(&self, r: &mut Renderer, level: Option<&Overworld>) {
+        match level {
+            Some(ov) => ov.draw_world(r),
+            None => {
+                r.set_clear_color(color::rgb(6, 6, 12));
+                r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(10, 10, 18));
+            }
+        }
 
         if !self.on_say() {
-            return;
+            return; // an action beat: pure choreography, no dialogue box.
         }
         let (speaker, text) = match self.steps.get(self.idx) {
             Some(CutsceneStep::Say { speaker, text, .. }) => (speaker.as_deref(), text.as_str()),

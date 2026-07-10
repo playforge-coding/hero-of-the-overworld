@@ -58,7 +58,9 @@ fn enter_map_then_level_via_cutscene() {
     let mut gui = autogui();
 
     let title = screenshot(&mut gui, "title");
-    press(&gui, "return"); // title -> map
+    press(&gui, "return"); // title -> save-select menu
+    sleep_ms(300);
+    press(&gui, "return"); // save-select: empty slot 1 -> new game -> map
     sleep_ms(500);
     let map = screenshot(&mut gui, "map");
     assert!(
@@ -104,7 +106,9 @@ fn walking_into_slime_starts_battle() {
     let _game = Game::launch();
     let mut gui = autogui();
 
-    press(&gui, "return"); // title -> map
+    press(&gui, "return"); // title -> save-select menu
+    sleep_ms(300);
+    press(&gui, "return"); // save-select: empty slot 1 -> new game -> map
     sleep_ms(400);
     press(&gui, "return"); // map -> intro cutscene
     sleep_ms(700);
@@ -144,8 +148,10 @@ fn enter_shop_and_buy() {
     let _game = Game::launch();
     let mut gui = autogui();
 
-    // Title -> map -> intro cutscene -> level (GREENWOOD, screen 0).
-    press(&gui, "return");
+    // Title -> save-select -> map -> intro cutscene -> level (GREENWOOD, screen 0).
+    press(&gui, "return"); // title -> save-select menu
+    sleep_ms(300);
+    press(&gui, "return"); // save-select: empty slot 1 -> new game -> map
     sleep_ms(500);
     press(&gui, "return");
     sleep_ms(700);

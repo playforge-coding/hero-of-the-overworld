@@ -678,7 +678,19 @@ fn cutscene_references_resolve() {
                     "cutscene {} portrait '{id}' is not a character or enemy",
                     cs.id
                 ),
-                CutsceneStep::Say { .. } => {}
+                // A choreography actor is drawn from a real character/enemy sprite.
+                CutsceneStep::Place { character, .. } => assert!(
+                    reg.character(character).is_some() || reg.enemy(character).is_some(),
+                    "cutscene {} places unknown character '{character}'",
+                    cs.id
+                ),
+                // The remaining steps carry no content id to validate.
+                CutsceneStep::Say { .. }
+                | CutsceneStep::Walk { .. }
+                | CutsceneStep::Turn { .. }
+                | CutsceneStep::Leave { .. }
+                | CutsceneStep::Pan { .. }
+                | CutsceneStep::Wait { .. } => {}
             }
         }
     }
