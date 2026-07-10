@@ -1315,6 +1315,10 @@ pub fn projectile_grid(key: &str) -> (u32, u32) {
 /// The embedded UI font (TrueType). Rendered with macroquad's text rasteriser.
 pub const FONT_TTF: &[u8] = include_bytes!("../assets/textures/ui/font.ttf");
 
+/// Looping title / save-select theme (Vorbis), playing on the menus before a run
+/// begins. Embedded like the other tracks and played by [`crate::audio`].
+pub const TITLE_MUSIC_OGG: &[u8] = include_bytes!("../assets/music/title.ogg");
+
 /// Looping battle theme (Vorbis). Embedded so the exact same track ships in the
 /// native binary and the wasm bundle. Played by [`crate::audio`].
 pub const BATTLE_MUSIC_OGG: &[u8] = include_bytes!("../assets/music/battle.ogg");

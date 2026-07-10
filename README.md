@@ -251,6 +251,7 @@ assets/
   textures/entities/npcs/...        # shopkeeper + other NPC sprites
   textures/tiles/...                # overworld + shop tile art
   textures/ui/font.ttf              # embedded UI font (TrueType)
+  music/title.ogg                   # looping title theme (embedded)
   music/battle.ogg                  # looping battle theme (embedded)
   music/boss.ogg                    # looping boss theme (embedded)
 src/                                # engine + game (see table above)
@@ -263,6 +264,13 @@ docs/ + mkdocs.yml                  # player-facing docs site (Zensical / Materi
 index.html                          # macroquad web page (loads hero.wasm)
 sapp_jsutils.js + hoto_storage.js   # web save glue (byte marshalling + IndexedDB)
 ```
+
+## Credits
+
+- **Sprites** — [MiniWorld Sprites](https://opengameart.org/content/miniworld-sprites)
+  by [Shade](https://opengameart.org/users/shade-1) on OpenGameArt.org (CC0).
+- **Title music** — by [bart](https://opengameart.org/users/bart) on OpenGameArt.org (CC BY 3.0).
+- **Boss music** — by [ATMANAN](https://opengameart.org/users/atmanan) on OpenGameArt.org (CC BY 4.0).
 
 ## License
 

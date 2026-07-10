@@ -34,3 +34,13 @@ Character art is stored as grids of 16×16 frames; the game slices out the walk
 rows (for moving on the overworld) and idle/attack rows (for battle) per entity,
 and the overworld tiles — grass, water, trees, and rocks — share the same 16×16
 footprint.
+
+## Music
+
+The looping background themes are from OpenGameArt.org. Thank you to their
+composers.
+
+| Track | Composer | License |
+| ----- | -------- | ------- |
+| **Title** theme (`music/title.ogg`) | [bart](https://opengameart.org/users/bart) on OpenGameArt.org | CC BY 3.0 |
+| **Boss** theme (`music/boss.ogg`) | [ATMANAN](https://opengameart.org/users/atmanan) on OpenGameArt.org | CC BY 4.0 |

@@ -11,6 +11,8 @@ use macroquad::audio::{load_sound_from_bytes, play_sound, stop_sound, PlaySoundP
 /// address across codegen units, so pointer identity can't key the lookup.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Track {
+    /// The title / save-select theme, playing on the menus before a run begins.
+    Title,
     /// The ordinary battle theme.
     Battle,
     /// The boss theme, swapped in for boss encounters.

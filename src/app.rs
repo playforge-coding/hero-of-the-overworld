@@ -4,8 +4,8 @@
 
 use macroquad::prelude::{get_frame_time, next_frame, Conf};
 
-use crate::audio::{Audio, Track};
-use crate::data::{BATTLE_MUSIC_OGG, BOSS_MUSIC_OGG, FONT_TTF};
+use crate::audio::Audio;
+use crate::data::FONT_TTF;
 use crate::game::Game;
 use crate::input::Controllers;
 use crate::renderer::{color, Renderer};
@@ -31,14 +31,18 @@ pub async fn run() {
     let _ = env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn"))
         .try_init();
 
-    // Preload the looping music tracks (async) before entering the loop.
-    let mut audio = Audio::new();
-    audio.load_music(Track::Battle, BATTLE_MUSIC_OGG).await;
-    audio.load_music(Track::Boss, BOSS_MUSIC_OGG).await;
-
     let mut renderer = Renderer::new(FONT_TTF);
-    let mut game = Game::new(&mut renderer, audio);
+    let mut game = Game::new(&mut renderer, Audio::new());
     let mut controllers = Controllers::new();
+
+    // Paint the title once before decoding any music, so the window comes up
+    // immediately instead of hanging on a black frame. Only the title theme is
+    // loaded here; the heavier battle/boss tracks decode lazily on the way into a
+    // level (below), keeping the title menus off the audio-decode critical path.
+    game.draw(&mut renderer);
+    renderer.render();
+    next_frame().await;
+    game.load_title_music().await;
 
     loop {
         // Cap dt so a stall (or a paused tab) can't teleport the simulation.
@@ -53,6 +57,13 @@ pub async fn run() {
         renderer.render();
 
         next_frame().await;
+
+        // Decode the battle/boss tracks the first time gameplay needs them, after
+        // the frame has presented so the level is already on screen rather than the
+        // player watching a black hang.
+        if game.needs_level_music() {
+            game.load_level_music().await;
+        }
     }
 }
 

@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 use crate::audio::{Audio, Track};
 use crate::battle::{Battle, BattleOutcome};
 use crate::cutscene::{Cutscene, CutsceneOutcome};
-use crate::data::{CutsceneStep, Registry};
+use crate::data::{CutsceneStep, Registry, BATTLE_MUSIC_OGG, BOSS_MUSIC_OGG, TITLE_MUSIC_OGG};
 #[cfg(debug_assertions)]
 use crate::devtools::{DevTools, DevToolsEvent};
 use crate::input::{Button, Controllers, Input, InputAssignment, TouchScheme};
@@ -115,6 +115,13 @@ pub struct Game {
     chapter: u32,
     scene: Scene,
     time: f32,
+    /// Whether the looping title theme is currently playing. Tracked so the menus
+    /// start it once and gameplay stops it once, rather than restarting each frame.
+    title_music_on: bool,
+    /// Whether the battle/boss tracks have been decoded yet. They load lazily on
+    /// first level entry (see [`needs_level_music`](Self::needs_level_music)) rather
+    /// than at startup, so the title menus aren't stalled decoding music.
+    level_music_loaded: bool,
     /// How input sources (keyboard, each pad) map to players. Edited on the input
     /// config screen, fed to [`Controllers::poll`] each frame, and persisted.
     input_assignment: InputAssignment,
@@ -144,6 +151,8 @@ impl Game {
             pending_cutscene: None,
             scene: Scene::Title,
             time: 0.0,
+            title_music_on: false,
+            level_music_loaded: false,
             input_assignment: InputAssignment::default(),
         };
         // Load the global input mapping (shared by every slot) from whichever save
@@ -592,6 +601,47 @@ impl Game {
                 }
             }
         };
+        self.sync_music();
+    }
+
+    /// Decode the looping **title** theme into the game's [`Audio`]. Kept out of
+    /// [`new`](Self::new) so the caller can paint the title once *before* this runs,
+    /// rather than showing a black window while the track decodes. The heavier
+    /// battle/boss tracks are left for [`load_level_music`](Self::load_level_music).
+    pub async fn load_title_music(&mut self) {
+        self.audio.load_music(Track::Title, TITLE_MUSIC_OGG).await;
+    }
+
+    /// Whether the battle/boss tracks still need decoding *and* the player has
+    /// reached gameplay where they'll be wanted. The app loop polls this and calls
+    /// [`load_level_music`](Self::load_level_music) so the decode happens on the
+    /// way into a level — not at startup, where it would stall the title menus.
+    pub fn needs_level_music(&self) -> bool {
+        !self.level_music_loaded && matches!(self.scene, Scene::Level | Scene::Battle(_))
+    }
+
+    /// Decode the looping battle and boss themes. Called lazily the first time the
+    /// player enters a level (see [`needs_level_music`](Self::needs_level_music)),
+    /// so their decode cost isn't paid on the title screen.
+    pub async fn load_level_music(&mut self) {
+        self.audio.load_music(Track::Battle, BATTLE_MUSIC_OGG).await;
+        self.audio.load_music(Track::Boss, BOSS_MUSIC_OGG).await;
+        self.level_music_loaded = true;
+    }
+
+    /// Keep the looping title theme in step with the scene: it plays across the
+    /// title and save-select menus and stops once a run begins (battles start
+    /// their own music). Toggled only on change so the loop isn't restarted every
+    /// frame.
+    fn sync_music(&mut self) {
+        let want_title = matches!(self.scene, Scene::Title | Scene::SaveSelect { .. });
+        if want_title && !self.title_music_on {
+            self.audio.play_music_looping(Track::Title);
+            self.title_music_on = true;
+        } else if !want_title && self.title_music_on {
+            self.audio.stop_music();
+            self.title_music_on = false;
+        }
     }
 
     /// Read a digest of every save slot for the save-select menu.
@@ -1211,7 +1261,7 @@ impl Game {
 
     pub fn draw(&mut self, renderer: &mut Renderer) {
         match &mut self.scene {
-            Scene::Title => Self::draw_title(&self.party, self.time, renderer),
+            Scene::Title => Self::draw_title(&self.reg, &mut self.cache, self.time, renderer),
             Scene::SaveSelect {
                 cursor,
                 slots,
@@ -1234,54 +1284,75 @@ impl Game {
         }
     }
 
-    fn draw_title(party: &Party, time: f32, r: &mut Renderer) {
+    /// The title screen: the five heroes struck in a sword-raised pose over a dusk
+    /// backdrop — ROLAND large in front, his four companions in a back rank — under
+    /// the game name, with the play prompt and controls hint.
+    fn draw_title(reg: &Registry, cache: &mut TextureCache, time: f32, r: &mut Renderer) {
+        let w = virtual_w();
         r.set_clear_color(color::rgb(10, 10, 20));
-        r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(14, 12, 26));
-        r.draw_rect(0.0, 40.0, virtual_w(), 40.0, color::rgba(40, 30, 70, 255));
+        r.draw_rect(0.0, 0.0, w, VIRTUAL_H, color::rgb(14, 12, 26));
+        // A dusk sky band with the party's ground standing in front of it.
+        r.draw_rect(0.0, 66.0, w, 56.0, color::rgb(34, 26, 58));
+        r.draw_rect(0.0, 120.0, w, VIRTUAL_H - 120.0, color::rgb(20, 16, 34));
 
         r.draw_text_centered(
             "HERO OF THE OVERWORLD",
-            virtual_w() / 2.0,
-            30.0,
-            1.6,
+            w / 2.0,
+            24.0,
+            1.7,
             color::rgb(255, 226, 120),
         );
-        r.draw_text_centered(
-            "a tiny extensible JRPG",
-            virtual_w() / 2.0,
-            52.0,
-            1.0,
-            color::rgb(180, 180, 210),
-        );
 
-        r.draw_text_centered(
-            "TRAVEL THE MAP. CLEAR EACH LEVEL OF DEMONS.",
-            virtual_w() / 2.0,
-            96.0,
-            1.0,
-            color::rgb(200, 220, 200),
-        );
-
-        let mut px = 60.0;
-        r.draw_text("PARTY:", px, 130.0, 1.0, color::rgb(160, 200, 255));
-        px += 46.0;
-        for m in &party.members {
-            r.draw_text(
-                &format!("{} LV{}", m.name, m.level),
-                px,
-                130.0,
-                1.0,
-                color::WHITE,
+        // All five heroes are drawn from the same sword-raised battle frame (sheet
+        // row 5, column 1): the four companions form a back rank, ROLAND stands
+        // large in front. Order matters — the leader is drawn last, over the rank.
+        let cx = w / 2.0;
+        // (character id, x-offset from centre, feet-Y, sprite height).
+        let cast: [(&str, f32, f32, f32); 5] = [
+            ("mage", -72.0, 128.0, 40.0),
+            ("hermit", -36.0, 128.0, 40.0),
+            ("captain", 36.0, 128.0, 40.0),
+            ("axeman", 72.0, 128.0, 40.0),
+            ("swordsman", 0.0, 141.0, 58.0),
+        ];
+        for (i, (id, dx, feet, h)) in cast.iter().enumerate() {
+            let Some(def) = reg.character(id) else {
+                continue;
+            };
+            let s = &def.sprite;
+            let tex = cache.get(r, &s.texture);
+            // The shared pose: row 4, column 0 of the entity's 16×16 battle sheet —
+            // weapon/arms raised (ROLAND's sword up, ELARA's hands high, …).
+            let src = [
+                0.0,
+                4.0 * s.frame_h as f32,
+                s.frame_w as f32,
+                s.frame_h as f32,
+            ];
+            // A gentle idle bob, phase-shifted per hero so the rank isn't in lockstep.
+            let bob = (time * 2.2 + i as f32 * 0.7).sin() * 1.2;
+            let x = cx + dx;
+            let tint = s
+                .tint
+                .map(|(cr, cg, cb)| color::rgb(cr, cg, cb))
+                .unwrap_or(color::WHITE);
+            // Soft shadow puddle (stays on the ground while the sprite bobs).
+            r.draw_rect(
+                x - h * 0.30,
+                feet - 2.0,
+                h * 0.60,
+                4.0,
+                color::rgba(0, 0, 0, 90),
             );
-            px += r.text_width(&format!("{} LV{} ", m.name, m.level), 1.0) + 6.0;
+            r.draw_sprite(tex, [x - h / 2.0, feet + bob - h, *h, *h], src, false, tint);
         }
 
         if (time * 2.0) as i32 % 2 == 0 {
             // Enter leads to the save-slot menu (continue a save or start anew).
             r.draw_text_centered(
                 "PRESS ENTER TO PLAY",
-                virtual_w() / 2.0,
-                160.0,
+                w / 2.0,
+                157.0,
                 1.0,
                 color::rgb(150, 150, 180),
             );
@@ -1290,8 +1361,8 @@ impl Game {
         // Always-on hint for the input/controls config (Menu key).
         r.draw_text_centered(
             "PRESS MENU (SHIFT / START) FOR CONTROLS",
-            virtual_w() / 2.0,
-            171.0,
+            w / 2.0,
+            170.0,
             1.0,
             color::rgb(110, 110, 140),
         );
