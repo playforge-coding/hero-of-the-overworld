@@ -54,6 +54,31 @@ pub fn enemy_scale(party_level: i32) -> i32 {
     100 + ENEMY_SCALE_PCT * (party_level - 1).max(0)
 }
 
+/// The enemies from an encounter that actually take the field, given who is in
+/// the active party line-up (`active_ids`, a set of member `def_id`s).
+///
+/// A foe with a [`mirrors`](EnemyDef::mirrors) target — a `clone_*` shadow-double
+/// of a specific hero — only appears when that hero is currently active, so the
+/// MIRROR MATCH reflects exactly the party you brought: one dark double per
+/// active member, and none for a hero left in reserve. Every ordinary foe (no
+/// `mirrors`) always appears, so this is the identity for all other encounters.
+/// Unknown enemy ids are kept so the caller's own lookup surfaces the error.
+pub fn active_encounter_enemies<'a>(
+    reg: &Registry,
+    enemies: &'a [String],
+    active_ids: &std::collections::HashSet<&str>,
+) -> Vec<&'a String> {
+    enemies
+        .iter()
+        .filter(
+            |eid| match reg.enemy(eid).and_then(|d| d.mirrors.as_deref()) {
+                Some(hero) => active_ids.contains(hero),
+                None => true,
+            },
+        )
+        .collect()
+}
+
 impl Stats {
     /// These base stats scaled up to `party_level` for dynamic enemy scaling
     /// (see [`enemy_scale`]). **Speed is deliberately left untouched** so the
@@ -555,6 +580,14 @@ pub struct EnemyDef {
     /// party is meant to fall. Absent (false) for every ordinary foe.
     #[serde(default)]
     pub invincible: bool,
+    /// The party-member `def_id` this foe is a **shadow-double** of (e.g. a
+    /// `clone_*` mirroring `swordsman`). When set, the enemy only takes the field
+    /// in an encounter if that hero is in the *active* line-up — so the MIRROR
+    /// MATCH fields one clone per active party member and none for a hero left in
+    /// reserve. Absent for every ordinary foe, which always appears.
+    /// See [`active_encounter_enemies`].
+    #[serde(default)]
+    pub mirrors: Option<String>,
 }
 
 /// One line of a shop's stock: an equipment id and what it costs. Buying it in

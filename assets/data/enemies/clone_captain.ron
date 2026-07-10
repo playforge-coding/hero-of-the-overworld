@@ -1,0 +1,26 @@
+EnemyDef(
+    id: "clone_captain",
+    name: "DARK CAPTAIN",
+    // The CAPTAIN's stats, to the number — a mirror of the recruited officer, not
+    // the weaker PIRATE CAPTAIN boss he was beaten as. The strongest clone by kit:
+    // heavy volleys and ALL HANDS make him the mirror match's late-game menace.
+    stats: Stats(max_hp: 104, max_mp: 20, attack: 24, defense: 15, magic: 6, speed: 14),
+    sprite: BattlerSprite(
+        texture: "captain",
+        frame_w: 16, frame_h: 16,
+        draw_w: 50.0, draw_h: 50.0,
+        faces_left: false,
+        tint: Some((150, 120, 190)),   // a shadow cast over the hero's sheet
+        idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
+        attack: AnimClip(row: 6, first_col: 0, frames: 4, fps: 12.0),
+    ),
+    // Everything the CAPTAIN can learn: MUSKET SHOT, BROADSIDE, ALL HANDS.
+    skills: ["musket_shot", "broadside", "all_hands"],
+    // The CAPTAIN fights with no equipped gear, so his double carries none either.
+    // A shadow-double of the CAPTAIN: only fields when he is active.
+    mirrors: Some("captain"),
+    ai: Random,
+    xp: 74,
+    gold: 60,
+    drops: [ItemDrop(item: "hi_potion", chance: 0.30)],
+)

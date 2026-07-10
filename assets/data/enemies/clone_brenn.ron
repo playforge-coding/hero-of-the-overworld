@@ -1,0 +1,25 @@
+EnemyDef(
+    id: "clone_brenn",
+    name: "DARK BRENN",
+    // BRENN's stats and gear, to the number — the heavy of the mirror match.
+    stats: Stats(max_hp: 138, max_mp: 18, attack: 26, defense: 16, magic: 4, speed: 9),
+    sprite: BattlerSprite(
+        texture: "axeman",
+        frame_w: 16, frame_h: 16,
+        draw_w: 50.0, draw_h: 50.0,
+        faces_left: false,
+        tint: Some((150, 120, 190)),   // a shadow cast over the hero's sheet
+        idle:   AnimClip(row: 2, first_col: 0, frames: 5, fps: 5.0),
+        attack: AnimClip(row: 4, first_col: 0, frames: 6, fps: 13.0),
+    ),
+    // Everything BRENN can learn: AXE THROW, AXE BOOMERANG, CLEAVE.
+    skills: ["axe_throw", "axe_boomerang", "cleave"],
+    weapon: Some("battle_axe"),
+    armor: Some("leather_armor"),
+    // A shadow-double of BRENN: only fields when the axeman is active.
+    mirrors: Some("axeman"),
+    ai: Random,
+    xp: 74,
+    gold: 60,
+    drops: [ItemDrop(item: "hi_potion", chance: 0.30)],
+)

@@ -16,6 +16,8 @@ EnemyDef(
     skills: ["quick_slash", "swallow_cut", "final_cut"],
     weapon: Some("scouts_edge"),
     armor: Some("scouts_cloak"),
+    // A shadow-double of GARETH: only fields when the hermit is active.
+    mirrors: Some("hermit"),
     ai: Random,
     xp: 68,
     gold: 55,

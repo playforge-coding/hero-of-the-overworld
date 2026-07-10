@@ -785,7 +785,15 @@ impl Battle {
         let name = encounter_id.to_string();
         let party_level = party.level();
         let scale = crate::data::enemy_scale(party_level);
-        for (slot, eid) in enc.enemies.iter().enumerate() {
+        // Shadow-doubles (the MIRROR MATCH clones) only field a foe for a hero in
+        // the active line-up, so the encounter reflects the party you brought.
+        // Ordinary foes carry no `mirrors` target and always appear.
+        let active_ids: std::collections::HashSet<&str> = party.members[..active]
+            .iter()
+            .map(|m| m.def_id.as_str())
+            .collect();
+        let enemies = crate::data::active_encounter_enemies(reg, &enc.enemies, &active_ids);
+        for (slot, &eid) in enemies.iter().enumerate() {
             let def = reg
                 .enemy(eid)
                 .unwrap_or_else(|| panic!("unknown enemy '{eid}'"));

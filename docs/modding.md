@@ -623,6 +623,32 @@ EnemyDef(
   **no engine change**. The mimic wears the copied hero's sprite only for the strike,
   then reverts.
 
+### Make it a shadow-double
+
+Give an enemy a `mirrors` field — the `def_id` of a party member — and it becomes a
+**shadow-double** of that hero, like the [clones](entities/clones.md) of the **mirror
+match**. A mirroring foe only takes the field in an encounter when the hero it doubles
+is in the **active line-up**; a hero left in reserve brings no double. Ordinary foes
+carry no `mirrors` and always appear, so this changes nothing for every other encounter.
+
+```ron
+EnemyDef(
+    id: "clone_roland", name: "DARK ROLAND",
+    stats: Stats( /* ...Roland's, to the number... */ ),
+    sprite: BattlerSprite( /* Roland's sheet under a violet tint */ ),
+    skills: ["power_strike", "whirlwind", "sunder"],
+    weapon: Some("iron_sword"), armor: Some("leather_armor"),
+    mirrors: Some("swordsman"),   // only fields when ROLAND (the swordsman) is active
+    ai: Random,
+    xp: 70, gold: 55,
+),
+```
+
+So a `mirror_match` encounter listing all three clones fields exactly one dark double
+per active party member — the fight reflects the party you bring, **no engine change**.
+The filtering happens when a battle begins; the encounter's `enemies` list stays the
+full set. (A test keeps each clone's stats and gear in lockstep with the hero it doubles.)
+
 ## Add a level
 
 A level is **two things**: a `levels/<id>.ron` describing the stage and its

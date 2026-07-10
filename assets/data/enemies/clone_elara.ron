@@ -15,6 +15,8 @@ EnemyDef(
     // her fellow clones. Cut her down first.
     skills: ["firebolt", "frost", "mend"],
     armor: Some("travelers_robe"),
+    // A shadow-double of ELARA: only fields when the mage is active.
+    mirrors: Some("mage"),
     ai: Random,
     xp: 68,
     gold: 55,

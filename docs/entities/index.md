@@ -67,10 +67,13 @@ from the party menu.
 | [Dark Roland](clones.md#dark-roland) | 120 | 24 | 22 | 14 | 10 | 12 | 70 XP · 55 gold | Unplaced (mirror-match boss) |
 | [Dark Elara](clones.md#dark-elara) | 78 | 60 | 10 | 9 | 26 | 13 | 68 XP · 55 gold | Unplaced (mirror-match boss) |
 | [Dark Gareth](clones.md#dark-gareth) | 94 | 30 | 20 | 11 | 8 | 21 | 68 XP · 55 gold | Unplaced (mirror-match boss) |
+| [Dark Brenn](clones.md#dark-brenn) | 138 | 18 | 26 | 16 | 4 | 9 | 74 XP · 60 gold | Unplaced (mirror-match boss) |
+| [Dark Captain](clones.md#dark-captain) | 104 | 20 | 24 | 15 | 6 | 14 | 74 XP · 60 gold | Unplaced (mirror-match boss) |
 
 The **[minotaur](minotaur.md)** miniboss is **defined but not yet placed** in any
-level, and neither are the three **[clones](clones.md)** — dark stat-mirrors of the
-party that meet you only in the **mirror-match** boss. Both are playable now through
+level, and neither are the five **[clones](clones.md)** — a dark stat-mirror of every
+recruitable hero that meet you only in the **mirror-match** boss, which fields a double
+for each **active** party member (at most three at once). Both are playable now through
 the **[developer fight menu](../modding.md#the-developer-menu-f1)**, waiting to be
 dropped into a future region.
 

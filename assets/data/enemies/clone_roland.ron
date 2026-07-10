@@ -4,8 +4,9 @@
 // hero's own battle sheet under a shadowy violet tint, so a mirror reads
 // apart from the real hero across the field. Straight stat-clones — plain
 // Random-AI foes, no special engine behaviour. Unused in any level for now:
-// they meet the party only in the `mirror_match` boss encounter, all three
-// at once. (Their stats/gear must be kept in step with the party defs above
+// they meet the party only in the `mirror_match` boss encounter — one clone
+// per *active* party member (each carries a `mirrors` target, so a hero left
+// in reserve brings no double). (Their stats/gear must be kept in step with the party defs above
 // — see the `clones_mirror_the_party` test in tests/data.rs.)
 EnemyDef(
     id: "clone_roland",
@@ -25,6 +26,8 @@ EnemyDef(
     skills: ["power_strike", "whirlwind", "sunder"],
     weapon: Some("iron_sword"),
     armor: Some("leather_armor"),
+    // A shadow-double of ROLAND: only fields when the swordsman is active.
+    mirrors: Some("swordsman"),
     ai: Random,
     xp: 70,
     gold: 55,

@@ -209,6 +209,8 @@ fn clones_mirror_the_party() {
         ("clone_roland", "swordsman"),
         ("clone_elara", "mage"),
         ("clone_gareth", "hermit"),
+        ("clone_brenn", "axeman"),
+        ("clone_captain", "captain"),
     ] {
         let clone = reg
             .enemy(clone_id)
@@ -236,18 +238,100 @@ fn clones_mirror_the_party() {
             clone.sprite.texture, hero.sprite.texture,
             "{clone_id} should wear {hero_id}'s sprite"
         );
+        // And it must point back at the hero it doubles, so the mirror match only
+        // fields it when that hero is in the active line-up.
+        assert_eq!(
+            clone.mirrors.as_deref(),
+            Some(hero_id),
+            "{clone_id} must mirror {hero_id}"
+        );
     }
 
-    // The mirror-match boss fields exactly the three clones, and is a boss fight.
+    // The mirror-match boss lists a clone for every recruitable hero (one per
+    // character def), and is a boss fight. Which of these actually take the field
+    // is filtered to the active line-up at battle start — see
+    // `mirror_match_fields_only_active_members`.
     let enc = reg
         .encounter("mirror_match")
         .expect("missing mirror_match encounter");
     assert!(enc.boss, "mirror_match should play the boss theme");
     assert_eq!(
         enc.enemies,
-        vec!["clone_roland", "clone_elara", "clone_gareth"],
-        "mirror_match should field one clone of each party member"
+        vec![
+            "clone_roland",
+            "clone_elara",
+            "clone_gareth",
+            "clone_brenn",
+            "clone_captain"
+        ],
+        "mirror_match should list one clone of each recruitable hero"
     );
+    // A clone for every character def, so any active line-up meets its mirror.
+    assert_eq!(
+        enc.enemies.len(),
+        reg.data.characters.len(),
+        "mirror_match should carry exactly one clone per recruitable character"
+    );
+}
+
+/// The mirror match is **conditional on the active line-up**: each clone only
+/// takes the field when the hero it doubles is active, so bringing a different
+/// party reflects a different set of shadow-doubles. Ordinary encounters, whose
+/// foes carry no `mirrors` target, are unaffected.
+#[test]
+fn mirror_match_fields_only_active_members() {
+    use hero_of_the_overworld::data::active_encounter_enemies;
+    use std::collections::HashSet;
+
+    let reg = registry();
+    let enc = reg.encounter("mirror_match").expect("missing mirror_match");
+
+    let fielded = |active: &HashSet<&str>| -> Vec<String> {
+        active_encounter_enemies(&reg, &enc.enemies, active)
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
+    };
+
+    // The opening trio faces its three reflections, in the encounter's order.
+    let opening: HashSet<&str> = ["swordsman", "mage", "hermit"].into_iter().collect();
+    assert_eq!(
+        fielded(&opening),
+        ["clone_roland", "clone_elara", "clone_gareth"]
+    );
+
+    // A line-up built from the later recruits reflects a different set of clones —
+    // proof the fight tracks whoever you actually bring, not a fixed roster.
+    let veterans: HashSet<&str> = ["swordsman", "axeman", "captain"].into_iter().collect();
+    assert_eq!(
+        fielded(&veterans),
+        ["clone_roland", "clone_brenn", "clone_captain"]
+    );
+
+    // Leave the mage in reserve and her dark double never appears.
+    let no_mage: HashSet<&str> = ["swordsman", "hermit"].into_iter().collect();
+    assert_eq!(fielded(&no_mage), ["clone_roland", "clone_gareth"]);
+
+    // A lone swordsman faces only his own reflection.
+    let solo: HashSet<&str> = ["swordsman"].into_iter().collect();
+    assert_eq!(fielded(&solo), ["clone_roland"]);
+
+    // An ordinary encounter (foes with no `mirrors`) is unchanged regardless of
+    // who is active — the filter is the identity for it.
+    if let Some(other) = reg.data.encounters.iter().find(|e| {
+        e.enemies
+            .iter()
+            .all(|id| reg.enemy(id).is_some_and(|d| d.mirrors.is_none()))
+    }) {
+        let empty: HashSet<&str> = HashSet::new();
+        let fielded: Vec<&String> = active_encounter_enemies(&reg, &other.enemies, &empty);
+        assert_eq!(
+            fielded.len(),
+            other.enemies.len(),
+            "ordinary encounter '{}' must be unaffected by the mirror filter",
+            other.id
+        );
+    }
 }
 
 /// The DEMON KING is the scripted, unwinnable climax of chapter 1: an invincible
