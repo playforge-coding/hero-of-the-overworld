@@ -746,7 +746,9 @@ fn cutscene_references_resolve() {
         }
     }
 
-    // Every recruit targets a real character; every portrait a real char/enemy.
+    // Every recruit targets a real character; every portrait either a real
+    // char/enemy (drawing its idle battle frame) or a dedicated dialogue bust
+    // registered under `<id>_portrait` (see `assets/textures/ui/dialogue/`).
     for cs in &reg.data.cutscenes {
         for step in &cs.steps {
             match step {
@@ -758,8 +760,10 @@ fn cutscene_references_resolve() {
                 CutsceneStep::Say {
                     portrait: Some(id), ..
                 } => assert!(
-                    reg.character(id).is_some() || reg.enemy(id).is_some(),
-                    "cutscene {} portrait '{id}' is not a character or enemy",
+                    reg.character(id).is_some()
+                        || reg.enemy(id).is_some()
+                        || embedded_texture(&format!("{id}_portrait")).is_some(),
+                    "cutscene {} portrait '{id}' is not a character/enemy or a registered dialogue portrait",
                     cs.id
                 ),
                 // A choreography actor is drawn from a real character/enemy sprite.
@@ -1601,6 +1605,15 @@ fn npcs_are_valid_and_placed() {
                     assert!(
                         reg.character(rec).is_some(),
                         "level {} screen {si} npc recruits unknown character '{rec}'",
+                        lv.id
+                    );
+                }
+                if let Some(id) = &np.portrait {
+                    assert!(
+                        reg.character(id).is_some()
+                            || reg.enemy(id).is_some()
+                            || embedded_texture(&format!("{id}_portrait")).is_some(),
+                        "level {} screen {si} npc portrait '{id}' is not a character/enemy or a registered dialogue portrait",
                         lv.id
                     );
                 }

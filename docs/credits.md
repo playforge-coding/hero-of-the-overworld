@@ -35,6 +35,24 @@ rows (for moving on the overworld) and idle/attack rows (for battle) per entity,
 and the overworld tiles — grass, water, trees, and rocks — share the same 16×16
 footprint.
 
+### Dialogue portraits
+
+The bespoke character busts shown in dialogue boxes (`assets/textures/ui/dialogue/`)
+are composited from the [Liberated Pixel Cup (LPC)](https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles)
+base assets and its many community add-ons on OpenGameArt.org, credited to:
+
+Benjamin K. Smith (BenCreating), bluecarrot16, Carlo Enrico Victoria (Nemisys),
+dalonedrau, DarkwallLKE, Durrani, Eliza Wyatt (ElizaWy), Evert, JaidynReiman,
+Johannes Sjölund (wulax), Lanea Zimmerman (Sharm), Matthew Krohn (makrohn),
+Michael Whitlock (bigbeargames), MuffinElZangano, Napsio (Vitruvian Studio),
+Nila122, Pierre Vigier (pvigier), Sander Frenken (castelonia),
+Stephen Challener (Redshrike), TheraHedwig, and Tuomo Untinen (reemax).
+
+Released under a mix of **OGA-BY 3.0**, **CC-BY-SA 3.0**, and **GPL 3.0** (per
+piece — see the `.txt` note beside each portrait for its exact sources and
+licenses). Unlike the MiniWorld sprites above, this art is **not** CC0: reusing
+it elsewhere requires carrying forward this same attribution.
+
 ## Music
 
 The looping background themes are from OpenGameArt.org. Thank you to their

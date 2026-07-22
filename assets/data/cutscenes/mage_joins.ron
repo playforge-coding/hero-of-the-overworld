@@ -6,7 +6,7 @@ CutsceneDef(
         Say(speaker: Some("ELARA"), portrait: Some("mage"),
             text: "I AM ELARA, A WANDERING MAGE. YOUR CAUSE IS MINE NOW."),
         Recruit(character: "mage"),
-        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+        Say(speaker: Some("ROLAND"), portrait: Some("knight"),
             text: "GLAD TO HAVE YOUR FIRE AT MY BACK, ELARA."),
     ],
 )

@@ -68,13 +68,20 @@ impl TextureCache {
     }
 
     pub fn get(&mut self, renderer: &mut Renderer, key: &str) -> TextureHandle {
+        self.try_get(renderer, key)
+            .unwrap_or_else(|| panic!("no embedded texture registered for key '{key}'"))
+    }
+
+    /// Like [`get`](Self::get), but returns `None` instead of panicking when no
+    /// texture is registered under `key` — lets a caller probe for an optional
+    /// asset (e.g. a dedicated dialogue portrait) with a plain fallback.
+    pub fn try_get(&mut self, renderer: &mut Renderer, key: &str) -> Option<TextureHandle> {
         if let Some(h) = self.map.get(key) {
-            return *h;
+            return Some(*h);
         }
-        let bytes = embedded_texture(key)
-            .unwrap_or_else(|| panic!("no embedded texture registered for key '{key}'"));
+        let bytes = embedded_texture(key)?;
         let handle = renderer.load_png(bytes);
         self.map.insert(key.to_string(), handle);
-        handle
+        Some(handle)
     }
 }

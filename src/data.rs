@@ -1323,6 +1323,25 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "charred_stone" => include_bytes!("../assets/textures/tiles/charred_stone.png"),
         // CHAPTER 2's shore: pale beach sand.
         "sand" => include_bytes!("../assets/textures/tiles/sand.png"),
+        // Dedicated dialogue-box portraits: standalone bust art, not a cut frame
+        // off the battle/overworld sheet. `resolve_portrait` in `cutscene.rs`
+        // prefers a `<id>_portrait` key when one is registered, falling back to
+        // the sheet's idle frame otherwise — so a portrait can be added per
+        // character without touching any code.
+        "axeman_portrait" => include_bytes!("../assets/textures/ui/dialogue/axeman.png"),
+        "captain_portrait" => include_bytes!("../assets/textures/ui/dialogue/captain.png"),
+        "demon_king_portrait" => include_bytes!("../assets/textures/ui/dialogue/demon_king.png"),
+        "farmer_portrait" => include_bytes!("../assets/textures/ui/dialogue/farmer.png"),
+        "mage_portrait" => include_bytes!("../assets/textures/ui/dialogue/mage.png"),
+        // ROLAND's dialogue bust — filed under "knight" (his look), referenced by
+        // `portrait: Some("knight")` on his `Say` steps.
+        "knight_portrait" => include_bytes!("../assets/textures/ui/dialogue/knight.png"),
+        // GARETH's dialogue bust — filed under "scout" (the king's scout),
+        // referenced by `portrait: Some("scout")` on his `Say` steps.
+        "scout_portrait" => include_bytes!("../assets/textures/ui/dialogue/scout.png"),
+        // ELARA's dialogue bust for the moment she owns her royal identity —
+        // referenced by `portrait: Some("princess")` on that one reveal line.
+        "princess_portrait" => include_bytes!("../assets/textures/ui/dialogue/princess.png"),
         _ => return None,
     })
 }

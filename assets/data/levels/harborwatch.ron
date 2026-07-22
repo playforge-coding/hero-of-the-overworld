@@ -25,6 +25,7 @@ LevelDef(
             north: Some(1),
             npcs: [
                 NpcSpawn(col: 4, row: 5, npc: "farmer", facing: Down, emote: "talk",
+                    portrait: Some("farmer"),
                     lines: ["FRESH OFF THE CAPTAIN'S SHIP? HALF THE BOATS WON'T PUT OUT SINCE THE BLACK TIDE ROSE. SOMETHING'S WRONG PAST THE REEF - AND IT'S CRAWLING CLOSER."]),
             ],
         ),
@@ -43,8 +44,10 @@ LevelDef(
             ],
             npcs: [
                 NpcSpawn(col: 8, row: 8, npc: "farmer", facing: Up, emote: "question",
+                    portrait: Some("farmer"),
                     lines: ["STRANGERS OFF A PIRATE DECK - AND THE CAPTAIN VOUCHING FOR YOU? THESE ARE STRANGE DAYS. STILL... HE NEVER LIED TO THIS TOWN."]),
                 NpcSpawn(col: 16, row: 7, npc: "farmer", facing: Down, emote: "love",
+                    portrait: Some("farmer"),
                     lines: ["THE HARVEST HELD THIS YEAR, THANK THE TIDES. IF THE ROADS WERE SAFE ENOUGH TO SELL IT, WE'D WANT FOR NOTHING."]),
                 NpcSpawn(col: 11, row: 7, npc: "axeman", facing: Down, emote: "exclaim",
                     cutscene: Some("axeman_joins"), recruits: Some("axeman")),
@@ -62,6 +65,7 @@ LevelDef(
             ],
             npcs: [
                 NpcSpawn(col: 10, row: 7, npc: "farmer", facing: Down, emote: "talk",
+                    portrait: Some("farmer"),
                     lines: ["UP PAST HERE'S THE OLD WATCHTOWER. WE KEEP A GUARD ON IT, BUT ONE AXE WON'T HOLD THE ROAD IF THEY COME IN NUMBERS. WE NEED MEN."]),
             ],
             chests: [

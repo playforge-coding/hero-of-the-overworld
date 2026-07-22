@@ -448,7 +448,8 @@ ScreenDef(
 - `emote` is a short key — `talk`, `exclaim`, `question`, or `love` — resolved to the
   `<emote>_emote` texture and bobbed over the NPC's head as a talk-to-me marker.
 - `lines` (optional) are shown one box at a time and are **repeatable** — talk again
-  and they replay. `portrait` (optional) draws a character/enemy sprite beside them.
+  and they replay. `portrait` (optional) draws a portrait beside them — see
+  [portraits](#add-a-cutscene) below for what id it can name.
 - `cutscene` (optional) is a **one-time** [scripted talk](#add-a-cutscene) played the
   first time you speak to them (tracked like any played cutscene); afterwards they
   fall back to their `lines`. Use it for a scene that should happen once.
@@ -735,14 +736,26 @@ CutsceneDef(
         Say(speaker: Some("ELARA"), portrait: Some("mage"),
             text: "I AM ELARA, A WANDERING MAGE. YOUR CAUSE IS MINE NOW."),
         Recruit(character: "mage"),
-        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+        Say(speaker: Some("ROLAND"), portrait: Some("knight"),
             text: "GLAD TO HAVE YOUR FIRE AT MY BACK, ELARA."),
     ],
 ),
 ```
 
-- `Say` shows a dialogue line; `portrait` is any character/enemy id whose sprite
-  is drawn beside the text.
+- `Say` shows a dialogue line; `portrait` names what's drawn beside the text.
+  It's looked up two ways, in order:
+    1. A **dedicated dialogue bust** — bespoke portrait art (not a cut frame off
+       the battle/overworld sheet), registered as an embedded `<id>_portrait`
+       texture (see `embedded_texture` and `assets/textures/ui/dialogue/`).
+       This is how ROLAND (`"knight"`), GARETH (`"scout"`), and ELARA's one-off
+       royal reveal (`"princess"`) get their own art instead of reusing a
+       16×16 sprite-sheet frame.
+    2. Otherwise, a real character/enemy id — its battle sprite's **idle frame**
+       is drawn instead. This is the fallback every portrait used before
+       dedicated art existed (and still works for anyone without one).
+  Either way, the art is fit — not stretched — into the portrait box, so it
+  doesn't need to be square. `cargo test` checks every `portrait` resolves one
+  of the two ways.
 - `Recruit` adds a character to the party (a no-op if they're already in it).
 - Reference the cutscene from a level's `intro_cutscene` or `clear_cutscene`, or
   from a [townsfolk](#add-townsfolk-and-houses)'s `cutscene` (a recruit-on-talk).
@@ -759,13 +772,13 @@ GREENWOOD intro a SLIME oozes across the trail while ROLAND warns of the swarm:
 CutsceneDef(
     id: "greenwood_intro",
     steps: [
-        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+        Say(speaker: Some("ROLAND"), portrait: Some("knight"),
             text: "THE GREENWOOD SWARMS WITH SLIMES - AND A DEMON LURKS DEEP WITHIN."),
         Place(actor: "slime", character: "slime", at: (17, 2), facing: Left),
         Walk(actor: "slime", to: (11, 5)),          // creeps onto the trail...
         Turn(actor: "slime", facing: Down),
         Wait(secs: 0.4),                            // ...a beat to be noticed
-        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+        Say(speaker: Some("ROLAND"), portrait: Some("knight"),
             text: "THERE'S ONE NOW. STAY SHARP - WHERE ONE SLIME OOZES, A DOZEN FOLLOW."),
         Walk(actor: "slime", to: (11, 9), speed: Some(40.0)),   // slips away south
         Leave(actor: "slime"),
@@ -805,9 +818,9 @@ texture), enemy, encounter, texture, cutscene, shop, item, and drop id resolves,
 that shop wares and keeper placements are valid, that chest loot and mimic
 encounters resolve and sit on standable ground, that **townsfolk** name a real
 appearance / emote / cutscene (and that a recruiting NPC's scene actually adds
-them), that every cutscene `Recruit`/`portrait`/`Place` names a real
-character/enemy, that every **house** fits on its screen, that item effects and
-enemy drops
+them), that every cutscene/NPC `portrait` resolves (a real character/enemy or a
+registered dialogue bust) and every `Recruit`/`Place` names a real character/enemy,
+that every **house** fits on its screen, that item effects and enemy drops
 point at real statuses/items at sane odds, and that every level's screens are
 linked and traversable. It also exercises level-up skill unlocks. Run it after
 editing:

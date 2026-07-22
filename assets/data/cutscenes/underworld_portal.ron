@@ -5,13 +5,13 @@
 CutsceneDef(
     id: "underworld_portal",
     steps: [
-        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+        Say(speaker: Some("ROLAND"), portrait: Some("knight"),
             text: "THE DRAGON FALLS - BUT THE AIR STILL BURNS. WHAT IS THAT TEAR IN THE DARK?"),
-        Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+        Say(speaker: Some("GARETH"), portrait: Some("scout"),
             text: "THE GATE. THIS IS WHERE THE ADVISOR THREW THE WORLD OPEN AND LET THE HORDE POUR UP."),
         Say(speaker: Some("ELARA"), portrait: Some("mage"),
             text: "IT LEADS DOWN - INTO THE UNDERWORLD ITSELF. WHERE THE PRISONERS WERE DRAGGED. WHERE THE ROT BEGINS."),
-        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+        Say(speaker: Some("ROLAND"), portrait: Some("knight"),
             text: "THEN THAT IS WHERE WE FINISH IT. INTO THE PORTAL - TOGETHER."),
         Say(speaker: None, portrait: None,
             text: "THE PORTAL FLARES AND SWALLOWS THE PARTY - AND SPITS THEM OUT ONTO CHARRED STONE, DEEP BELOW THE WORLD."),

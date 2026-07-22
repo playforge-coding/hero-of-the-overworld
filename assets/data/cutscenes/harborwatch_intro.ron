@@ -13,9 +13,9 @@ CutsceneDef(
             text: "THREE OF US AND A SHIP'S CREW WON'T RETAKE A KINGDOM. YOU MEAN TO ROUND UP SOLDIERS."),
         Say(speaker: Some("CAPTAIN"), portrait: Some("captain"),
             text: "EVERY SWORD WE CAN. THE ADVISOR'S REACH IS LONG, BUT SO IS AN OLD SAILOR'S MEMORY OF WHO STILL OWES THE CROWN."),
-        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+        Say(speaker: Some("ROLAND"), portrait: Some("knight"),
             text: "THEN WE WALK THE STREETS AND WE ASK. SPREAD OUT, TALK TO THE TOWNSFOLK - SOMEONE HERE IS READY TO FIGHT."),
-        Say(speaker: Some("GARETH"), portrait: Some("hermit"),
+        Say(speaker: Some("GARETH"), portrait: Some("scout"),
             text: "MIND YOUR WORDS. A FRIGHTENED TOWN DOESN'T ENLIST FOR STRANGERS. GIVE THEM A REASON WORTH DYING FOR."),
     ],
 )

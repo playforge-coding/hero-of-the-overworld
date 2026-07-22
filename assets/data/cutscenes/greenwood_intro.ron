@@ -7,19 +7,19 @@
 CutsceneDef(
     id: "greenwood_intro",
     steps: [
-        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+        Say(speaker: Some("ROLAND"), portrait: Some("knight"),
             text: "THE GREENWOOD SWARMS WITH SLIMES - AND A DEMON LURKS DEEP WITHIN."),
         // A slime slides out of the eastern treeline and creeps onto the trail.
         Place(actor: "slime", character: "slime", at: (17, 2), facing: Left),
         Walk(actor: "slime", to: (11, 5)),
         Turn(actor: "slime", facing: Down),
         Wait(secs: 0.4),
-        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+        Say(speaker: Some("ROLAND"), portrait: Some("knight"),
             text: "THERE'S ONE NOW. STAY SHARP - WHERE ONE SLIME OOZES, A DOZEN FOLLOW CLOSE BEHIND."),
         // It oozes off south into the undergrowth and is gone.
         Walk(actor: "slime", to: (11, 9), speed: Some(40.0)),
         Leave(actor: "slime"),
-        Say(speaker: Some("ROLAND"), portrait: Some("swordsman"),
+        Say(speaker: Some("ROLAND"), portrait: Some("knight"),
             text: "INTO THE WOOD, THEN. THE SOONER THAT DEMON FALLS, THE SOONER GREENWOOD BREATHES EASY."),
     ],
 )

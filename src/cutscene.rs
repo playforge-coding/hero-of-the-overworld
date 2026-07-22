@@ -289,22 +289,21 @@ impl Cutscene {
             color::rgba(90, 110, 170, 255),
         );
 
-        // Portrait on the left, if any.
+        // Portrait on the left, if any. The source frame isn't always square (a
+        // dedicated dialogue bust has its own aspect ratio, unlike the old 16x16
+        // sheet frame), so it's fit — not stretched — into the box, centred.
         let mut text_x = box_x + 8.0;
         if let Some(p) = portrait {
             let pw = 40.0;
+            let px = box_x + 6.0;
             let py = box_y + 9.0;
-            r.draw_rect(box_x + 6.0, py, pw, pw, color::rgba(20, 24, 44, 255));
-            r.draw_sprite(p.tex, [box_x + 6.0, py, pw, pw], p.src, false, p.tint);
-            r.draw_rect_outline(
-                box_x + 6.0,
-                py,
-                pw,
-                pw,
-                1.0,
-                color::rgba(120, 140, 200, 255),
-            );
-            text_x = box_x + 6.0 + pw + 8.0;
+            r.draw_rect(px, py, pw, pw, color::rgba(20, 24, 44, 255));
+            let scale = (pw / p.src[2]).min(pw / p.src[3]);
+            let (dw, dh) = (p.src[2] * scale, p.src[3] * scale);
+            let (dx, dy) = (px + (pw - dw) / 2.0, py + (pw - dh) / 2.0);
+            r.draw_sprite(p.tex, [dx, dy, dw, dh], p.src, false, p.tint);
+            r.draw_rect_outline(px, py, pw, pw, 1.0, color::rgba(120, 140, 200, 255));
+            text_x = px + pw + 8.0;
         }
 
         // Speaker name.
@@ -342,13 +341,24 @@ impl Cutscene {
     }
 }
 
-/// Resolve a character/enemy id to a portrait (idle frame 0 of its sprite).
+/// Resolve a portrait id to what's drawn beside a dialogue line. Prefers a
+/// dedicated `<id>_portrait` bust (bespoke dialogue art, not a battle sprite —
+/// see `assets/textures/ui/dialogue/`); when none is registered for `id`, falls
+/// back to the character/enemy's idle battle frame.
 fn resolve_portrait(
     renderer: &mut Renderer,
     cache: &mut TextureCache,
     reg: &Registry,
     id: &str,
 ) -> Option<Portrait> {
+    if let Some(tex) = cache.try_get(renderer, &format!("{id}_portrait")) {
+        let (w, h) = renderer.texture_size(tex);
+        return Some(Portrait {
+            tex,
+            src: [0.0, 0.0, w as f32, h as f32],
+            tint: color::WHITE,
+        });
+    }
     let sprite = reg
         .character(id)
         .map(|c| &c.sprite)
