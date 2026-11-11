@@ -31,6 +31,10 @@ If you see something, fix it! (EVEN IF YOU DID NOT CREATE IT, THAT IS IMPORTANT!
 
 Keep the code nicely formatted with `rustfmt` (using `cargo fmt`).
 
+## Use modern code practices
+
+Use modern and best code practices, e.g. using the newer module layout instead of using `mod.rs`.
+
 ## Outdated packages
 
 PLEASE, PLEASE do not use a package that is old or deprecated. EVEN IF IT IS "INDUSTRY STANDARD" THAT DOES NOT MEAN IT IS GOOD!!! USE THE BEST PACKAGE AND LATEST VERSION LIKE A NORMAL PERSON WOULD! Only use older versions if absolutely needed. The common 2-week wait that many agents enforce is not needed.
