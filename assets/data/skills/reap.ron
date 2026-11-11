@@ -1,4 +1,4 @@
-// TRAVELLER'S END foes.
+// TRAVELER'S END foes.
 SkillDef(
     id: "reap", name: "REAP",
     description: "A skeleton's rusted blade drags across one foe.",

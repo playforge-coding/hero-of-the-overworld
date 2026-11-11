@@ -1,4 +1,4 @@
-// GREENWOOD — a straightforward forest walk with some winding parts,
+// GREENWOOD: a straightforward forest walk with some winding parts,
 // flowing east then bending north into the deep wood.
 LevelDef(
     id: "greenwood", name: "GREENWOOD",

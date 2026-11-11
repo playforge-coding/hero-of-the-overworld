@@ -1,18 +1,18 @@
-// GARETH — a mountain hermit of TRAVELLER'S END and once the king's own
+// GARETH is a mountain hermit of TRAVELER'S END and once the king's own
 // scout. He saw the advisor treat with demons, warned the authorities,
 // was branded a traitor for it, and fled to the heights. Joins after
-// TRAVELLER'S END is cleared (via the `gareth_joins` cutscene); not in
+// TRAVELER'S END is cleared (via the `gareth_joins` cutscene); not in
 // `starting_party`. Uses the `hermit` sheet: Roland's swordsman layout
 // with the four unused bottom rows trimmed (6x8 instead of 5x12), so
 // walk rows 0-3 run 5 frames and attack rows 4-7 run 6. He is the
-// FASTEST, nimblest hero — high speed, cheap darting strikes.
+// FASTEST, nimblest hero: high speed, cheap darting strikes.
 CharacterDef(
     id: "hermit",
     name: "GARETH",
     stats: Stats(max_hp: 94, max_mp: 30, attack: 20, defense: 11, magic: 8, speed: 21),
     // A scout's reflexes: a far more forgiving timed-hit window than the
-    // default (perfect 0.05 / good 0.13) — for both his strikes and his
-    // blocks — so his GOOD/PERFECT taps are much easier to land.
+    // default (perfect 0.05 / good 0.13), for both his strikes and his
+    // blocks, so his GOOD/PERFECT taps are much easier to land.
     // Per-character; any hero can tune this.
     timing: Some(TimingWindow(perfect: 0.09, good: 0.20)),
     sprite: BattlerSprite(
@@ -22,7 +22,7 @@ CharacterDef(
         faces_left: false,
         // "walk right" row read as a ready/idle stance (5 frames).
         idle:   AnimClip(row: 2, first_col: 0, frames: 5, fps: 5.0),
-        // "attack right" row (6 frames) — struck fast to read as nimble.
+        // "attack right" row (6 frames), struck fast to read as nimble.
         attack: AnimClip(row: 6, first_col: 0, frames: 6, fps: 18.0),
     ),
     // Overworld walk: rows 0-3 are walk down/up/right/left (5 frames).
@@ -34,7 +34,7 @@ CharacterDef(
         frames: 5, fps: 9.0,
     )),
     skills: ["quick_slash"],
-    // GARETH's SWALLOW CUT — a scout's sweep — comes early; his lethal
+    // GARETH's SWALLOW CUT (a scout's sweep) comes early; his lethal
     // FINAL CUT is his last, most powerful move. Recruited mid-game, the
     // learnset catches him up to everything his level grants on join.
     learnset: [

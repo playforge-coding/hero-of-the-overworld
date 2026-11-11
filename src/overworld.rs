@@ -3,7 +3,7 @@
 //! Each screen is an ASCII tile grid from [`crate::data::ScreenDef`]. The player
 //! walks freely in virtual pixels with per-axis tile collision (sliding along
 //! walls), and a camera follows, clamped to the screen. Walking into a mid-edge
-//! opening on a side that links to a neighbour flips to that screen — Zelda
+//! opening on a side that links to a neighbor flips to that screen, Zelda
 //! style. Roaming enemies chase the player within an aggro radius, following a
 //! per-frame BFS flow field ([`dist_field`]) so they path *around* solid tiles
 //! instead of jamming against them; touching one
@@ -18,7 +18,7 @@ use glam::Vec2;
 use crate::data::{BattlerSprite, Facing as DataFacing, OverworldWalk, Registry};
 use crate::input::{Button, Input};
 use crate::party::Party;
-use crate::renderer::{color, virtual_w, Color, Renderer, TextureHandle, VIRTUAL_H};
+use crate::renderer::{Color, Renderer, TextureHandle, VIRTUAL_H, color, virtual_w};
 use crate::util::TextureCache;
 
 /// Tile edge length in virtual pixels (matches the 16x16 tile art).
@@ -36,7 +36,7 @@ const SHOP_REACH: f32 = 22.0;
 const CHEST_REACH: f32 = 20.0;
 /// How close (px) the player must stand to a townsfolk to talk on Confirm.
 const NPC_REACH: f32 = 22.0;
-/// A house is stamped from a 6-wide × 4-tall grid of the shared house tileset.
+/// A house is stamped from a 6-wide by 4-tall grid of the shared house tileset.
 const HOUSE_COLS: usize = 6;
 const HOUSE_ROWS: usize = 4;
 /// A dormant mimic springs its ambush once the player comes within this radius.
@@ -66,7 +66,7 @@ enum Tile {
     /// An invisible solid tile injected under a [`House`]'s base wall. It draws
     /// nothing itself (the house sprite paints the stonework); it only blocks
     /// movement so the player and townsfolk stop at the wall instead of walking
-    /// through it. Not addressable from the CSV — placed programmatically.
+    /// through it. Not addressable from the CSV; it is placed programmatically.
     Building,
 }
 
@@ -126,7 +126,7 @@ struct Enemy {
     tex: TextureHandle,
     /// Chase speed in px/s (from the enemy's `overworld_speed`, else the default).
     speed: f32,
-    /// Recolour multiplied over the sprite so reskinned foes (green slimes, stony
+    /// Recolor multiplied over the sprite so reskinned foes (green slimes, stony
     /// gargoyles) read differently on the map. White = no tint.
     tint: Color,
     /// Seconds spent chasing, for the walk-cycle frame; reset when idle.
@@ -169,8 +169,8 @@ struct Npc {
 
 /// A pre-resolved overworld sprite handed to [`Overworld::cast_place`]. The
 /// cutscene resolves each cast member's texture **up front** (it has the renderer
-/// and cache), so placing an actor mid-scene — from the renderer-less update loop
-/// — is just a data move. Build one with [`walk_sprite_for`] + the texture cache.
+/// and cache), so placing an actor mid-scene from the renderer-less update loop
+/// is just a data move. Build one with [`walk_sprite_for`] and the texture cache.
 pub struct CastSprite {
     pub walk: OverworldWalk,
     pub tex: TextureHandle,
@@ -178,7 +178,7 @@ pub struct CastSprite {
 }
 
 /// An actor placed on the field purely to be **choreographed** during a cutscene
-/// (see [`crate::cutscene`]). Unlike an [`Npc`] it carries no interaction — just a
+/// (see [`crate::cutscene`]). Unlike an [`Npc`] it carries no interaction, just a
 /// walk sprite the director slides around the map. `target`, when set, is a tile
 /// the actor is walking toward at `speed`; on arrival it clears and the actor
 /// rests. Cast actors live on the [`Overworld`] itself (not a [`Screen`]) so a
@@ -199,7 +199,7 @@ struct CutsceneActor {
     speed: f32,
 }
 
-/// A decorative building stamped from the shared 6×4 house tileset at a tile
+/// A decorative building stamped from the shared 6x4 house tileset at a tile
 /// origin. It draws its 24 pieces over the ground; the stone wall along its base
 /// row is made solid (see [`Tile::Building`]) so actors pass in front of it.
 struct House {
@@ -209,7 +209,7 @@ struct House {
 }
 
 /// A mimic lurking on a screen, disguised as a [`Chest`]. While dormant it is
-/// drawn from the very same chest sprite — indistinguishable from real treasure —
+/// drawn from the very same chest sprite (indistinguishable from real treasure)
 /// until the player strays inside [`MIMIC_WAKE`], whereupon it wakes, reveals its
 /// toothy true form, and chases the player down to start a battle.
 struct Mimic {
@@ -237,7 +237,7 @@ pub struct Trigger {
 }
 
 /// Saved per-level progress restored into a fresh [`Overworld`]: which enemies
-/// are beaten, which chests are opened, and which mimics are slain — each shaped
+/// are beaten, which chests are opened, and which mimics are slain, each shaped
 /// `screens[s][i]` to line up with that screen's actor list. The snapshot side is
 /// [`Overworld::progress`], and the shapes round-trip through the save file.
 #[derive(Clone, Debug, Default)]
@@ -314,7 +314,7 @@ impl Screen {
     }
 
     /// Row of the walkable opening in column `col` whose center is closest to
-    /// `target_y` — used to line an arriving player up with the doorway they
+    /// `target_y`. Used to line an arriving player up with the doorway they
     /// walked toward, rather than dumping them at the edge's midpoint.
     fn nearest_open_row(&self, col: usize, target_y: f32) -> usize {
         (0..self.h)
@@ -341,7 +341,7 @@ impl Screen {
 }
 
 struct TileTex {
-    /// Walkable base ground, drawn under every tile (per-level: grass/stone/…).
+    /// Walkable base ground, drawn under every tile (per-level: grass, stone, and so on).
     ground: TextureHandle,
     /// Texture for solid `#` wall tiles (per-level: barricade/dark_wall).
     wall: TextureHandle,
@@ -365,8 +365,8 @@ pub struct Overworld {
     /// Mimic spritesheet (row 0 dormant chest disguise, row 1 toothy attack),
     /// shared by every mimic.
     mimic_tex: TextureHandle,
-    /// The 24 pieces of the shared house tileset (`house_0`..`house_23`), blitted
-    /// as a 6×4 grid wherever a [`House`] is stamped.
+    /// The 24 pieces of the shared house tileset (`house_0` through `house_23`),
+    /// blitted as a 6x4 grid wherever a [`House`] is stamped.
     house_tex: [TextureHandle; HOUSE_COLS * HOUSE_ROWS],
     /// Whether this level has any roaming enemies at all. A level with none is a
     /// peaceful **town**: its HUD skips the "LEVEL CLEARED!" banner (there was
@@ -517,7 +517,7 @@ impl Overworld {
                 .collect();
 
             // Mimics, restoring which have already been slain. They always start
-            // dormant on (re-)entry — the disguise resets each visit.
+            // dormant on (re-)entry, since the disguise resets each visit.
             let mimic_state = progress.mimics.get(screen_idx);
             let mimics = sd
                 .mimics
@@ -556,10 +556,10 @@ impl Overworld {
             // (they've joined the ranks and are no longer standing about).
             let mut npcs = Vec::new();
             for ns in &sd.npcs {
-                if let Some(rec) = &ns.recruits {
-                    if party.members.iter().any(|m| m.def_id == *rec) {
-                        continue;
-                    }
+                if let Some(rec) = &ns.recruits
+                    && party.members.iter().any(|m| m.def_id == *rec)
+                {
+                    continue;
                 }
                 let Some(def) = reg.npc(&ns.npc) else {
                     log::warn!("npc spawn references unknown npc '{}'", ns.npc);
@@ -642,7 +642,7 @@ impl Overworld {
 
     /// Snapshot of the level's progress (beaten enemies, opened chests, slain
     /// mimics) for saving. The shape mirrors the `progress` argument to
-    /// [`Overworld::new`], so a save→load round-trip restores the exact same
+    /// [`Overworld::new`], so a save and load round-trip restores the exact same
     /// field state.
     pub fn progress(&self) -> LevelProgress {
         LevelProgress {
@@ -865,7 +865,7 @@ impl Overworld {
             }
         }
         // Mimics lie still until the player strays within striking distance, then
-        // spring awake for good and give chase — no aggro cap once revealed, so
+        // spring awake for good and give chase. There is no aggro cap once revealed, so
         // an ambush you kick off has to be shaken by outrunning it.
         for m in mimics.iter_mut() {
             if m.defeated {
@@ -917,7 +917,7 @@ impl Overworld {
     }
 
     /// If the player has walked into an edge opening that links elsewhere, flip
-    /// to the neighbouring screen and place them at the opposite edge.
+    /// to the neighboring screen and place them at the opposite edge.
     fn check_transition(&mut self) {
         let s = self.cur();
         let map = Vec2::new(s.w as f32 * TILE, s.h as f32 * TILE);
@@ -990,13 +990,13 @@ impl Overworld {
     //
     // While a [`crate::cutscene::Cutscene`] plays it keeps the map on screen and
     // directs it through this API: spawn cast actors, send them walking, turn
-    // them, pan the camera. The cutscene owns the clock — it calls
+    // them, pan the camera. The cutscene owns the clock: it calls
     // [`cutscene_update`](Self::cutscene_update) each frame instead of the normal
     // input-driven [`update`](Self::update), so the player and enemies hold still
     // while the scene is choreographed on top of the live world.
 
     /// Advance choreography-only motion: cast walking and the camera pan. Reads no
-    /// input and doesn't move the player or enemies — the cutscene director drives
+    /// input and doesn't move the player or enemies; the cutscene director drives
     /// everything else through the `cast_*` / `cam_*` methods.
     pub fn cutscene_update(&mut self, dt: f32) {
         self.time += dt;
@@ -1095,15 +1095,15 @@ impl Overworld {
 
     /// Snap cast actor `id` to its destination immediately (used to skip a walk).
     pub fn cast_snap(&mut self, id: &str) {
-        if let Some(i) = self.cast_idx(id) {
-            if let Some(target) = self.cast[i].target.take() {
-                self.cast[i].pos = target;
-                self.cast[i].walk_t = 0.0;
-            }
+        if let Some(i) = self.cast_idx(id)
+            && let Some(target) = self.cast[i].target.take()
+        {
+            self.cast[i].pos = target;
+            self.cast[i].walk_t = 0.0;
         }
     }
 
-    /// Start easing the camera to centre tile `(col, row)`. The pan plays out over
+    /// Start easing the camera to center tile `(col, row)`. The pan plays out over
     /// following [`cutscene_update`](Self::cutscene_update) calls.
     pub fn cam_focus_tile(&mut self, col: u32, row: u32) {
         let center = tile_center(col, row);
@@ -1117,7 +1117,7 @@ impl Overworld {
         self.draw_hud(r);
     }
 
-    /// The map and everything standing on it — tiles then depth-sorted actors —
+    /// The map and everything standing on it (tiles, then depth-sorted actors),
     /// without the exploration HUD. This is the backdrop a [`crate::cutscene`]
     /// draws its dialogue box over, so a scene plays out on the live world.
     pub fn draw_world(&self, r: &mut Renderer) {
@@ -1163,7 +1163,7 @@ impl Overworld {
     }
 
     /// Blit every house on the current screen: its 24 tileset pieces laid out as a
-    /// 6×4 grid from the house's top-left tile. Drawn in the tile pass (under the
+    /// 6x4 grid from the house's top-left tile. Drawn in the tile pass (under the
     /// actors) so the player and townsfolk stand in front of the walls.
     fn draw_houses(&self, r: &mut Renderer) {
         for house in &self.cur().houses {
@@ -1245,7 +1245,7 @@ impl Overworld {
     /// Draw the treasure-chest prop at feet-position `pos` with `tint`: a soft
     /// shadow and the `chest` texture bottom-centered on the tile. Shared by real
     /// chests and by *dormant* mimics, so a sleeping mimic is drawn from the very
-    /// same sprite as a real chest — pixel-for-pixel indistinguishable until it
+    /// same sprite as a real chest, pixel-for-pixel indistinguishable until it
     /// springs.
     fn blit_chest(&self, r: &mut Renderer, pos: Vec2, tint: Color) {
         let (tw, th) = r.texture_size(self.chest_tex);
@@ -1271,7 +1271,7 @@ impl Overworld {
 
     /// A treasure chest sitting on the ground, bottom-centered like a prop. An
     /// opened chest reads spent (dimmed); an unopened one in reach blinks a
-    /// "PRESS Z" prompt to invite a Confirm — the same affordance as a shop.
+    /// "PRESS Z" prompt to invite a Confirm, the same affordance as a shop.
     fn draw_chest(&self, r: &mut Renderer, c: &Chest) {
         let tint = if c.opened {
             color::rgb(110, 110, 110)
@@ -1296,8 +1296,8 @@ impl Overworld {
         }
     }
 
-    /// A mimic on the field. **Dormant**, it is drawn as an ordinary [`Chest`] —
-    /// the exact same prop sprite — so it can't be told from real treasure at a
+    /// A mimic on the field. **Dormant**, it is drawn as an ordinary [`Chest`]
+    /// (the exact same prop sprite), so it can't be told from real treasure at a
     /// glance. Only once it wakes (the player strayed near) does it reveal its true
     /// form: the mimic sheet's toothy row-1 lunge, bobbing menacingly as it chases.
     fn draw_mimic(&self, r: &mut Renderer, m: &Mimic) {
@@ -1504,11 +1504,11 @@ fn tile_center(col: u32, row: u32) -> Vec2 {
     Vec2::new((col as f32 + 0.5) * TILE, (row as f32 + 0.5) * TILE)
 }
 
-/// Where the player appears after flipping screens travelling `dir`. They enter
+/// Where the player appears after flipping screens traveling `dir`. They enter
 /// through the opposite edge of the new screen `ns`, snapped to the walkable
 /// opening on that edge nearest to where they left the old one (`exit`), then
 /// nudged just inside so they don't immediately flip back. This lets a screen's
-/// doorways sit anywhere along an edge — not only its midpoint — so mazes can
+/// doorways sit anywhere along an edge (not only its midpoint), so mazes can
 /// wind their exits wherever the layout wants.
 fn entry_pos(ns: &Screen, dir: Dir, exit: Vec2) -> Vec2 {
     let map = Vec2::new(ns.w as f32 * TILE, ns.h as f32 * TILE);
@@ -1603,7 +1603,7 @@ fn solid_at(tiles: &[Tile], w: usize, h: usize, x: f32, y: f32) -> bool {
     tiles[row as usize * w + col as usize].solid()
 }
 
-/// Whether the (feet) collision box centred at `c` overlaps any solid tile.
+/// Whether the (feet) collision box centered at `c` overlaps any solid tile.
 fn blocked_box(tiles: &[Tile], w: usize, h: usize, c: Vec2) -> bool {
     solid_at(tiles, w, h, c.x - HALF.x, c.y - HALF.y)
         || solid_at(tiles, w, h, c.x + HALF.x, c.y - HALF.y)
@@ -1675,9 +1675,9 @@ fn line_clear(tiles: &[Tile], w: usize, h: usize, a: Vec2, b: Vec2) -> bool {
 }
 
 /// The direction an enemy at `pos` should head to reach `target`. With clear
-/// line of sight it beelines; otherwise it steps toward the neighbouring tile
+/// line of sight it beelines; otherwise it steps toward the neighboring tile
 /// whose [`dist_field`] value is lowest, routing around obstacles. Falls back to
-/// the straight vector if the field offers no better neighbour (open ground or
+/// the straight vector if the field offers no better neighbor (open ground or
 /// an unreachable target).
 fn chase_dir(tiles: &[Tile], w: usize, h: usize, field: &[u16], pos: Vec2, target: Vec2) -> Vec2 {
     let straight = target - pos;
@@ -1705,7 +1705,7 @@ fn chase_dir(tiles: &[Tile], w: usize, h: usize, field: &[u16], pos: Vec2, targe
         }
     }
     match best {
-        // Head for the best neighbour only when it actually gets us closer (or
+        // Head for the best neighbor only when it actually gets us closer (or
         // we're stranded on an unreachable tile); otherwise beeline.
         Some((d, center)) if d < here => center - pos,
         _ => straight,

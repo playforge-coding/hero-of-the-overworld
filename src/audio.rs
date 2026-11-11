@@ -1,10 +1,10 @@
 //! Background music playback via `macroquad::audio` (one code path on native and
-//! web). Each looping track (the normal battle theme, the boss theme, …) is
+//! web). Each looping track (the normal battle theme, the boss theme, and so on) is
 //! decoded once up front with [`Audio::load_music`] and later selected for
 //! playback by its [`Track`] id. Playback degrades to silence rather than
 //! crashing if a track failed to decode.
 
-use macroquad::audio::{load_sound_from_bytes, play_sound, stop_sound, PlaySoundParams, Sound};
+use macroquad::audio::{PlaySoundParams, Sound, load_sound_from_bytes, play_sound, stop_sound};
 
 /// A named background-music track. Callers select what to play by id rather than
 /// by the byte slice it was decoded from: a `&'static [u8]` const has no stable

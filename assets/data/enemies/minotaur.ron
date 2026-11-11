@@ -30,7 +30,7 @@ EnemyDef(
     ai: Random,
     xp: 90,
     gold: 70,
-    // Hulking and ponderous — far slower than the player on the map.
+    // Hulking and ponderous, far slower than the player on the map.
     overworld_speed: Some(24.0),
     drops: [
         ItemDrop(item: "might_tonic", chance: 0.25),

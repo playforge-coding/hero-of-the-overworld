@@ -3,17 +3,17 @@
 //! Compiled out of `--release` builds entirely (the module is declared behind
 //! `#[cfg(debug_assertions)]` in `lib.rs`), so a shipped game has no such menu.
 //! It lets a developer jump the party to any level, add any character to the
-//! party, or start a battle against any encounter — the three fiddly bits of
+//! party, or start a battle against any encounter: the three fiddly bits of
 //! state that are otherwise slow to reach while testing.
 //!
 //! Like the other menu scenes ([`crate::input_config`], [`crate::inventory`]),
 //! its [`update`](DevTools::update) returns an `Option<DevToolsEvent>` describing
-//! what the game should do — the menu itself never touches the party, registry,
+//! what the game should do. The menu itself never touches the party, registry,
 //! or battle directly, keeping the borrows clean. The game applies the event and
 //! usually re-enters the menu, so several tweaks can be made in one visit.
 
 use crate::input::{Button, Input};
-use crate::renderer::{color, virtual_w, Renderer, VIRTUAL_H};
+use crate::renderer::{Renderer, VIRTUAL_H, color, virtual_w};
 
 /// What a [`DevTools::update`] wants the game to do next.
 pub enum DevToolsEvent {
@@ -234,7 +234,7 @@ impl DevTools {
         );
         self.footer(
             r,
-            "LEFT/RIGHT: ±1   UP/DOWN: ±10   CONFIRM: APPLY   CANCEL: BACK",
+            "LEFT/RIGHT: +/-1   UP/DOWN: +/-10   CONFIRM: APPLY   CANCEL: BACK",
         );
     }
 

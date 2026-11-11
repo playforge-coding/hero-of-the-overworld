@@ -1,6 +1,6 @@
-// The MIRROR MATCH — a dark double of each hero. A `boss` fight (plays the boss
+// The MIRROR MATCH: a dark double of each hero. A `boss` fight (plays the boss
 // theme). The clones each carry a `mirrors` target, so only the doubles of the
-// *active* party members take the field — bring a different line-up and you face
+// *active* party members take the field. Bring a different line-up and you face
 // a different reflection. Not placed in any level yet; reachable via the dev
 // fight menu.
 EncounterDef(id: "mirror_match", enemies: ["clone_roland", "clone_elara", "clone_gareth", "clone_brenn", "clone_captain"], boss: true)

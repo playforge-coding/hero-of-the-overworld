@@ -1,18 +1,18 @@
-//! Logical input abstraction so game code never touches raw key codes — or raw
-//! gamepad buttons.
+//! Logical input abstraction so game code never touches raw key codes (or raw
+//! gamepad buttons).
 //!
 //! [`Controllers`] is polled once per frame ([`Controllers::poll`]) and folds the
 //! keyboard together with every connected gamepad into logical [`Input`]
 //! snapshots:
 //!
-//!   - [`Controllers::shared`] — the keyboard OR'd with *all* gamepads. This is
+//!   - [`Controllers::shared`]: the keyboard OR'd with *all* gamepads. This is
 //!     what drives every single-player screen (title, world map, overworld,
-//!     menus, dialogue), so any controller — or the keyboard — works everywhere.
-//!   - [`Controllers::player`] — the input for one *party member*. Each gamepad
+//!     menus, dialogue), so any controller, or the keyboard, works everywhere.
+//!   - [`Controllers::player`]: the input for one *party member*. Each gamepad
 //!     (plus the keyboard, on slot 0) is a player, and members are dealt to
 //!     players **round-robin**: gamepad 0 drives member 0, gamepad 1 member 1, and
 //!     with fewer pads than members it wraps, so two pads split three heroes
-//!     cleanly (player 1 → members 0 & 2, player 2 → member 1). One input source
+//!     cleanly (player 1 gets members 0 and 2, player 2 gets member 1). One input source
 //!     (a lone pad, or just the keyboard) maps every member to it, so a single
 //!     player still commands the whole party.
 //!
@@ -24,7 +24,7 @@
 //! Gamepad support is cross-platform: the native build uses `gilrs`, and the web
 //! build reads the browser Gamepad API through the `hoto_gamepads` JS plugin (see
 //! `hoto_gamepads.js`). Both feed the same per-pad logical snapshots, so pads work
-//! identically — including local co-op — on desktop and in the browser.
+//! identically (local co-op included) on desktop and in the browser.
 //!
 //! Touchscreens have neither a keyboard nor a gamepad, so [`Controllers`] also
 //! folds in on-screen controls: a directional control plus action buttons laid
@@ -33,13 +33,13 @@
 //! walking the overworld, a plain **d-pad** on menus, and just **up/down** in
 //! battle, where the command menu only moves vertically. The overlay stays
 //! hidden until the first touch is seen, so a desktop keyboard/mouse session
-//! never shows it — this needs no platform `cfg`, since `touches()` is simply
+//! never shows it. This needs no platform `cfg`, since `touches()` is simply
 //! always empty without a touchscreen. Like a gamepad, the touch controls drive
 //! the shared input and party member 0.
 
 use macroquad::prelude::{
-    is_key_down, is_key_pressed, screen_dpi_scale, screen_height, screen_width, touches, KeyCode,
-    Touch, TouchPhase,
+    KeyCode, Touch, TouchPhase, is_key_down, is_key_pressed, screen_dpi_scale, screen_height,
+    screen_width, touches,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -124,7 +124,7 @@ impl Input {
 
 /// **DEV-ONLY** hidden hotkey (Tab) used by the world map to skip levels, so a
 /// developer can advance through the game without grinding. Reads the raw key
-/// directly — deliberately *outside* the normal logical [`Button`] mapping so it
+/// directly, deliberately *outside* the normal logical [`Button`] mapping so it
 /// can't be bound to a pad or triggered by ordinary play.
 ///
 /// The whole function is compiled out of `--release` builds (`debug_assertions`
@@ -146,7 +146,7 @@ pub fn dev_reset_pressed() -> bool {
 }
 
 /// **DEV-ONLY** hidden hotkey (F1) that opens the developer menu from the world
-/// map — a menu to set the party's level, add any character, or fight any
+/// map: a menu to set the party's level, add any character, or fight any
 /// encounter (see [`crate::devtools`]). Like the other dev hotkeys it reads the
 /// raw key, deliberately *outside* the logical [`Button`] mapping so it can't be
 /// bound to a pad or triggered by ordinary play, and is compiled out of
@@ -181,8 +181,23 @@ pub enum TouchScheme {
     UpDown,
 }
 
+/// What is painted on a touch button. Arrows and the menu bars are drawn as
+/// shapes rather than text glyphs, so they look the same on every font.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TouchIcon {
+    /// A triangle pointing in this direction.
+    ArrowUp,
+    ArrowDown,
+    ArrowLeft,
+    ArrowRight,
+    /// Three horizontal bars (the menu button).
+    Menu,
+    /// A short text label, like the "A" and "B" face buttons.
+    Letter(&'static str),
+}
+
 /// One on-screen touch button: the logical [`Button`] it maps to, its rectangle
-/// in *logical screen pixels*, and the glyph drawn on it. Produced by
+/// in *logical screen pixels*, and the icon drawn on it. Produced by
 /// [`touch_layout`] and read back by the renderer to paint the overlay.
 #[derive(Copy, Clone, Debug)]
 pub struct TouchButton {
@@ -191,7 +206,7 @@ pub struct TouchButton {
     pub y: f32,
     pub w: f32,
     pub h: f32,
-    pub label: &'static str,
+    pub icon: TouchIcon,
 }
 
 impl TouchButton {
@@ -203,13 +218,13 @@ impl TouchButton {
 /// A *floating* analog joystick, all in *logical screen pixels*. It rests at its
 /// `home` position, but a touch anywhere in its `zone` (the bottom-left region)
 /// re-anchors the base under that finger and then follows *that finger by its
-/// touch id* anywhere on screen until it lifts — so the stick never cuts out
+/// touch id* anywhere on screen until it lifts, so the stick never cuts out
 /// just because the thumb drifted past the ring. The knob is clamped to `radius`
 /// and its deflection past a deadzone becomes direction presses. Produced by
 /// [`touch_layout`] for [`TouchScheme::Joystick`].
 #[derive(Copy, Clone, Debug)]
 pub struct TouchStick {
-    /// Resting base centre, drawn while no finger owns the stick.
+    /// Resting base center, drawn while no finger owns the stick.
     pub home_x: f32,
     pub home_y: f32,
     pub radius: f32,
@@ -247,7 +262,7 @@ pub struct StickView {
 /// [`STICK_DEADZONE`] in feel.
 const STICK_DIR_DEADZONE: f32 = 0.35;
 
-/// Lay the virtual controls out for a `sw`×`sh` (logical-pixel) screen. The
+/// Lay the virtual controls out for a `sw` by `sh` (logical-pixel) screen. The
 /// directional control (bottom-left) depends on `scheme`; Confirm/Cancel anchor
 /// the bottom-right and Menu the top-right (dropped for [`TouchScheme::UpDown`],
 /// which is battle-only). Sizes scale with the screen's short edge and are
@@ -266,34 +281,34 @@ pub fn touch_layout(
     // far inward on a large tablet where `u` has hit its clamp.
     let m = u.min(sw.min(sh) * 0.12);
 
-    // Directional cluster: centred on (pcx, pcy) in the bottom-left corner. The
-    // d-pad plus and the joystick base share this footprint (radius 1.5·u).
+    // Directional cluster: centered on (pcx, pcy) in the bottom-left corner. The
+    // d-pad plus and the joystick base share this footprint (radius 1.5 * u).
     let pcx = m + 1.5 * u;
     let pcy = sh - m - 1.5 * u;
-    let dpad = |b, label, dx: f32, dy: f32| TouchButton {
+    let dpad = |b, icon, dx: f32, dy: f32| TouchButton {
         button: b,
         x: pcx + dx * u - u / 2.0,
         y: pcy + dy * u - u / 2.0,
         w: u,
         h: u,
-        label,
+        icon,
     };
 
     let mut buttons = Vec::new();
     let mut stick = None;
     match scheme {
         TouchScheme::Dpad => buttons.extend([
-            dpad(Button::Up, "^", 0.0, -1.0),
-            dpad(Button::Down, "v", 0.0, 1.0),
-            dpad(Button::Left, "<", -1.0, 0.0),
-            dpad(Button::Right, ">", 1.0, 0.0),
+            dpad(Button::Up, TouchIcon::ArrowUp, 0.0, -1.0),
+            dpad(Button::Down, TouchIcon::ArrowDown, 0.0, 1.0),
+            dpad(Button::Left, TouchIcon::ArrowLeft, -1.0, 0.0),
+            dpad(Button::Right, TouchIcon::ArrowRight, 1.0, 0.0),
         ]),
         TouchScheme::UpDown => buttons.extend([
-            dpad(Button::Up, "^", 0.0, -1.0),
-            dpad(Button::Down, "v", 0.0, 1.0),
+            dpad(Button::Up, TouchIcon::ArrowUp, 0.0, -1.0),
+            dpad(Button::Down, TouchIcon::ArrowDown, 0.0, 1.0),
         ]),
         TouchScheme::Joystick => {
-            // The claim zone is the lower-left of the screen — big enough to land
+            // The claim zone is the lower-left of the screen, big enough to land
             // a thumb without aiming, clear of the action buttons on the right.
             stick = Some(TouchStick {
                 home_x: pcx,
@@ -314,7 +329,7 @@ pub fn touch_layout(
         y,
         w: u,
         h: u,
-        label,
+        icon: TouchIcon::Letter(label),
     };
     buttons.push(action(Button::Confirm, "A", sw - m - u, sh - m - u));
     buttons.push(action(
@@ -331,14 +346,14 @@ pub fn touch_layout(
             y: m,
             w: menu_u,
             h: menu_u,
-            label: "=",
+            icon: TouchIcon::Menu,
         });
     }
 
     (buttons, stick)
 }
 
-/// Whether a touch point is currently down (not ended/cancelled this frame).
+/// Whether a touch point is currently down (not ended/canceled this frame).
 fn is_active(t: &Touch) -> bool {
     !matches!(t.phase, TouchPhase::Ended | TouchPhase::Cancelled)
 }
@@ -350,7 +365,7 @@ fn is_active(t: &Touch) -> bool {
 pub struct StickState {
     /// The `touches()` id that grabbed the stick, or `None` when at rest.
     id: Option<u64>,
-    /// Base centre: where the owning finger first touched, else the home rest.
+    /// Base center: where the owning finger first touched, else the home rest.
     origin: (f32, f32),
     /// Knob deflection from `origin` (clamped to radius), for drawing.
     knob: (f32, f32),
@@ -516,14 +531,14 @@ fn read_pad(gp: &gilrs::Gamepad) -> [bool; N] {
 /// Web gamepad bridge. macroquad/miniquad has no gamepad support, so on the web
 /// build we read the browser Gamepad API through the `hoto_gamepads` JS plugin
 /// (see `hoto_gamepads.js`), which maps each pad to our [`N`] logical buttons and
-/// hands back a flat buffer of `count * N` 0/1 flags — the same button layout
+/// hands back a flat buffer of `count * N` 0/1 flags, the same button layout
 /// [`read_pad`] produces natively.
 #[cfg(target_arch = "wasm32")]
 mod web_pads {
     use super::N;
     use sapp_jsutils::JsObject;
 
-    extern "C" {
+    unsafe extern "C" {
         fn hoto_gamepads_poll() -> JsObject;
     }
 
@@ -588,11 +603,11 @@ fn member_slot(member: usize, player_count: usize) -> usize {
 }
 
 /// Who controls whom: the **player number** each input source is bound to. This is
-/// the in-game-configurable mapping — assign the keyboard to player 1 and a pad to
+/// the in-game-configurable mapping: assign the keyboard to player 1 and a pad to
 /// player 2 and the two share the party; leave the keyboard and first pad on the
 /// same player and one person drives both. Missing gamepad entries default to the
 /// pad's own index (so pad 0 shares player 0 with the keyboard, pad 1 is player 1,
-/// …), which reproduces the original "each pad is the next player" behaviour.
+/// and so on), which reproduces the original "each pad is the next player" behavior.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct InputAssignment {
     /// Player number (0-based) the keyboard belongs to.
@@ -602,7 +617,7 @@ pub struct InputAssignment {
 }
 
 impl InputAssignment {
-    /// Player number bound to gamepad `i` — the stored value, or `i` by default.
+    /// Player number bound to gamepad `i`: the stored value, or `i` by default.
     pub fn gamepad_player(&self, i: usize) -> usize {
         self.gamepads.get(i).copied().unwrap_or(i)
     }
@@ -624,9 +639,9 @@ struct PlayerGroup {
     pads: Vec<usize>,
 }
 
-/// Collapse a source→player-number assignment into the ordered list of *effective*
-/// players (those with at least one source). Player numbers with no source are
-/// skipped, so a gappy assignment (keyboard→P2, pad→P3) still yields two usable
+/// Collapse a source-to-player-number assignment into the ordered list of
+/// *effective* players (those with at least one source). Player numbers with no
+/// source are skipped, so a gappy assignment (keyboard on P2, pad on P3) still yields two usable
 /// players rather than empty, uncontrollable slots.
 fn group_players(keyboard_player: usize, pad_players: &[usize]) -> Vec<PlayerGroup> {
     let mut nums: Vec<usize> = std::iter::once(keyboard_player)
@@ -656,7 +671,7 @@ impl Controllers {
         let gilrs = match Gilrs::new() {
             Ok(g) => Some(g),
             Err(e) => {
-                // No gamepad backend (headless CI, missing udev, …): keyboard
+                // No gamepad backend (headless CI, missing udev, etc.): keyboard
                 // still works, so this is a warning, not a failure.
                 log::warn!("gamepad support unavailable: {e}");
                 None
@@ -689,7 +704,7 @@ impl Controllers {
         let keyboard = read_keyboard();
 
         // Collect each connected gamepad's (held, press-edge) state, in a stable
-        // order so pad → party-member assignment doesn't shuffle between frames.
+        // order so the pad-to-party-member assignment doesn't shuffle between frames.
         // Native reads pads via gilrs; web reads the browser Gamepad API through
         // the `hoto_gamepads` JS plugin. Either way, press edges are derived here
         // by diffing this frame's held state against the previous frame's.
@@ -805,7 +820,7 @@ impl Controllers {
     /// keyboard, on slot 0) is one player; members are handed to players
     /// **round-robin**, so when there are fewer players than members every member
     /// still has exactly one clear owner. Two pads with three heroes therefore
-    /// split cleanly — player 1 drives members 0 & 2, player 2 drives member 1 —
+    /// split cleanly (player 1 drives members 0 and 2, player 2 drives member 1)
     /// rather than the extra hero becoming a both-pads free-for-all. With a single
     /// input source (one pad, or just the keyboard) every member maps to it, so a
     /// lone player still commands the whole party.
@@ -885,7 +900,7 @@ mod tests {
 
     #[test]
     fn default_assignment_merges_keyboard_with_the_first_pad() {
-        // Default: keyboard→P0, pad0→P0, pad1→P1. So one couch player uses the
+        // Default: keyboard on P0, pad 0 on P0, pad 1 on P1. So one couch player uses the
         // keyboard and pad 0 together, and a second pad is its own player.
         assert_eq!(groups(0, &[0, 1]), vec![(true, vec![0]), (false, vec![1])]);
     }
@@ -893,20 +908,20 @@ mod tests {
     #[test]
     fn keyboard_and_pad_can_be_separate_players() {
         // The headline case: assign the keyboard to P0 and the one pad to P1 and
-        // they become two distinct players — one on keys, one on the controller.
+        // they become two distinct players: one on keys, one on the controller.
         assert_eq!(groups(0, &[1]), vec![(true, vec![]), (false, vec![0])]);
     }
 
     #[test]
     fn gappy_assignment_compacts_to_real_players() {
-        // Keyboard→P1, pad→P2 (nobody on P0): still two usable players, no empty
+        // Keyboard on P1, pad on P2 (nobody on P0): still two usable players, no empty
         // slot that would leave a member uncontrollable.
         assert_eq!(groups(1, &[2]), vec![(true, vec![]), (false, vec![0])]);
     }
 
     #[test]
     fn everyone_on_one_player_is_solo() {
-        // Keyboard + two pads all on P0 → a single player driving the whole party.
+        // Keyboard and two pads all on P0 make a single player driving the whole party.
         assert_eq!(groups(0, &[0, 0]), vec![(true, vec![0, 1])]);
         // Keyboard alone is also one player.
         assert_eq!(groups(0, &[]), vec![(true, vec![])]);
@@ -1036,7 +1051,7 @@ mod tests {
     }
 
     /// The floating joystick anchors under the first touch (no deflection yet),
-    /// then reads direction from how far that finger has since travelled.
+    /// then reads direction from how far that finger has since traveled.
     #[test]
     fn joystick_floats_to_first_touch_then_reads_travel() {
         let (buttons, stick) = touch_layout(TouchScheme::Joystick, 400.0, 800.0);
@@ -1046,20 +1061,22 @@ mod tests {
             read_touch_at(t, &buttons, Some(&stick), &[false; N], prev, 1.0)
         };
 
-        // Frame 1: finger lands (anywhere in the zone) — anchors, no direction.
+        // Frame 1: finger lands (anywhere in the zone) and anchors, no direction.
         let f1 = read(&[touch(7, ax, ay)], StickState::default());
-        assert!(![Button::Up, Button::Down, Button::Left, Button::Right]
-            .iter()
-            .any(|&b| f1.input.held(b)));
+        assert!(
+            ![Button::Up, Button::Down, Button::Left, Button::Right]
+                .iter()
+                .any(|&b| f1.input.held(b))
+        );
         assert_eq!(f1.stick.id, Some(7));
 
-        // Frame 2: same finger drags up-and-right → Up + Right, knob follows.
+        // Frame 2: same finger drags up-and-right for Up + Right, knob follows.
         let f2 = read(&[touch(7, ax + r * 0.5, ay - r * 0.5)], f1.stick);
         assert!(f2.input.held(Button::Up) && f2.input.held(Button::Right));
         assert!(!f2.input.held(Button::Down) && !f2.input.held(Button::Left));
         assert!(f2.stick.knob.0 > 0.0 && f2.stick.knob.1 < 0.0);
 
-        // Frame 3: finger lifts → back to rest at home, no direction.
+        // Frame 3: finger lifts, so the stick is back at rest at home, no direction.
         let f3 = read(&[], f2.stick);
         assert_eq!(f3.stick.id, None);
         assert_eq!(f3.stick.origin, (ax, ay));
@@ -1079,7 +1096,7 @@ mod tests {
         };
 
         let f1 = read(&[touch(1, ax, ay)], StickState::default());
-        // Yank the finger way past the ring (3× the radius to the right).
+        // Yank the finger way past the ring (3 times the radius to the right).
         let f2 = read(&[touch(1, ax + r * 3.0, ay)], f1.stick);
         assert!(
             f2.input.held(Button::Right),

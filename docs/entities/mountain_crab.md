@@ -4,9 +4,9 @@ comments: true
 
 # Mountain Crab
 
-The skittering, shell-backed fodder of **Traveller's End**. A mountain crab is
+The skittering, shell-backed fodder of **Traveler's End**. A mountain crab is
 weak and slow, but its hard shell (a stubbornly high **defense**) makes it a chore
-to crack — the low-slope answer to the Greenwood's slimes.
+to crack. It's the low-slope answer to the Greenwood's slimes.
 
 | Stat | Value |
 |---|---|
@@ -17,12 +17,11 @@ to crack — the low-slope answer to the Greenwood's slimes.
 | **Magic** | 0 |
 | **Speed** | 5 |
 | **AI** | Basic (always a plain attack on a random hero) |
-| **Rewards** | 6 XP · 5 gold on defeat |
+| **Rewards** | 6 XP, 5 gold on defeat |
 | **Drops** | [POTION](../items.md) (20%) |
-| **Found in** | Traveller's End |
+| **Found in** | Traveler's End |
 
-Where a [slime](slime.md) is a glass cannon in reverse — soft and quick to pop — a
-crab is the opposite: it barely dents you (attack 11) but shrugs off blows behind
+Where a [slime](slime.md) is soft and quick to pop, a crab is the opposite: it barely dents you (attack 11) but shrugs off blows behind
 its shell. Bring a hard-hitting strike or a spell rather than chipping at it, and
 don't let a whole pack pin you down.
 
@@ -31,7 +30,7 @@ On the overworld it scuttles slowly, well below your pace, so a crab is easy to
 
 ## Skills
 
-None. A mountain crab only ever uses its basic attack — a pinch of the claws.
+None. A mountain crab only ever uses its basic attack, a pinch of the claws.
 
 ## Encounters
 
@@ -44,7 +43,7 @@ Crabs turn up in twos and threes on the lower slopes:
 
 ## Appearance
 
-The crab uses a tiny **3×1** sheet (`mountain_crab.png`, three 16×16 frames in a
+The crab uses a tiny **3x1** sheet (`mountain_crab.png`, three 16x16 frames in a
 single front-facing row). With no directional or attack rows, its battle "attack"
-just replays that idle row a touch faster — a quick scuttling pinch — and every
+just replays that idle row a touch faster (a quick scuttling pinch), and every
 overworld facing reads the same row.

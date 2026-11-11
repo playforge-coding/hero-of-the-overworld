@@ -1,10 +1,45 @@
-//! Small self-contained helpers: an RNG (no `rand` dep, works on wasm) and a
-//! texture cache keyed by the data file's texture keys.
+//! Small self-contained helpers: an RNG (no `rand` dep, works on wasm), a
+//! texture cache keyed by the data file's texture keys, and the scrolling
+//! window shared by the menus' lists.
 
 use std::collections::HashMap;
 
 use crate::data::embedded_texture;
-use crate::renderer::{Renderer, TextureHandle};
+use crate::renderer::{Renderer, TextureHandle, color};
+
+/// Index of the first row to show when a list of `count` rows has room for
+/// `visible` of them and `cursor` is selected. One row of context is kept above
+/// the cursor where the window has room for it, and the window never scrolls
+/// past the end.
+pub fn list_window_start(cursor: usize, count: usize, visible: usize) -> usize {
+    let context = if visible > 1 { 1 } else { 0 };
+    cursor
+        .saturating_sub(context)
+        .min(count.saturating_sub(visible))
+}
+
+/// Draw a thin vertical scrollbar at `x`, spanning `y` to `y + h`, for a list
+/// of `count` rows showing `visible` of them from row `first`. Draws nothing
+/// when everything fits.
+pub fn draw_scrollbar(
+    r: &mut Renderer,
+    (x, y, h): (f32, f32, f32),
+    first: usize,
+    visible: usize,
+    count: usize,
+) {
+    if count <= visible {
+        return;
+    }
+    r.draw_rect(x, y, 2.0, h, color::rgba(40, 46, 70, 255));
+    r.draw_rect(
+        x,
+        y + h * first as f32 / count as f32,
+        2.0,
+        h * visible as f32 / count as f32,
+        color::rgba(150, 160, 210, 255),
+    );
+}
 
 /// xorshift64* PRNG. Deterministic given a seed; good enough for battle rolls.
 pub struct Rng(u64);
@@ -73,15 +108,41 @@ impl TextureCache {
     }
 
     /// Like [`get`](Self::get), but returns `None` instead of panicking when no
-    /// texture is registered under `key` — lets a caller probe for an optional
+    /// texture is registered under `key`. This lets a caller probe for an optional
     /// asset (e.g. a dedicated dialogue portrait) with a plain fallback.
     pub fn try_get(&mut self, renderer: &mut Renderer, key: &str) -> Option<TextureHandle> {
         if let Some(h) = self.map.get(key) {
             return Some(*h);
         }
         let bytes = embedded_texture(key)?;
-        let handle = renderer.load_png(bytes);
+        let handle = renderer.load_png(&bytes);
         self.map.insert(key.to_string(), handle);
         Some(handle)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn list_window_keeps_cursor_visible() {
+        // A list that fits always starts at the top.
+        for cursor in 0..3 {
+            assert_eq!(list_window_start(cursor, 3, 3), 0);
+        }
+        // Five rows in a window of three scroll with one row of context above
+        // the cursor, and stop at the end.
+        let starts: Vec<_> = (0..5).map(|c| list_window_start(c, 5, 3)).collect();
+        assert_eq!(starts, [0, 0, 1, 2, 2]);
+        // Every cursor position lands inside its window, for any list shape.
+        for count in 0..12 {
+            for visible in 1..6 {
+                for cursor in 0..count {
+                    let first = list_window_start(cursor, count, visible);
+                    assert!((first..first + visible).contains(&cursor));
+                }
+            }
+        }
     }
 }

@@ -1,4 +1,4 @@
-// The AXEMAN's on-map look — a garrison soldier standing in the HARBORWATCH
+// The AXEMAN's on-map look: a garrison soldier standing in the HARBORWATCH
 // square, waiting to be talked into joining (his `axeman_joins` cutscene recruits
 // the `axeman` character; once he's in the party this NPC is no longer spawned).
 // The axeman sheet is 6x6: walk rows 0-3 (down/up/right/left), then attack rows.

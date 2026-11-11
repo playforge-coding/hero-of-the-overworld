@@ -4,7 +4,7 @@ comments: true
 
 # Demon
 
-The **elite threat** — and the whole reason for the war. Demons are the invaders
+The **elite threat**, and the whole reason for the war. Demons are the invaders
 that poured out of the underworld when the king was [betrayed](../story.md). They
 are held back in the **Demon Fortress**, with a single one guarding the end of the
 Greenwood; they roam their levels and chase you when you come near, starting a
@@ -19,8 +19,8 @@ Greenwood; they roam their levels and chase you when you come near, starting a
 | **Magic** | 16 |
 | **Speed** | 10 |
 | **AI** | Random (mixes its skills with plain attacks) |
-| **Rewards** | 16 XP · 12 gold on defeat |
-| **Drops** | [MIGHT TONIC](../items.md) (15%) · [HI-POTION](../items.md) (10%) |
+| **Rewards** | 16 XP, 12 gold on defeat |
+| **Drops** | [MIGHT TONIC](../items.md) (15%), [HI-POTION](../items.md) (10%) |
 | **Found in** | Greenwood (a lone guardian) and Demon Fortress (in packs) |
 
 A demon is the game's real test: high HP, strong attack, and the only enemy with
@@ -32,13 +32,13 @@ suggest. At speed 10 it's roughly on pace with your heroes.
 
 | Skill | Kind | MP | Target | Notes |
 | ----- | ---- | -- | ------ | ----- |
-| CLAW | Physical | 0 | One enemy | Free 125%-power hit — thrown every round |
+| CLAW | Physical | 0 | One enemy | Free 125%-power hit, thrown every round |
 | FIREBALL | Magical | 6 | One enemy | 150% power; leaves the target **[BURNING](../battles.md#status-effects)** for 3 rounds |
 
 **CLAW** costs no MP, so a demon can always fall back on it. **FIREBALL** is the
 dangerous one: it inflicts **BURN**, ticking 8 damage a round for three rounds, so a
-drawn-out fight bleeds you. Burning demons down quickly — before the damage-over-time
-stacks up — pays off.
+drawn-out fight bleeds you. Burning demons down quickly, before the damage-over-time
+stacks up, pays off.
 
 ## Encounters
 
@@ -62,7 +62,7 @@ orc), `demon_orcs` (1 demon + 1 orc + 1 club goblin), and the depths' guardian
 
 ## Appearance
 
-The demon uses the `demon` sprite sheet (a 6×8 grid of 16×16 frames): directional
-walk rows (0–3) as it roams the map, and attack poses (rows 4–7) plus an idle in
+The demon uses the `demon` sprite sheet (a 6x8 grid of 16x16 frames): directional
+walk rows (0-3) as it roams the map, and attack poses (rows 4-7) plus an idle in
 battle. The **[gargoyle](gargoyle.md)** reuses this same sheet layout with different
 art.

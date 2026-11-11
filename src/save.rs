@@ -1,8 +1,8 @@
 //! Persistent save files in a small, hand-rolled binary format.
 //!
-//! The whole game state that survives a session — the party (levels, XP, live
-//! HP/MP, equipment, gold), which levels are cleared, which cutscenes have
-//! played, and the per-level "which demons have I beaten" progress — is packed
+//! The whole game state that survives a session (the party's levels, XP, live
+//! HP/MP, equipment, and gold, which levels are cleared, which cutscenes have
+//! played, and the per-level "which demons have I beaten" progress) is packed
 //! into [`SaveData`] and serialized by [`to_bytes`] / [`from_bytes`].
 //!
 //! The format is deliberately custom (little-endian, length-prefixed) rather
@@ -11,8 +11,8 @@
 //! how to turn its live state into a `SaveData` and back.
 //!
 //! Storage is platform-split behind [`load`] / [`store`]:
-//!   - **native** — a file under the OS data dir (via the `dirs` crate).
-//!   - **web** — IndexedDB, reached through a tiny miniquad JS plugin (see
+//!   - **native:** a file under the OS data dir (via the `dirs` crate).
+//!   - **web:** IndexedDB, reached through a tiny miniquad JS plugin (see
 //!     `hoto_storage.js` / `index.html`).
 
 /// Four magic bytes at the head of every save so we can reject foreign data.
@@ -85,8 +85,8 @@ pub struct SaveData {
     /// (which simply lack this trailing section) still load with an empty bag.
     pub bag: Vec<String>,
     /// Input mapping: which player number the keyboard is on, and one per gamepad
-    /// (by connection order). Trailing and lenient like `bag`; absent → defaults
-    /// (keyboard on player 0, each pad its own player).
+    /// (by connection order). Trailing and lenient like `bag`; when absent it
+    /// falls back to the defaults (keyboard on player 0, each pad its own player).
     pub input_keyboard: u32,
     pub input_gamepads: Vec<u32>,
     /// Owned consumable items as `(id, count)` pairs (the party's
@@ -102,8 +102,9 @@ pub struct SaveData {
     /// section, read the same lenient way.
     pub mimic_levels: Vec<SavedLevel>,
     /// The story **chapter** the party is in (1-based). The final trailing field;
-    /// absent (a pre-chapter save ends before it) → chapter 1. A `0` here (only a
-    /// default-constructed [`SaveData`] writes that) is normalised to 1 by the game.
+    /// when absent (a pre-chapter save ends before it) it reads as chapter 1. A `0`
+    /// here (only a default-constructed [`SaveData`] writes that) is normalized to
+    /// 1 by the game.
     pub chapter: u32,
 }
 
@@ -203,7 +204,7 @@ pub fn to_bytes(data: &SaveData) -> Vec<u8> {
         put_str(&mut out, id);
     }
 
-    // Trailing, back-compatibly optional: the input-source → player mapping.
+    // Trailing, back-compatibly optional: which player each input source drives.
     put_u32(&mut out, data.input_keyboard);
     put_u32(&mut out, data.input_gamepads.len() as u32);
     for &p in &data.input_gamepads {
@@ -267,8 +268,8 @@ impl<'a> Reader<'a> {
     }
 
     /// Bytes not yet consumed. Used to tell a *missing* trailing field (nothing
-    /// left → use its default) from one that is *present but truncated* (some
-    /// bytes left, but too few → a corrupt save that must be rejected).
+    /// left, so use its default) from one that is *present but truncated* (some
+    /// bytes left, but too few: a corrupt save that must be rejected).
     fn remaining(&self) -> usize {
         self.buf.len().saturating_sub(self.pos)
     }
@@ -304,6 +305,38 @@ impl<'a> Reader<'a> {
             Some(Some(self.string()?))
         } else {
             Some(None)
+        }
+    }
+}
+
+impl SaveData {
+    /// Point every stored level and cutscene id at its current name. `level`
+    /// and `cutscene` return the new id for one that was renamed, or `None` to
+    /// keep it. The format stays content-agnostic: the game passes lookups built
+    /// from each def's `former_ids`, so a rename is a pure data edit.
+    pub fn migrate_ids<'a>(
+        &mut self,
+        level: impl Fn(&str) -> Option<&'a str>,
+        cutscene: impl Fn(&str) -> Option<&'a str>,
+    ) {
+        let rename = |id: &mut String, lookup: &dyn Fn(&str) -> Option<&'a str>| {
+            if let Some(new) = lookup(id) {
+                *id = new.to_string();
+            }
+        };
+        for saved in self
+            .levels
+            .iter_mut()
+            .chain(&mut self.chest_levels)
+            .chain(&mut self.mimic_levels)
+        {
+            rename(&mut saved.id, &level);
+        }
+        if let Some(loc) = &mut self.location {
+            rename(&mut loc.level_id, &level);
+        }
+        for id in &mut self.played_cutscenes {
+            rename(id, &cutscene);
         }
     }
 }
@@ -441,7 +474,7 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
     };
 
     // The input mapping is a further trailing addition, read the same lenient way:
-    // absent (older save) → defaults.
+    // an older save without it gets the defaults.
     let (input_keyboard, input_gamepads) = match r.u32() {
         Some(kb) => {
             let n = r.u32()? as usize;
@@ -454,8 +487,8 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
         None => (0, Vec::new()),
     };
 
-    // The item stash is the final trailing addition, read the same lenient way:
-    // absent (a pre-item save) → no items.
+    // The item stash is the next trailing addition, read the same lenient way:
+    // a pre-item save without it has no items.
     let items = match r.u32() {
         Some(n) => {
             let mut items = Vec::with_capacity((n as usize).min(1024));
@@ -470,13 +503,14 @@ pub fn from_bytes(bytes: &[u8]) -> Option<SaveData> {
     };
 
     // The chest and mimic progress grids are the last two trailing additions,
-    // read the same lenient way: absent (a pre-chest save) → nothing looted/slain.
+    // read the same lenient way: a pre-chest save has nothing looted or slain.
     let chest_levels = read_levels(&mut r)?;
     let mimic_levels = read_levels(&mut r)?;
 
-    // The chapter is the final trailing field. Absent (a pre-chapter save ends
-    // before it) → chapter 1; present → read strictly, so a save truncated *within*
-    // this field is rejected rather than silently defaulting.
+    // The chapter is the final trailing field. When absent (a pre-chapter save
+    // ends before it) it reads as chapter 1; when present it is read strictly, so
+    // a save truncated *within* this field is rejected rather than silently
+    // defaulting.
     let chapter = if r.remaining() == 0 { 1 } else { r.u32()? };
 
     Some(SaveData {
@@ -506,7 +540,7 @@ pub fn load(slot: usize) -> Option<SaveData> {
 }
 
 /// Encode and persist `data` into `slot`. Best-effort: failures are logged, never
-/// fatal — losing a save must not crash the game.
+/// fatal, because losing a save must not crash the game.
 pub fn store(slot: usize, data: &SaveData) {
     storage::write(slot, &to_bytes(data));
 }
@@ -522,13 +556,15 @@ mod storage {
 
     /// `<data_dir>/hero-of-the-overworld/save-<slot>.bin`, e.g. `~/.local/share/...`
     /// on Linux or `%APPDATA%\...` on Windows. Each slot is its own file, so the
-    /// slots are wholly independent playthroughs.
+    /// slots are wholly independent playthroughs. Setting `HOTO_SAVE_DIR` puts
+    /// the slot files in that folder instead, on every OS; the e2e suite uses it
+    /// so each test starts from empty slots and never touches real saves.
     fn path(slot: usize) -> Option<PathBuf> {
-        Some(
-            dirs::data_dir()?
-                .join("hero-of-the-overworld")
-                .join(format!("save-{slot}.bin")),
-        )
+        let dir = match std::env::var_os("HOTO_SAVE_DIR") {
+            Some(dir) => PathBuf::from(dir),
+            None => dirs::data_dir()?.join("hero-of-the-overworld"),
+        };
+        Some(dir.join(format!("save-{slot}.bin")))
     }
 
     pub fn read(slot: usize) -> Option<Vec<u8>> {
@@ -540,11 +576,11 @@ mod storage {
             log::warn!("no data dir available; not saving");
             return;
         };
-        if let Some(parent) = p.parent() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
-                log::warn!("could not create save dir {}: {e}", parent.display());
-                return;
-            }
+        if let Some(parent) = p.parent()
+            && let Err(e) = std::fs::create_dir_all(parent)
+        {
+            log::warn!("could not create save dir {}: {e}", parent.display());
+            return;
         }
         if let Err(e) = std::fs::write(&p, bytes) {
             log::warn!("could not write save {}: {e}", p.display());
@@ -566,7 +602,7 @@ mod storage {
     // `hoto_storage.js`), backed by IndexedDB. Each function takes a slot index so
     // the several slots persist independently. `load` returns whatever the plugin
     // preloaded into its cache at startup (nil if that slot is empty).
-    extern "C" {
+    unsafe extern "C" {
         fn hoto_storage_save(slot: u32, data: JsObject);
         fn hoto_storage_load(slot: u32) -> JsObject;
         fn hoto_storage_clear(slot: u32);
@@ -681,14 +717,13 @@ mod tests {
 
     #[test]
     fn pre_bag_save_loads_with_defaults() {
-        // A save written before the trailing bag + input + items + chest + mimic +
+        // A save written before the trailing bag, input, item, chest, mimic, and
         // chapter sections existed simply ends after `location`. With everything
-        // empty those sections are six zero counts — bag (0) + keyboard (0) +
-        // gamepad count (0) + item count (0) + chest count (0) + mimic count (0) =
-        // 24 bytes — followed by the 4-byte chapter, 28 bytes in all. Dropping them
-        // yields exactly such an older save, which must still decode — to empty bag,
-        // default (all-zero) input, no items, no looted chests / slain mimics, and
-        // chapter 1 — rather than failing.
+        // empty those sections are six zero counts (bag, keyboard, gamepad count,
+        // item count, chest count, mimic count: 24 bytes) followed by the 4-byte
+        // chapter, 28 bytes in all. Dropping them yields exactly such an older save,
+        // which must still decode (to an empty bag, default all-zero input, no
+        // items, no looted chests or slain mimics, and chapter 1) rather than fail.
         let mut data = sample();
         data.bag = Vec::new();
         data.input_keyboard = 0;
@@ -709,6 +744,28 @@ mod tests {
         let good = to_bytes(&sample());
         // Any prefix shorter than the whole thing must not panic and must fail.
         assert!(from_bytes(&good[..good.len() - 1]).is_none());
+    }
+
+    #[test]
+    fn migrate_ids_renames_every_stored_id() {
+        let mut data = sample();
+        data.played_cutscenes = vec!["old_intro".into(), "kept_intro".into()];
+        data.levels[0].id = "old_level".into();
+        data.chest_levels[0].id = "old_level".into();
+        data.mimic_levels[0].id = "old_level".into();
+        data.location.as_mut().unwrap().level_id = "old_level".into();
+
+        data.migrate_ids(
+            |id| (id == "old_level").then_some("new_level"),
+            |id| (id == "old_intro").then_some("new_intro"),
+        );
+        assert_eq!(data.played_cutscenes, ["new_intro", "kept_intro"]);
+        assert_eq!(data.levels[0].id, "new_level");
+        // Ids with no rename are left alone.
+        assert_eq!(data.levels[1].id, "stone_pass");
+        assert_eq!(data.chest_levels[0].id, "new_level");
+        assert_eq!(data.mimic_levels[0].id, "new_level");
+        assert_eq!(data.location.unwrap().level_id, "new_level");
     }
 
     #[test]

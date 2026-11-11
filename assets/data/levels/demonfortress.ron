@@ -1,4 +1,4 @@
-// DEMON FORTRESS — a very mazelike warren of dark-brick corridors: a
+// DEMON FORTRESS: a very mazelike warren of dark-brick corridors: a
 // gatehouse into a crossing that branches to a dead-end cell block or
 // deeper east through twisting galleries to the dragon's lair.
 LevelDef(
@@ -30,7 +30,7 @@ LevelDef(
         ),
         ScreenDef(
             // The cell block: a dead-end warren to the north. Its far corners
-            // hold a genuine cache — and a mimic squatting among the cells.
+            // hold a genuine cache and a mimic squatting among the cells.
             south: Some(1),
             spawns: [
                 SpawnDef(col: 3, row: 3, encounter: "demon_trio"),

@@ -3,9 +3,9 @@
 //! and cross-referenced correctly.
 
 use hero_of_the_overworld::data::{
-    embedded_texture, AttackAnim, CutsceneStep, EquipSlot, Registry, TargetKind,
+    AttackAnim, CutsceneStep, EquipSlot, Registry, TargetKind, embedded_texture,
 };
-use hero_of_the_overworld::party::{FieldUse, Party, ACTIVE_PARTY};
+use hero_of_the_overworld::party::{ACTIVE_PARTY, FieldUse, Party};
 
 fn registry() -> Registry {
     Registry::load()
@@ -18,6 +18,50 @@ fn game_data_parses() {
     assert!(!reg.data.enemies.is_empty(), "no enemies defined");
     assert!(!reg.data.encounters.is_empty(), "no encounters defined");
     assert!(!reg.data.starting_party.is_empty(), "empty starting party");
+}
+
+/// A level or cutscene's `former_ids` let old saves follow a rename, so an old
+/// id must never also be a live id (or another def's old id), or a save would
+/// be pointed at the wrong content.
+#[test]
+fn former_ids_are_unambiguous_and_resolve() {
+    let reg = registry();
+    let levels: Vec<_> = reg.data.levels.iter().map(|l| l.id.as_str()).collect();
+    let cutscenes: Vec<_> = reg.data.cutscenes.iter().map(|c| c.id.as_str()).collect();
+    let mut seen = std::collections::HashSet::new();
+    for l in &reg.data.levels {
+        for old in &l.former_ids {
+            assert!(
+                !levels.contains(&old.as_str()),
+                "former level id '{old}' is still in use"
+            );
+            assert!(
+                seen.insert(("level", old)),
+                "former level id '{old}' listed twice"
+            );
+            assert_eq!(reg.renamed_level(old), Some(l.id.as_str()));
+        }
+    }
+    for c in &reg.data.cutscenes {
+        for old in &c.former_ids {
+            assert!(
+                !cutscenes.contains(&old.as_str()),
+                "former cutscene id '{old}' is still in use"
+            );
+            assert!(
+                seen.insert(("cutscene", old)),
+                "former cutscene id '{old}' listed twice"
+            );
+            assert_eq!(reg.renamed_cutscene(old), Some(c.id.as_str()));
+        }
+    }
+    // The American-spelling rename of Traveler's End must keep old saves working.
+    assert_eq!(reg.renamed_level("travellersend"), Some("travelersend"));
+    assert_eq!(
+        reg.renamed_cutscene("travellersend_intro"),
+        Some("travelersend_intro")
+    );
+    assert_eq!(reg.renamed_level("greenwood"), None);
 }
 
 #[test]
@@ -48,7 +92,7 @@ fn all_references_resolve() {
             );
             assert!(
                 ls.level > 1,
-                "character {} learns '{}' at level {} — level-1 skills go in `skills`",
+                "character {} learns '{}' at level {}, but level-1 skills go in `skills`",
                 c.id,
                 ls.skill,
                 ls.level
@@ -60,7 +104,7 @@ fn all_references_resolve() {
             assert!(reg.skill(s).is_some(), "enemy {} skill '{s}' missing", e.id);
         }
     }
-    // Every status a skill inflicts exists (e.g. FIREBALL -> burn), and any
+    // Every status a skill inflicts exists (e.g. FIREBALL inflicts burn), and any
     // projectile attack animation names an embedded texture.
     for s in &reg.data.skills {
         for st in &s.inflicts {
@@ -126,7 +170,7 @@ fn all_references_resolve() {
 /// Tool enemies (ballistae and future siege engines) are well-formed: the skill
 /// they fire resolves, their operate chance is a valid probability, and every
 /// encounter that fields one also fields at least one *aware* (non-tool) foe to
-/// work it — a tool with no crew crumbles instantly, so a lone-tool encounter is
+/// work it. A tool with no crew crumbles instantly, so a lone-tool encounter is
 /// a content bug. Guards the tool-enemy extensibility contract.
 #[test]
 fn tool_enemy_references_resolve() {
@@ -249,8 +293,8 @@ fn clones_mirror_the_party() {
 
     // The mirror-match boss lists a clone for every recruitable hero (one per
     // character def), and is a boss fight. Which of these actually take the field
-    // is filtered to the active line-up at battle start — see
-    // `mirror_match_fields_only_active_members`.
+    // is filtered to the active line-up at battle start (see
+    // `mirror_match_fields_only_active_members`).
     let enc = reg
         .encounter("mirror_match")
         .expect("missing mirror_match encounter");
@@ -300,7 +344,7 @@ fn mirror_match_fields_only_active_members() {
         ["clone_roland", "clone_elara", "clone_gareth"]
     );
 
-    // A line-up built from the later recruits reflects a different set of clones —
+    // A line-up built from the later recruits reflects a different set of clones,
     // proof the fight tracks whoever you actually bring, not a fixed roster.
     let veterans: HashSet<&str> = ["swordsman", "axeman", "captain"].into_iter().collect();
     assert_eq!(
@@ -317,7 +361,7 @@ fn mirror_match_fields_only_active_members() {
     assert_eq!(fielded(&solo), ["clone_roland"]);
 
     // An ordinary encounter (foes with no `mirrors`) is unchanged regardless of
-    // who is active — the filter is the identity for it.
+    // who is active, since the filter is the identity for it.
     if let Some(other) = reg.data.encounters.iter().find(|e| {
         e.enemies
             .iter()
@@ -336,7 +380,7 @@ fn mirror_match_fields_only_active_members() {
 
 /// The DEMON KING is the scripted, unwinnable climax of chapter 1: an invincible
 /// boss whose encounter turns a party wipe into a chapter transition. Guards the
-/// whole mechanism — the invincible flag, the lethal kit, and the defeat hooks —
+/// whole mechanism (the invincible flag, the lethal kit, and the defeat hooks)
 /// and confirms he is actually placed at the end of the DEMON FACILITY.
 #[test]
 fn demon_king_is_the_unwinnable_chapter_boss() {
@@ -355,7 +399,7 @@ fn demon_king_is_the_unwinnable_chapter_boss() {
             "demon king references unknown skill '{id}'"
         );
     }
-    // No ordinary foe should be invincible — that flag is the scripted boss's alone.
+    // No ordinary foe should be invincible; that flag is the scripted boss's alone.
     for e in &reg.data.enemies {
         if e.id != "demon_king" {
             assert!(!e.invincible, "ordinary enemy '{}' is invincible", e.id);
@@ -397,7 +441,7 @@ fn demon_king_is_the_unwinnable_chapter_boss() {
     assert!(placed, "the demon king is not placed in the demon facility");
 }
 
-/// The CASTAWAY SHORE is the first region of chapter 2 — where the party washes up
+/// The CASTAWAY SHORE is the first region of chapter 2, where the party washes up
 /// after the DEMON KING flings them to the surface. Guards its chapter tag, its
 /// beach theming (sand / barricade / coconut palms), and that it fields the new
 /// shore foes; and confirms the chapter mechanism it depends on lines up (the
@@ -426,7 +470,7 @@ fn castaway_shore_is_the_chapter_2_landing() {
     );
 
     // It is the landing region the DEMON KING's defeat delivers the party into: the
-    // first (and, for now, only) chapter-2 level in progression order.
+    // first chapter-2 level in progression order.
     let first_ch2 = reg.data.levels.iter().find(|l| l.chapter == 2);
     assert_eq!(
         first_ch2.map(|l| l.id.as_str()),
@@ -447,7 +491,7 @@ fn castaway_shore_is_the_chapter_2_landing() {
     );
 
     // Every foe the shore fields resolves and is a shore denizen (crabs, the
-    // pirate crew, and their captain — the boss who then joins the party).
+    // pirate crew, and their captain, the boss who then joins the party).
     let shore_foes = [
         "beach_crab",
         "pirate_grunt",
@@ -504,7 +548,7 @@ fn levels_are_valid_and_linked() {
                 !matches!(ch, '.' | ' ')
             };
 
-            // Neighbour links must point at real screens in this level.
+            // Neighbor links must point at real screens in this level.
             for (dir, link) in [
                 ("north", sc.north),
                 ("south", sc.south),
@@ -557,7 +601,7 @@ fn levels_are_valid_and_linked() {
 }
 
 /// Within each screen, every edge opening and every enemy spawn is reachable
-/// from a single walkable component — so the player can always cross to the next
+/// from a single walkable component, so the player can always cross to the next
 /// screen and touch every foe (a walled-off spawn makes a level uncompletable).
 #[test]
 fn screens_are_traversable() {
@@ -694,7 +738,7 @@ fn overworld_textures_are_embedded() {
             );
         }
     }
-    // Per-level ground/wall/tree overrides (stone, dark_floor, coconut_tree, …).
+    // Per-level ground/wall/tree overrides (stone, dark_floor, coconut_tree, and so on).
     for lv in &reg.data.levels {
         for key in [&lv.ground, &lv.wall, &lv.tree].into_iter().flatten() {
             assert!(
@@ -874,7 +918,7 @@ fn pirate_captain_is_a_boss_who_joins() {
     assert!(placed, "the captain boss is not placed on the shore");
 }
 
-/// The captain's finale, ALL HANDS, is a `Crowd` attack — the new animation type
+/// The captain's finale, ALL HANDS, is a `Crowd` attack, the animation type
 /// that floods the screen with allies. Guards the whole wiring: the skill is a
 /// screen-wide crowd whose swarm art is embedded, and the captain learns it as his
 /// **final** move (his highest-level learnset entry).
@@ -911,7 +955,7 @@ fn captains_finale_is_a_crowd_attack() {
 
 /// Only the active line-up fights: the roster can hold more than [`ACTIVE_PARTY`]
 /// members, and the overworld reorder (mirrored here by a plain swap) is what pulls
-/// a reserve into the first `ACTIVE_PARTY` slots — the ones the battle seats.
+/// a reserve into the first `ACTIVE_PARTY` slots, the ones the battle seats.
 #[test]
 fn battle_line_up_caps_the_active_party() {
     assert_eq!(ACTIVE_PARTY, 3, "a battle seats three heroes");
@@ -938,7 +982,7 @@ fn battle_line_up_caps_the_active_party() {
         !active_before.contains(&"captain".to_string()),
         "captain should not fight until swapped in"
     );
-    // The leader (Roland, slot 0) is fixed — he walks the overworld, so reordering
+    // The leader (Roland, slot 0) is fixed: he walks the overworld, so reordering
     // never touches slot 0. Deploying a reserve swaps within slots 1.., here slot 2.
     assert_eq!(
         party.members[0].def_id, "swordsman",
@@ -1036,7 +1080,7 @@ fn field_item_heals_and_is_spent_only_when_useful() {
     );
 }
 
-/// Items only top up the living — a potion can't revive a downed hero (that's
+/// Items only top up the living: a potion can't revive a downed hero (that's
 /// MEND's job), and a refused use spends nothing.
 #[test]
 fn field_items_do_not_revive() {
@@ -1062,14 +1106,14 @@ fn field_items_do_not_revive() {
 #[test]
 fn field_heal_move_restores_hp_and_bills_mp() {
     let reg = registry();
-    // MEND belongs to ELARA alone now, and is her last-unlocked (capstone) move —
+    // MEND belongs to ELARA alone now, and is her last-unlocked (capstone) move, so
     // build a party of just her and level her up until she has learned it.
     let mut party = Party::default();
     assert!(party.recruit(&reg, "mage"), "ELARA (mage) should recruit");
     while !party.members[0].skills.iter().any(|id| id == "mend") {
         assert!(
             party.members[0].level < 50,
-            "ELARA should learn MEND by levelling"
+            "ELARA should learn MEND by leveling"
         );
         party.grant_xp(&reg, 1000);
     }
@@ -1113,8 +1157,8 @@ fn field_mend_revives_a_downed_ally() {
     );
 
     let mut party = Party::default();
-    assert!(party.recruit(&reg, "mage")); // ELARA — the caster (member 0)
-    assert!(party.recruit(&reg, "swordsman")); // ROLAND — will be downed (member 1)
+    assert!(party.recruit(&reg, "mage")); // ELARA, the caster (member 0)
+    assert!(party.recruit(&reg, "swordsman")); // ROLAND, who will be downed (member 1)
     while !party.members[0].skills.iter().any(|id| id == "mend") {
         assert!(party.members[0].level < 50, "ELARA should learn MEND");
         party.grant_xp(&reg, 1000);
@@ -1134,7 +1178,7 @@ fn field_mend_revives_a_downed_ally() {
     );
 }
 
-/// MEND is exclusive to ELARA — no other character knows it from the start or via
+/// MEND is exclusive to ELARA: no other character knows it from the start or via
 /// their learnset. The warrior and scout get their own capstone instead.
 #[test]
 fn only_elara_learns_mend() {
@@ -1185,10 +1229,20 @@ fn party_is_extensible() {
     let mut party = Party::from_registry(&reg);
     let before = party.members.len();
 
-    // Recruiting an existing character grows the party (the core extensibility
+    // Recruiting a defined character grows the party (the core extensibility
     // guarantee: more characters can assist in battle with no code changes).
-    let existing = reg.data.characters[0].id.clone();
-    assert!(party.recruit(&reg, &existing));
+    let newcomer = reg
+        .data
+        .characters
+        .iter()
+        .map(|c| c.id.clone())
+        .find(|id| !party.members.iter().any(|m| m.def_id == *id))
+        .expect("some character should start outside the party");
+    assert!(party.recruit(&reg, &newcomer));
+    assert_eq!(party.members.len(), before + 1);
+
+    // Recruiting the same character again is refused, so nobody is doubled.
+    assert!(!party.recruit(&reg, &newcomer));
     assert_eq!(party.members.len(), before + 1);
 
     // Recruiting an unknown id is rejected, not a panic.
@@ -1256,7 +1310,7 @@ fn xp_grants_levels_and_growth() {
 /// learnset moves, gains them on reaching the unlock level (reported back), and a
 /// mid-game recruit brought up to the party's level arrives already knowing them.
 #[test]
-fn levelling_unlocks_skills() {
+fn leveling_unlocks_skills() {
     let reg = registry();
 
     // Pick any character with a learnset and its earliest unlock.
@@ -1321,7 +1375,7 @@ fn enemies_scale_to_party_level() {
     let reg = registry();
     let crab = reg.enemy("mountain_crab").expect("mountain_crab defined");
 
-    // Level 1 is the identity — the opening region fights foes as authored.
+    // Level 1 is the identity: the opening region fights foes as authored.
     assert_eq!(enemy_scale(1), 100);
     let base = crab.stats.scaled_to(1);
     assert_eq!(base.max_hp, crab.stats.max_hp);
@@ -1394,7 +1448,7 @@ fn equipment_references_resolve() {
 
 /// Consumable items are well-formed and every reference around them resolves: an
 /// item's icon is embedded and its inflicted statuses exist; enemy drop tables
-/// name real items at valid odds. This is the items extensibility contract —
+/// name real items at valid odds. This is the items extensibility contract:
 /// adding an item / drop is pure data, and this guards those data edits.
 #[test]
 fn item_and_drop_references_resolve() {
@@ -1446,8 +1500,8 @@ fn item_and_drop_references_resolve() {
 #[test]
 fn equipping_gear_changes_effective_stats() {
     let reg = registry();
-    // ROLAND, with iron_sword + leather_armor (looked up by id — the characters
-    // collection is filename-sorted, so index 0 isn't necessarily him).
+    // ROLAND, with iron_sword and leather_armor (looked up by id, since the
+    // characters collection is filename-sorted, so index 0 isn't necessarily him).
     let sword = reg.character("swordsman").expect("missing swordsman");
     let base = &sword.stats;
     let eq = reg.equipped(base, sword.weapon.as_deref(), sword.armor.as_deref());
@@ -1537,7 +1591,7 @@ fn shops_are_valid_and_placed() {
 /// appearance has a name and an embedded sprite, and every placement is
 /// in-bounds, standable, names a real appearance, shows a registered emote
 /// bubble, and resolves any one-time cutscene / recruit it carries. Guards the
-/// NPC extensibility contract the same way spawns and shops are guarded — a
+/// NPC extensibility contract the same way spawns and shops are guarded: a
 /// missing emote or a recruit pointing at a phantom character would otherwise
 /// only panic (or silently break) once the town is reached in play.
 #[test]
@@ -1623,13 +1677,13 @@ fn npcs_are_valid_and_placed() {
 }
 
 /// Every house stamped on a screen fits entirely within that screen's bounds
-/// (its fixed 6×4 footprint can't hang off the map), and the shared house
-/// tileset (`house_0`..`house_23`) is fully embedded. A house whose base row
+/// (its fixed 6x4 footprint can't hang off the map), and the shared house
+/// tileset (`house_0` through `house_23`) is fully embedded. A house whose base row
 /// fell off the grid would inject its solid wall out of bounds.
 #[test]
 fn houses_fit_and_tileset_is_embedded() {
     // House tileset dimensions, mirrored from `crate::overworld` (kept in sync
-    // by this very test — a resized tileset would need both updated).
+    // by this very test; a resized tileset would need both updated).
     const HOUSE_COLS: u32 = 6;
     const HOUSE_ROWS: u32 = 4;
     for i in 0..(HOUSE_COLS * HOUSE_ROWS) {
@@ -1660,7 +1714,7 @@ fn houses_fit_and_tileset_is_embedded() {
 }
 
 /// A talkable NPC that recruits must be backed by a cutscene whose script
-/// actually adds that character to the party — otherwise the townsfolk vanishes
+/// actually adds that character to the party. Otherwise the townsfolk vanishes
 /// on being talked to but never joins. Covers HARBORWATCH's BRENN specifically.
 #[test]
 fn recruiting_npcs_actually_recruit() {

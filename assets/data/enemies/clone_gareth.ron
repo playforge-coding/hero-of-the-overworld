@@ -12,7 +12,7 @@ EnemyDef(
         attack: AnimClip(row: 6, first_col: 0, frames: 6, fps: 18.0),
     ),
     // Everything GARETH can learn: QUICK SLASH, SWALLOW CUT, FINAL CUT. The
-    // fastest clone by far — it acts first.
+    // fastest clone by far, so it acts first.
     skills: ["quick_slash", "swallow_cut", "final_cut"],
     weapon: Some("scouts_edge"),
     armor: Some("scouts_cloak"),

@@ -11,7 +11,7 @@ EnemyDef(
         idle:   AnimClip(row: 2, first_col: 0, frames: 4, fps: 5.0),
         attack: AnimClip(row: 7, first_col: 0, frames: 5, fps: 14.0),
     ),
-    // Everything ELARA can learn: FIREBOLT, FROST, and MEND — so she mends
+    // Everything ELARA can learn: FIREBOLT, FROST, and MEND, so she mends
     // her fellow clones. Cut her down first.
     skills: ["firebolt", "frost", "mend"],
     armor: Some("travelers_robe"),

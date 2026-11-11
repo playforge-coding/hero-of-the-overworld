@@ -1,7 +1,7 @@
 [package]
 name = "hero-of-the-overworld"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "A basic but extensible JRPG built with macroquad (native + web)."
 license = "AGPL-3.0-only"
 
@@ -22,20 +22,22 @@ opt-level = 3
 
 [dependencies]
 # macroquad provides the window, GL rendering, input, and audio on both native
-# and web (WebGL), so the game no longer maintains its own wgpu/winit stack.
+# and web (WebGL), so the game doesn't need its own wgpu/winit stack.
 # `audio` is not in macroquad's default features, so enable it for music.
-macroquad = { version = "0.4", features = ["audio"] }
-glam = "0.33.2"
-log = "0.4.33"
-ron = "0.12.2"
-serde = { version = "1.0.228", features = ["derive"] }
-# Embeds the whole `assets/data` content tree (per-entity RON files + CSV
-# tilemaps) into the binary at compile time, so the split database still ships
-# inside the native binary and the wasm bundle with no runtime filesystem.
-include_dir = "0.7.4"
+macroquad = { version = "0.4.16", features = ["audio"] }
+glam = "0.34.3"
+log = "0.4.35"
+ron = "0.12.3"
+serde = { version = "1.0.229", features = ["derive"] }
+# Embeds the whole `assets/data` content tree (per-entity RON files and CSV
+# tilemaps) into the binary at compile time, so the split database ships inside
+# the native binary and the wasm bundle with no runtime filesystem.
+# `debug-embed` keeps debug builds embedded too, since the web build has no
+# filesystem to read from.
+rust-embed = { version = "8.14.0", features = ["debug-embed"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-dirs = "6.0.0"
+dirs = "7.0.0"
 env_logger = "0.11.11"
 gilrs = "0.11.2"
 
@@ -43,6 +45,6 @@ gilrs = "0.11.2"
 sapp-jsutils = "0.1.7"
 
 [dev-dependencies]
-rustautogui = "2.5"
-# Used by the e2e suite to load/analyse screenshots and generate templates.
+rustautogui = "2.5.0"
+# Used by the e2e suite to load and analyze screenshots and generate templates.
 image = { version = "0.25.10", default-features = false, features = ["png"] }

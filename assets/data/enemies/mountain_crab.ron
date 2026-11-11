@@ -1,4 +1,4 @@
-// ------ TRAVELLER'S END denizens ------------------------------------
+// A TRAVELER'S END denizen.
 // Mountain crabs: skittering shell-backed fodder of the low slopes. Weak
 // and slow, but their hard shells (high defense) make them a chore to
 // crack. mountain_crab.png is a tiny 3x1 sheet: one front-facing row, so
@@ -27,7 +27,7 @@ EnemyDef(
     ai: Basic,
     xp: 6,
     gold: 5,
-    // Slow scuttle — easy to sidestep on the map.
+    // Slow scuttle, easy to sidestep on the map.
     overworld_speed: Some(26.0),
     drops: [ItemDrop(item: "potion", chance: 0.20)],
 )

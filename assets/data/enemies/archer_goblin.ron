@@ -1,4 +1,4 @@
-// ARCHER GOBLIN: the goblins' skirmisher — a glass cannon that looses a
+// ARCHER GOBLIN: the goblins' skirmisher, a glass cannon that looses a
 // piercing ARROW SHOT from range (its Random AI mixes the shot with plain
 // swings). Thin on HP and defense, so it folds fast once you reach it.
 EnemyDef(

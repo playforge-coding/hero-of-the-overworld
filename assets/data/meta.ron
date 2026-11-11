@@ -1,9 +1,12 @@
 // ============================================================================
-// Hero of the Overworld — game data
+// Hero of the Overworld: game data index
 // ----------------------------------------------------------------------------
-// This RON file is the whole content database. To add a new party member or
-// enemy, add an entry here (and register its texture key in src/data.rs).
-// No engine/battle code needs to change.
+// Content is split into one RON file per entity under assets/data/ (enemies/,
+// characters/, skills/, levels/, and so on), with each level's tilemaps kept as
+// CSV files in maps/<level>/. This file only lists the starting party and the
+// level order. To add a new party member or enemy, drop a file into the right
+// folder (and register its texture key in src/data.rs). No engine or battle
+// code needs to change.
 //
 // Sprite sheets are 16x16 grids. Animation clips select a `row` and a run of
 // `frames` starting at `first_col`, played at `fps`.
@@ -17,10 +20,11 @@
 Meta(
     starting_party: ["swordsman"],
     // Levels in progression order (each unlocks the next). Index-sensitive:
-    // screen neighbour links and auto-advance step through this order.
-    // Chapter 1: greenwood … demonfacility (the DEMON KING ends chapter 1).
+    // screen neighbor links and auto-advance step through this order.
+    // Chapter 1: greenwood through demonfacility (the DEMON KING ends chapter 1).
     // Chapter 2: castawayshore (where the party washes up after being flung to the
-    // surface), then harborwatch — a peaceful garrison town they sail to, to rally
-    // soldiers. Chapter is a per-level field; the map shows one chapter at a time.
-    levels: ["greenwood", "stonepass", "travellersend", "demonfortress", "charreddepths", "demonfacility", "castawayshore", "harborwatch"],
+    // surface), then harborwatch, a peaceful garrison town they sail to in order
+    // to rally soldiers. Chapter is a per-level field; the map shows one chapter
+    // at a time.
+    levels: ["greenwood", "stonepass", "travelersend", "demonfortress", "charreddepths", "demonfacility", "castawayshore", "harborwatch"],
 )

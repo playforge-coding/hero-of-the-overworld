@@ -8,7 +8,7 @@ The **goblin family's front line**. Goblins are prisoners of the war that the
 [underworld](../story.md) broke and **indoctrinated into demon society**, then loosed
 to swarm the **Charred Depths**. The club goblin is the numerous, close-in one: small
 and quick, it rushes in and hammers with a crude **CLUB SMASH**. Alone it is little
-threat — but it rarely comes alone, and an [archer goblin](archer_goblin.md) is
+threat, but it rarely comes alone, and an [archer goblin](archer_goblin.md) is
 usually loosing arrows from behind it.
 
 | Stat | Value |
@@ -20,7 +20,7 @@ usually loosing arrows from behind it.
 | **Magic** | 0 |
 | **Speed** | 14 |
 | **AI** | Random (mixes CLUB SMASH with plain swings) |
-| **Rewards** | 22 XP · 16 gold on defeat |
+| **Rewards** | 22 XP, 16 gold on defeat |
 | **Drops** | [POTION](../items.md) (22%) |
 | **Found in** | Charred Depths (in packs) |
 
@@ -34,11 +34,11 @@ round or two. Against a **pack**, area skills like Roland's **WHIRLWIND** or Ela
 
 | Skill | Kind | MP | Target | Notes |
 | ----- | ---- | -- | ------ | ----- |
-| CLUB SMASH | Physical | 0 | One enemy | Free 130%-power blow — its bread and butter |
+| CLUB SMASH | Physical | 0 | One enemy | Free 130%-power blow, its bread and butter |
 
 **CLUB SMASH** costs no MP, so a club goblin can throw it every round. It is an
-ordinary melee blow, so you can **time a block** against it — unlike the archers'
-piercing arrows.
+ordinary melee blow, so you can **time a block** against it (unlike the archers'
+piercing arrows).
 
 ## Encounters
 
@@ -51,6 +51,6 @@ piercing arrows.
 
 ## Appearance
 
-The club goblin uses the `club_goblin` sprite sheet (a 5×8 grid of 16×16 frames):
-directional walk rows (0–3) as it roams the map, and attack poses (rows 4–7) plus an
-idle in battle — the same layout the [demon](demon.md) sheet uses.
+The club goblin uses the `club_goblin` sprite sheet (a 5x8 grid of 16x16 frames):
+directional walk rows (0-3) as it roams the map, and attack poses (rows 4-7) plus an
+idle in battle. It's the same layout the [demon](demon.md) sheet uses.

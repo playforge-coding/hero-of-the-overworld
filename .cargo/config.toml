@@ -1,0 +1,7 @@
+# The web build calls JS functions that the page provides at load time (the
+# miniquad loader plus our hoto_storage/hoto_gamepads plugins), so those symbols
+# are undefined when the wasm is linked. Newer rustc no longer passes
+# `--allow-undefined` to the wasm linker by default, and some dependencies
+# (quad-snd, sapp-jsutils) don't mark their imports, so ask for it here.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "link-arg=--allow-undefined"]

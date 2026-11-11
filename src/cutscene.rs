@@ -2,7 +2,7 @@
 //! **on the live overworld map**.
 //!
 //! Cutscenes are pure data (one `assets/data/cutscenes/<id>.ron` each), so adding
-//! story beats — including new party members joining — is a data edit. A `Say`
+//! story beats (including new party members joining) is a data edit. A `Say`
 //! step shows a dialogue box with an optional portrait and a typewriter reveal; a
 //! `Recruit` step adds a character to the party.
 //!
@@ -13,7 +13,7 @@
 //! field ([`Walk`](CutsceneStep::Walk)), turning them ([`Turn`](CutsceneStep::Turn)),
 //! panning the camera ([`Pan`](CutsceneStep::Pan)), and holding beats
 //! ([`Wait`](CutsceneStep::Wait)). Interleaving those with `Say` lines is what makes
-//! a scene *choreographed* — the movement is timed against the words that narrate
+//! a scene *choreographed*: the movement is timed against the words that narrate
 //! it. Instant steps fire the moment they're reached; `Say`/`Walk`/`Wait` hold the
 //! scene until the player dismisses the line, the actor arrives, or the beat ends
 //! (a Confirm/Cancel press skips ahead in every case).
@@ -22,9 +22,9 @@ use std::collections::HashMap;
 
 use crate::data::{CutsceneStep, Registry};
 use crate::input::{Button, Input};
-use crate::overworld::{walk_sprite_for, CastSprite, Overworld};
+use crate::overworld::{CastSprite, Overworld, walk_sprite_for};
 use crate::party::Party;
-use crate::renderer::{color, virtual_w, Color, Renderer, TextureHandle, VIRTUAL_H};
+use crate::renderer::{Color, Renderer, TextureHandle, VIRTUAL_H, color, virtual_w};
 use crate::util::TextureCache;
 
 /// Characters revealed per second by the typewriter effect.
@@ -49,7 +49,7 @@ pub struct Cutscene {
     portraits: Vec<Option<Portrait>>,
     /// Overworld walk sprites for every actor a `Place` step brings on, resolved
     /// up front (keyed by character/enemy id) so placing one mid-scene needs no
-    /// renderer — mirroring how `portraits` are pre-resolved.
+    /// renderer, mirroring how `portraits` are pre-resolved.
     cast_sprites: HashMap<String, CastSprite>,
     idx: usize,
     /// Characters currently revealed of the active line.
@@ -121,8 +121,8 @@ impl Cutscene {
         self.started = false;
     }
 
-    /// Execute every **instant** step at the play-head — party recruits and stage
-    /// direction (place / turn / leave / pan) — stopping at the first dialogue or
+    /// Execute every **instant** step at the play-head (party recruits and stage
+    /// direction: place / turn / leave / pan), stopping at the first dialogue or
     /// timed step (`Say`/`Walk`/`Wait`) or the end of the script.
     fn run_instant(
         &mut self,
@@ -135,10 +135,9 @@ impl Cutscene {
                 CutsceneStep::Say { .. }
                 | CutsceneStep::Walk { .. }
                 | CutsceneStep::Wait { .. } => break,
+                // `recruit` itself refuses someone already in the party.
                 CutsceneStep::Recruit { character } => {
-                    if !party.members.iter().any(|m| m.def_id == *character) {
-                        party.recruit(reg, character);
-                    }
+                    party.recruit(reg, character);
                 }
                 CutsceneStep::Place {
                     actor,
@@ -200,10 +199,10 @@ impl Cutscene {
         // the actor is moving by the next frame.
         if !self.started {
             self.started = true;
-            if let Some(CutsceneStep::Walk { actor, to, speed }) = self.steps.get(self.idx) {
-                if let Some(ov) = level.as_deref_mut() {
-                    ov.cast_walk_to(actor, to.0, to.1, *speed);
-                }
+            if let Some(CutsceneStep::Walk { actor, to, speed }) = self.steps.get(self.idx)
+                && let Some(ov) = level.as_deref_mut()
+            {
+                ov.cast_walk_to(actor, to.0, to.1, *speed);
             }
         }
 
@@ -291,7 +290,7 @@ impl Cutscene {
 
         // Portrait on the left, if any. The source frame isn't always square (a
         // dedicated dialogue bust has its own aspect ratio, unlike the old 16x16
-        // sheet frame), so it's fit — not stretched — into the box, centred.
+        // sheet frame), so it's fit into the box without stretching, centered.
         let mut text_x = box_x + 8.0;
         if let Some(p) = portrait {
             let pw = 40.0;
@@ -342,7 +341,7 @@ impl Cutscene {
 }
 
 /// Resolve a portrait id to what's drawn beside a dialogue line. Prefers a
-/// dedicated `<id>_portrait` bust (bespoke dialogue art, not a battle sprite —
+/// dedicated `<id>_portrait` bust (bespoke dialogue art, not a battle sprite;
 /// see `assets/textures/ui/dialogue/`); when none is registered for `id`, falls
 /// back to the character/enemy's idle battle frame.
 fn resolve_portrait(

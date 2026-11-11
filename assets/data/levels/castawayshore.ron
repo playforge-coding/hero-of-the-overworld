@@ -1,4 +1,4 @@
-// CASTAWAY SHORE — the opening region of CHAPTER 2, and where the party washes up
+// CASTAWAY SHORE: the opening region of CHAPTER 2, and where the party washes up
 // after the DEMON KING hurls them across the sea (see `encounters/demon_king.ron`).
 // A sun-blasted beach of pale sand and coconut palms, its tideline held by shore
 // marauders: skittering BEACH CRABS give way to PIRATE GRUNTS and flintlock
@@ -17,10 +17,10 @@ LevelDef(
     tree: Some("coconut_tree"),
     intro_cutscene: Some("castawayshore_intro"),
     // Clearing the shore (beating the PIRATE CAPTAIN at the back of his camp) plays
-    // the recruit cutscene: he yields, recognises ELARA as the princess, and joins.
+    // the recruit cutscene: he yields, recognizes ELARA as the princess, and joins.
     clear_cutscene: Some("captain_joins"),
     screens: [
-        // 0 — The wash-up: where the tide left the party. Crabs work the sand.
+        // Screen 0, the wash-up: where the tide left the party. Crabs work the sand.
         ScreenDef(
             east: Some(1),
             spawns: [
@@ -28,7 +28,7 @@ LevelDef(
                 SpawnDef(col: 14, row: 3, encounter: "beachcrab_trio"),
             ],
         ),
-        // 1 — The cove crossing: north to a pirate lookout, or on down the coast.
+        // Screen 1, the cove crossing: north to a pirate lookout, or on down the coast.
         ScreenDef(
             east: Some(2), north: Some(3), west: Some(0),
             spawns: [
@@ -37,7 +37,7 @@ LevelDef(
                 SpawnDef(col: 14, row: 6, encounter: "beachcrab_trio"),
             ],
         ),
-        // 2 — The tidal flats: crabs and a grunt patrol on the wet sand.
+        // Screen 2, the tidal flats: crabs and a grunt patrol on the wet sand.
         ScreenDef(
             east: Some(4), west: Some(1),
             spawns: [
@@ -46,7 +46,7 @@ LevelDef(
                 SpawnDef(col: 5,  row: 8, encounter: "beachcrab_pair"),
             ],
         ),
-        // 3 — The pirate lookout: a barricaded dead-end camp, gunners posted behind
+        // Screen 3, the pirate lookout: a barricaded dead-end camp, gunners posted behind
         // the palisade with a plundered chest stashed at the back.
         ScreenDef(
             south: Some(1),
@@ -58,7 +58,7 @@ LevelDef(
                 ChestSpawn(col: 10, row: 2, gold: 180, item: Some("hi_potion")),
             ],
         ),
-        // 4 — The strand: the coast narrows, held by a full pirate squad.
+        // Screen 4, the strand: the coast narrows, held by a full pirate squad.
         ScreenDef(
             east: Some(5), west: Some(2),
             spawns: [
@@ -67,8 +67,8 @@ LevelDef(
                 SpawnDef(col: 5,  row: 6, encounter: "beachcrab_trio"),
             ],
         ),
-        // 5 — The pirate camp: the crew mustered behind their barricades, and at the
-        // back of it the PIRATE CAPTAIN himself — the shore's boss. Beat him (and
+        // Screen 5, the pirate camp: the crew mustered behind their barricades, and
+        // at the back of it the PIRATE CAPTAIN himself, the shore's boss. Beat him (and
         // clear the rest) and he yields and joins (`captain_joins`).
         ScreenDef(
             west: Some(4),

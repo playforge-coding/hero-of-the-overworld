@@ -1,9 +1,10 @@
 name: Docs
 
 # Build the documentation site (Zensical) plus the playable WebAssembly build
-# (Trunk), then publish both to GitHub Pages on every push to the default
-# branch. The web build is served under /play so the docs site and the game
-# live at the same origin. Also runnable on demand from the Actions tab.
+# (plain cargo, via macroquad), then publish both to GitHub Pages on every push
+# to the default branch. The web build is served under /play so the docs site
+# and the game live at the same origin. Also runnable on demand from the
+# Actions tab.
 on:
   push:
     branches:
@@ -11,10 +12,14 @@ on:
     paths:
       - "docs/**"
       - "mkdocs.yml"
+      - "scripts/**"
       - "src/**"
       - "assets/**"
+      - "build.rs"
       - "index.html"
-      - "Trunk.toml"
+      - "*.js"
+      - ".cargo/**"
+      - "rust-toolchain.toml"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/docs.yml"
@@ -36,19 +41,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (with LFS assets)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # The textures and music are embedded via `include_bytes!`; without
           # the real LFS files the web build would compile pointer files instead.
           lfs: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.x"
 
       - name: Install Zensical
-        run: pip install zensical==0.0.46
+        run: pip install zensical==0.1.1
 
       - name: Download self-hosted fonts
         run: python scripts/fetch-fonts.py
@@ -58,15 +63,15 @@ jobs:
 
       - name: Install Rust toolchain (wasm)
         # Pinned to match rust-toolchain.toml; keeps the wasm link deterministic.
-        uses: dtolnay/rust-toolchain@1.95.0
+        uses: dtolnay/rust-toolchain@1.99.1
         with:
           targets: wasm32-unknown-unknown
 
       - name: Cache cargo build
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@v2.9.3
         with:
           # Bump this to invalidate stale caches (e.g. after a toolchain change).
-          prefix-key: "v2-wasm"
+          prefix-key: "v3-wasm"
 
       - name: Build web (wasm)
         # macroquad compiles the `hero` bin to hero.wasm (no wasm-bindgen/Trunk).
@@ -82,13 +87,14 @@ jobs:
           # Save-file JS glue (IndexedDB backend + byte marshalling).
           cp sapp_jsutils.js site/play/sapp_jsutils.js
           cp hoto_storage.js site/play/hoto_storage.js
-          # Web gamepad support (browser Gamepad API -> wasm input module).
+          # Web gamepad support (feeds the browser Gamepad API into the wasm
+          # input module).
           cp hoto_gamepads.js site/play/hoto_gamepads.js
           curl -sSfL https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js \
             -o site/play/mq_js_bundle.js
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
@@ -101,4 +107,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

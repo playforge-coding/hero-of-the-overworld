@@ -1,5 +1,6 @@
 // ELARA's capstone: a potent restorative mastered late (her last learned
-// move). Only she knows it — the other heroes get their own ultimate below.
+// move). Only she knows it; the other heroes each learn their own capstone
+// instead (see their files in characters/).
 SkillDef(
     id: "mend", name: "MEND",
     description: "Mastered white magic: heals an ally, or revives a fallen one.",

@@ -1,10 +1,10 @@
-// CHARRED DEPTHS — the first level of the UNDERWORLD, unlocked once the
+// CHARRED DEPTHS: the first level of the UNDERWORLD, unlocked once the
 // DEMON FORTRESS falls (the portal cutscene draws the party down here).
 // A long warren of scorched flagstone that winds ever deeper: goblin packs
 // screen the upper halls, orc brutes wall the middle chambers two and three
-// abreast, and demon-led warbands hold the depths — culminating in the deep
-// hall's guardian. Charred-stone floor, dark ramparts. The toughest descent
-// in the game, mirroring the escalating climb of TRAVELLER'S END.
+// abreast, and demon-led warbands hold the depths, all the way down to the
+// deep hall's guardian. Charred-stone floor, dark ramparts. The toughest
+// descent in the game, mirroring the escalating climb of TRAVELER'S END.
 LevelDef(
     id: "charreddepths", name: "CHARRED DEPTHS",
     node: (6, 2),
@@ -30,7 +30,7 @@ LevelDef(
             ],
         ),
         // The goblin nest: a dead-end chamber thick with clubbers and
-        // archers — with a pair of "chests" against the north wall, one a
+        // archers, with a pair of "chests" against the north wall, one a
         // real cache, one a mimic that fooled the goblins too.
         ScreenDef(
             south: Some(1),
@@ -68,7 +68,7 @@ LevelDef(
                 SpawnDef(col: 9,  row: 5, encounter: "orc_duo"),
                 SpawnDef(col: 5,  row: 8, encounter: "ballista_battery"),
             ],
-            // A real prize — a CAVALRY LANCE — flanked by a nest of mimics.
+            // A real prize (a CAVALRY LANCE) flanked by a nest of mimics.
             // The deepest hall's treasure is the best-guarded, and the most
             // likely to bite: this "chest" is two mimics at once.
             chests: [

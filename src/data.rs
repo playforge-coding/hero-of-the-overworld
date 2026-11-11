@@ -1,34 +1,71 @@
 //! Game data: the on-disk RON file format plus the registries built from it.
 //!
-//! All content lives under `assets/data/`, **one file per entity** — an
-//! `enemies/<id>.ron`, a `skills/<id>.ron`, a `levels/<id>.ron`, and so on — with
+//! All content lives under `assets/data/`, with **one file per entity** (an
+//! `enemies/<id>.ron`, a `skills/<id>.ron`, a `levels/<id>.ron`, and so on) and
 //! each stage's tilemaps kept as `maps/<level>/<screen>.csv`. Adding a new party
-//! member or enemy is a pure data edit (drop in a file) — no code change required —
-//! which is what makes the party/enemy systems "extensible". The whole tree is
-//! embedded into the binary at compile time (see [`DATA_DIR`]) and assembled into
+//! member or enemy is a pure data edit: drop in a file and no code has to change.
+//! That is what makes the party and enemy systems "extensible". The whole tree is
+//! embedded into the binary at compile time (see [`DataDir`]) and assembled into
 //! one [`GameData`] by [`load_game_data`], so the exact same load path works
 //! natively and on the web with no runtime filesystem or async asset fetching.
 //!
 //! Textures are referenced by a string *key*; the actual PNG bytes are embedded
 //! at compile time (see [`embedded_texture`]) the same way.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 
-use include_dir::{include_dir, Dir};
-use serde::de::DeserializeOwned;
+use rust_embed::Embed;
 use serde::Deserialize;
+use serde::de::DeserializeOwned;
 
-/// The entire content database — every per-entity RON file and CSV tilemap under
-/// `assets/data/` — baked into the binary at build time. This is what lets the web
+/// The entire content database (every per-entity RON file and CSV tilemap under
+/// `assets/data/`), baked into the binary at build time. This is what lets the web
 /// build ship all content inside the wasm bundle, exactly as the old single
 /// `game.ron` did before it was split up.
-static DATA_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/assets/data");
+#[derive(Embed)]
+#[folder = "assets/data/"]
+struct DataDir;
 
-/// The house tileset: one cottage cut into a 6×4 grid of 16×16 tiles, laid out
-/// row-major as `0.png`..`23.png`. Embedded as a folder (rather than 24 match
-/// arms in [`embedded_texture`]) and addressed by the synthetic keys
-/// `house_0`..`house_23`, so a house is stamped by blitting its 24 pieces.
-static HOUSE_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/assets/textures/tiles/house");
+/// The house tileset: one cottage cut into a 6x4 grid of 16x16 tiles, laid out
+/// row-major as `0.png` through `23.png`. Embedded as a folder (rather than 24
+/// match arms in [`embedded_texture`]) and addressed by the synthetic keys
+/// `house_0` through `house_23`, so a house is stamped by blitting its 24 pieces.
+#[derive(Embed)]
+#[folder = "assets/textures/tiles/house/"]
+struct HouseTiles;
+
+/// Read one embedded data file (relative to `assets/data/`) as UTF-8 text.
+fn data_file_text(path: &str) -> Option<String> {
+    let file = DataDir::get(path)?;
+    Some(
+        String::from_utf8(file.data.into_owned())
+            .unwrap_or_else(|e| panic!("data file '{path}' is not valid UTF-8: {e}")),
+    )
+}
+
+/// Every embedded `*.ron` file that sits directly in a collection folder,
+/// grouped by that folder (`"enemies"` to `["enemies/bat.ron", ...]`) and
+/// sorted by path. Built once so loading each collection doesn't rescan the
+/// whole embedded tree.
+fn collection_files() -> HashMap<String, Vec<String>> {
+    let mut by_folder: HashMap<String, Vec<String>> = HashMap::new();
+    for path in DataDir::iter() {
+        if let Some((folder, name)) = path.split_once('/')
+            && !name.contains('/')
+            && name.ends_with(".ron")
+        {
+            by_folder
+                .entry(folder.to_string())
+                .or_default()
+                .push(path.to_string());
+        }
+    }
+    for paths in by_folder.values_mut() {
+        paths.sort();
+    }
+    by_folder
+}
 
 /// Core combat stats shared by heroes and enemies.
 #[derive(Clone, Debug, Deserialize)]
@@ -43,11 +80,11 @@ pub struct Stats {
 
 /// Percentage of its base stats (and rewards) that each **party level above 1**
 /// adds to a roaming enemy. Enemies are scaled to the party's level when a battle
-/// begins so they keep pace with the heroes' growth — otherwise a base-stat foe
+/// begins so they keep pace with the heroes' growth. Otherwise a base-stat foe
 /// like a mountain crab is one-shot by the time you reach the later regions.
 pub const ENEMY_SCALE_PCT: i32 = 12;
 
-/// The scale percentage (always ≥ 100) applied to an enemy's stats and rewards at
+/// The scale percentage (always at least 100) applied to an enemy's stats and rewards at
 /// a given `party_level`. Level 1 is the identity (100%), so the opening region
 /// fights foes at exactly their authored strength.
 pub fn enemy_scale(party_level: i32) -> i32 {
@@ -57,8 +94,8 @@ pub fn enemy_scale(party_level: i32) -> i32 {
 /// The enemies from an encounter that actually take the field, given who is in
 /// the active party line-up (`active_ids`, a set of member `def_id`s).
 ///
-/// A foe with a [`mirrors`](EnemyDef::mirrors) target — a `clone_*` shadow-double
-/// of a specific hero — only appears when that hero is currently active, so the
+/// A foe with a [`mirrors`](EnemyDef::mirrors) target (a `clone_*` shadow-double
+/// of a specific hero) only appears when that hero is currently active, so the
 /// MIRROR MATCH reflects exactly the party you brought: one dark double per
 /// active member, and none for a hero left in reserve. Every ordinary foe (no
 /// `mirrors`) always appears, so this is the identity for all other encounters.
@@ -82,7 +119,7 @@ pub fn active_encounter_enemies<'a>(
 impl Stats {
     /// These base stats scaled up to `party_level` for dynamic enemy scaling
     /// (see [`enemy_scale`]). **Speed is deliberately left untouched** so the
-    /// designed turn order survives — lumbering gargoyles still act last and
+    /// designed turn order survives: lumbering gargoyles still act last and
     /// mounted dark knights still act first, no matter the party's level.
     pub fn scaled_to(&self, party_level: i32) -> Stats {
         let pct = enemy_scale(party_level);
@@ -120,7 +157,7 @@ pub struct BattlerSprite {
     /// If true, the artwork faces left by default and is flipped to face right.
     #[serde(default)]
     pub faces_left: bool,
-    /// Optional RGB recolour multiplied over the sprite (e.g. to reskin a shared
+    /// Optional RGB recolor multiplied over the sprite (e.g. to reskin a shared
     /// sheet for a different character). Defaults to no tint (white).
     #[serde(default)]
     pub tint: Option<(u8, u8, u8)>,
@@ -146,8 +183,8 @@ pub enum TargetKind {
     SelfOnly,
 }
 
-/// How an attack skill plays out visually in battle. Purely cosmetic — it changes
-/// the motion, not the damage, targets, or timing — so a skill gets its own
+/// How an attack skill plays out visually in battle. Purely cosmetic (it changes
+/// the motion, not the damage, targets, or timing), so a skill gets its own
 /// signature animation with **no engine change beyond a data edit**: the battle
 /// scene reads this and drives the matching motion. New styles are new variants
 /// (the same additive extension pattern the rest of the data model follows).
@@ -158,28 +195,28 @@ pub enum AttackAnim {
     Lunge,
     /// A projectile sprite flies from the attacker to each target, and the blow
     /// lands as it arrives. `texture` is a key resolved by [`embedded_texture`]
-    /// (e.g. a fireball). One projectile is spawned per target — so an all-targets
+    /// (e.g. a fireball). One projectile is spawned per target, so an all-targets
     /// skill fans a volley out across the whole enemy (or party) line. A texture
     /// with more than one frame (see [`projectile_grid`]) spins as it flies (the
     /// thrown `axe`); a single-frame sprite just flies straight.
     Projectile { texture: String },
     /// A single spinning projectile is **hurled across the whole enemy line and
-    /// returns** to the thrower in a curving arc — an axe boomerang. Unlike
+    /// returns** to the thrower in a curving arc, like an axe boomerang. Unlike
     /// [`Projectile`](Self::Projectile), only *one* sprite is spawned no matter how
     /// many targets; the blow lands on every target as it sweeps out through them,
     /// then it loops back home. `texture` is a spin sheet key (the `axe`) resolved
     /// by [`embedded_texture`]. Pairs naturally with an `AllEnemies` target.
     Boomerang { texture: String },
     /// The attacker dashes across the battlefield through the target(s), off the
-    /// far edge, wrapping around the screen and back to its post — striking as it
-    /// sweeps past. A mounted charge / darting sweep.
+    /// far edge, wrapping around the screen and back to its post, striking as it
+    /// sweeps past. A mounted charge or darting sweep.
     Charge,
     /// The attacker calls in a **crowd of allies** who flood the whole screen for a
-    /// beat and then clear out, the blow landing as they swarm — the CAPTAIN's
-    /// BROADSIDE-turned-boarding-party finale. `texture` is a 16px-frame walk sheet
+    /// beat and then clear out, the blow landing as they swarm. This is the
+    /// CAPTAIN's BROADSIDE-turned-boarding-party finale. `texture` is a 16px-frame walk sheet
     /// (a roaming sprite, e.g. `pirate_grunt`) resolved by [`embedded_texture`]; the
     /// crowd is drawn from its front-facing walk row. The actor holds its post and
-    /// commands — the allies do the charging.
+    /// commands while the allies do the charging.
     Crowd { texture: String },
 }
 
@@ -188,7 +225,7 @@ pub enum AttackAnim {
 pub struct SkillDef {
     pub id: String,
     pub name: String,
-    /// One-line flavour/effect text shown in the skill menu.
+    /// One-line flavor/effect text shown in the skill menu.
     pub description: String,
     #[serde(default)]
     pub mp_cost: i32,
@@ -197,22 +234,22 @@ pub struct SkillDef {
     pub kind: SkillKind,
     pub target: TargetKind,
     /// Status effect ids (into [`GameData::statuses`]) inflicted on each target
-    /// the skill successfully hits — e.g. a fireball that leaves a `burn`. A
+    /// the skill successfully hits, e.g. a fireball that leaves a `burn`. A
     /// skill may inflict several at once; unknown ids are ignored.
     #[serde(default)]
     pub inflicts: Vec<String>,
     /// Declares the attack unblockable: when an enemy uses it on a hero, the
     /// player gets no timed-block window (see the battle timing mini-game).
-    /// Piercing and magical blows (fireball, lance charge, trample, …) set this;
+    /// Piercing and magical blows (fireball, lance charge, trample, and so on) set this;
     /// an ordinary melee swing leaves it `false` and can be blocked.
     #[serde(default)]
     pub unblockable: bool,
     /// A **reviving** heal: it can target a *downed* ally to bring them back (with
     /// the healed HP), not just top up the living. Only meaningful on a `Heal`
-    /// skill; ignored otherwise. Optional — defaults to `false`.
+    /// skill; ignored otherwise. Optional, defaults to `false`.
     #[serde(default)]
     pub revives: bool,
-    /// How the skill animates when used. Optional — defaults to a [lunge](AttackAnim::Lunge).
+    /// How the skill animates when used. Optional, defaults to a [lunge](AttackAnim::Lunge).
     #[serde(default)]
     pub anim: AttackAnim,
 }
@@ -224,15 +261,16 @@ impl SkillDef {
     }
 }
 
-/// A status condition that can be attached to a battler (burn, poison, slow, …).
+/// A status condition that can be attached to a battler (burn, poison, slow, and
+/// so on).
 ///
 /// This is the **extension point for status effects**: a new condition is a pure
-/// data entry — no engine change — as long as it can be expressed with the
+/// data entry with no engine change, as long as it can be expressed with the
 /// composable fields below. A status can drain (or restore) HP each round and
 /// shift the afflicted battler's combat stats while it lasts; skills apply them
 /// via [`SkillDef::inflicts`]. When a genuinely new *mechanic* is needed (say,
 /// "skip a turn"), add one optional field here plus its single apply site in
-/// `battle.rs` — the same additive pattern the rest of the data model uses.
+/// `battle.rs`. That is the same additive pattern the rest of the data model uses.
 #[derive(Clone, Debug, Deserialize)]
 pub struct StatusDef {
     pub id: String,
@@ -251,7 +289,7 @@ pub struct StatusDef {
     /// expires because effective stats are recomputed from the live status list.
     #[serde(default)]
     pub stat_mods: StatMods,
-    /// Colour of the status's popups (RGB). Defaults to a warm orange.
+    /// Color of the status's popups (RGB). Defaults to a warm orange.
     #[serde(default)]
     pub tint: Option<(u8, u8, u8)>,
 }
@@ -264,8 +302,8 @@ pub enum EquipSlot {
 }
 
 /// Flat stat bonuses granted by a piece of equipment, added on top of a
-/// battler's base stats. Deliberately excludes max HP/MP — equipment tunes the
-/// *combat* stats, while HP/MP growth stays the domain of levelling up.
+/// battler's base stats. Deliberately excludes max HP/MP: equipment tunes the
+/// *combat* stats, while HP/MP growth stays the domain of leveling up.
 #[derive(Clone, Copy, Debug, Default, Deserialize)]
 pub struct StatMods {
     #[serde(default)]
@@ -285,10 +323,10 @@ pub struct StatMods {
 pub struct EquipmentDef {
     pub id: String,
     pub name: String,
-    /// Flavour / effect text shown wherever the item is inspected.
+    /// Flavor/effect text shown wherever the item is inspected.
     pub description: String,
     pub slot: EquipSlot,
-    /// Texture key for the item's 16×16 icon (resolved by [`embedded_texture`]).
+    /// Texture key for the item's 16x16 icon (resolved by [`embedded_texture`]).
     pub icon: String,
     #[serde(default)]
     pub mods: StatMods,
@@ -309,16 +347,16 @@ fn default_item_icon() -> String {
     "item_bag".to_string()
 }
 
-/// What using a consumable [item](ItemDef) does to each of its targets — a
+/// What using a consumable [item](ItemDef) does to each of its targets: a
 /// **composable bag of effects**, so one item can heal, hurt, restore MP and/or
 /// inflict statuses at once. This is the item system's extension point: a new
-/// consumable is a pure data entry as long as its behaviour fits these additive
-/// fields, mirroring how [`StatusDef`] composes status behaviour. When a
+/// consumable is a pure data entry as long as its behavior fits these additive
+/// fields, mirroring how [`StatusDef`] composes status behavior. When a
 /// genuinely new effect is needed, add one optional field here plus its single
 /// apply site in `battle.rs`.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct ItemEffect {
-    /// Flat HP restored to each target (a potion). Only tops up the **living** —
+    /// Flat HP restored to each target (a potion). Only tops up the **living**:
     /// items don't revive; a reviving heal ([`SkillDef::revives`]) does that.
     #[serde(default)]
     pub heal: i32,
@@ -326,7 +364,7 @@ pub struct ItemEffect {
     #[serde(default)]
     pub restore_mp: i32,
     /// Flat damage dealt to each target (an offensive item like a bomb). Ignores
-    /// defense and never misses — consumables are reliable.
+    /// defense and never misses, since consumables are reliable.
     #[serde(default)]
     pub damage: i32,
     /// Status ids (into [`GameData::statuses`]) inflicted on each target. This is
@@ -338,7 +376,7 @@ pub struct ItemEffect {
 
 impl ItemEffect {
     /// Whether this item is usable from the field (inventory screen), not just in
-    /// battle. Only restorative effects (heal / MP) mean anything outside a fight —
+    /// battle. Only restorative effects (heal / MP) mean anything outside a fight:
     /// damage needs a foe and status buffs don't persist between battles.
     pub fn usable_in_field(&self) -> bool {
         self.heal > 0 || self.restore_mp > 0
@@ -347,14 +385,14 @@ impl ItemEffect {
 
 /// A consumable item: stored in the party's stash, used in battle (or, if
 /// restorative, from the inventory screen), and acquired as a monster drop or
-/// shop purchase. Unlike [equipment](EquipmentDef) it is not worn — it is spent.
+/// shop purchase. Unlike [equipment](EquipmentDef) it is not worn; it is spent.
 #[derive(Clone, Debug, Deserialize)]
 pub struct ItemDef {
     pub id: String,
     pub name: String,
-    /// Flavour / effect text shown wherever the item is inspected.
+    /// Flavor/effect text shown wherever the item is inspected.
     pub description: String,
-    /// Texture key for the item's 16×16 icon (resolved by [`embedded_texture`]).
+    /// Texture key for the item's 16x16 icon (resolved by [`embedded_texture`]).
     /// Defaults to the shared `item_bag` icon.
     #[serde(default = "default_item_icon")]
     pub icon: String,
@@ -403,7 +441,7 @@ pub struct OverworldWalk {
     pub fps: f32,
 }
 
-/// How forgiving a character's **timed-hit window** is — the SMRPG-style tap woven
+/// How forgiving a character's **timed-hit window** is: the SMRPG-style tap woven
 /// into a strike that earns the GOOD / PERFECT bonus (see [`crate::battle`]). The
 /// *same* window governs both this hero's **own attacks** (tapping to add damage)
 /// and their **blocks** (tapping to subtract an incoming blow): it models the
@@ -411,7 +449,7 @@ pub struct OverworldWalk {
 /// animation-time seconds around the moment the blow connects: `perfect` is the
 /// tolerance for the full bonus, `good` the (wider) tolerance for the lesser one.
 /// **Larger = more generous.** This is the per-character extension point for
-/// timed-hit feel — a nimble fighter reads the swing more easily — and it's a pure
+/// timed-hit feel (a nimble fighter reads the swing more easily), and it's a pure
 /// data tweak: set [`CharacterDef::timing`] and no engine code changes. Omit it and
 /// the character uses the game's global default window.
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -421,7 +459,7 @@ pub struct TimingWindow {
 }
 
 /// A skill a character learns on reaching a given level (see
-/// [`CharacterDef::learnset`]). Levelling up to `level` teaches `skill`.
+/// [`CharacterDef::learnset`]). Leveling up to `level` teaches `skill`.
 #[derive(Clone, Debug, Deserialize)]
 pub struct LearnedSkill {
     /// The level at which the skill is unlocked.
@@ -448,7 +486,7 @@ pub struct CharacterDef {
     pub skills: Vec<String>,
     /// Skills unlocked as this character levels up: each entry teaches its skill
     /// once the character reaches (or is recruited at) its `level`. Distinct from
-    /// the always-known [`skills`](Self::skills). Pure data — a new progression is
+    /// the always-known [`skills`](Self::skills). Pure data: a new progression is
     /// a RON edit, no engine change, the same extensibility contract the rest of
     /// the model follows.
     #[serde(default)]
@@ -464,7 +502,7 @@ pub struct CharacterDef {
     pub overworld: Option<OverworldWalk>,
 }
 
-/// Simple enemy behaviour selector, resolved by the battle AI.
+/// Simple enemy behavior selector, resolved by the battle AI.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Default)]
 pub enum EnemyAi {
     /// Always uses its basic attack on a random hero.
@@ -475,15 +513,16 @@ pub enum EnemyAi {
 }
 
 /// Turns an enemy into a **tool**: an inert battlefield engine (a ballista, a
-/// cannon, …) that never takes its own turn. Instead the *aware* enemies fighting
-/// alongside it can spend a turn to **operate** it, loosing its [`skill`](Self::skill)
-/// at the party — a heavy shot fired from the tool itself. The moment no aware
+/// cannon, and so on) that never takes its own turn. Instead the *aware* enemies
+/// fighting alongside it can spend a turn to **operate** it, loosing its
+/// [`skill`](Self::skill) at the party as a heavy shot fired from the tool
+/// itself. The moment no aware
 /// enemy is left to work it, the tool crumbles on its own; until then it just sits
 /// there and can be destroyed directly (tools are typically tanky).
 ///
 /// This is the extension point for tool enemies: a new siege engine is a pure data
-/// entry — give an [`EnemyDef`] a `tool` and it inherits the whole inert /
-/// operated / crumbles-when-abandoned behaviour, with its own sprite, HP, and
+/// entry. Give an [`EnemyDef`] a `tool` and it inherits the whole inert /
+/// operated / crumbles-when-abandoned behavior, with its own sprite, HP, and
 /// fired skill. No engine change.
 #[derive(Clone, Debug, Deserialize)]
 pub struct ToolDef {
@@ -498,20 +537,20 @@ pub struct ToolDef {
 
 /// The MIMIC's signature trick, layered on top of its ordinary AI: on some turns
 /// it **apes the last skill a party member used**, taking on that very hero's
-/// shape as it strikes with a copy of their move. Two limits keep it fair — it may
+/// shape as it strikes with a copy of their move. Two limits keep it fair: it may
 /// only copy skills on its [`copyable`](Self::copyable) allow-list (so it can't
 /// parrot a party's finisher back at full force), and the copy lands at reduced
-/// [`power_pct`](Self::power_pct). The mimicry is **free** (it costs no MP — it is
-/// a copy, not a learned spell) and only fires once a copyable move has actually
+/// [`power_pct`](Self::power_pct). The mimicry is **free** (it costs no MP, since
+/// it is a copy, not a learned spell) and only fires once a copyable move has actually
 /// been seen this battle; otherwise the mimic just uses its own skills and attack.
 ///
 /// This is the extension point for mimic variants: a new mimic is a pure-data
-/// entry — widen or narrow the allow-list, retune the nerf or the odds — with no
-/// engine change. (A "greater mimic" that parrots the party's finishers, an
-/// "arcane mimic" that copies only spells, …)
+/// entry (widen or narrow the allow-list, retune the nerf or the odds) with no
+/// engine change. Think of a "greater mimic" that parrots the party's finishers,
+/// or an "arcane mimic" that copies only spells.
 #[derive(Clone, Debug, Deserialize)]
 pub struct MimicryDef {
-    /// Skill ids this mimic is willing to copy — the safe subset. The last party
+    /// Skill ids this mimic is willing to copy (the safe subset). The last party
     /// move must be on this list or the mimic won't ape it.
     pub copyable: Vec<String>,
     /// Percent of the copied skill's power the mimic actually deals (the nerf);
@@ -546,7 +585,7 @@ pub struct EnemyDef {
     pub weapon: Option<String>,
     #[serde(default)]
     pub armor: Option<String>,
-    /// Behaviour selector; defaults to [`EnemyAi::Basic`] when omitted.
+    /// Behavior selector; defaults to [`EnemyAi::Basic`] when omitted.
     #[serde(default)]
     pub ai: EnemyAi,
     pub xp: i32,
@@ -561,11 +600,11 @@ pub struct EnemyDef {
     #[serde(default)]
     pub overworld_speed: Option<f32>,
     /// Consumable items this enemy may drop on defeat; each is rolled
-    /// independently against its [chance](ItemDrop::chance). Optional — most foes
-    /// drop nothing.
+    /// independently against its [chance](ItemDrop::chance). Optional, since most
+    /// foes drop nothing.
     #[serde(default)]
     pub drops: Vec<ItemDrop>,
-    /// Marks this enemy as a **tool** — an inert engine (a ballista, …) worked by
+    /// Marks this enemy as a **tool**: an inert engine (such as a ballista) worked by
     /// the *aware* foes beside it rather than acting on its own. See [`ToolDef`].
     /// Absent for ordinary enemies.
     #[serde(default)]
@@ -576,13 +615,13 @@ pub struct EnemyDef {
     pub mimicry: Option<MimicryDef>,
     /// Marks this enemy as **invincible**: incoming damage can never drop its HP
     /// below 1, so it simply cannot be killed. Used for a scripted, unwinnable
-    /// boss (the DEMON KING) whose fight is a story beat, not a contest — the
+    /// boss (the DEMON KING) whose fight is a story beat, not a contest: the
     /// party is meant to fall. Absent (false) for every ordinary foe.
     #[serde(default)]
     pub invincible: bool,
     /// The party-member `def_id` this foe is a **shadow-double** of (e.g. a
     /// `clone_*` mirroring `swordsman`). When set, the enemy only takes the field
-    /// in an encounter if that hero is in the *active* line-up — so the MIRROR
+    /// in an encounter if that hero is in the *active* line-up, so the MIRROR
     /// MATCH fields one clone per active party member and none for a hero left in
     /// reserve. Absent for every ordinary foe, which always appears.
     /// See [`active_encounter_enemies`].
@@ -601,7 +640,7 @@ pub struct ShopStock {
     pub price: i32,
 }
 
-/// Which wall the shopkeeper faces — and therefore where the interior's exit
+/// Which wall the shopkeeper faces, and therefore where the interior's exit
 /// doorway is. "You leave the way the keeper is looking." Defaults to `Down`
 /// (the keeper faces the player, the door is on the near/bottom wall).
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Default)]
@@ -615,7 +654,7 @@ pub enum ShopFacing {
 
 /// A shop: its name, a greeting line, the direction the keeper faces (which is
 /// also the interior's exit), and the goods for sale. Pure data, like every
-/// other content type — adding a shop is a RON edit plus a placement in a screen
+/// other content type: adding a shop is a RON edit plus a placement in a screen
 /// (see [`ShopSpawn`]).
 #[derive(Clone, Debug, Deserialize)]
 pub struct ShopDef {
@@ -642,7 +681,7 @@ pub struct ShopSpawn {
     pub shop: String,
 }
 
-/// The four cardinal directions a map actor can face. A small, serialisable
+/// The four cardinal directions a map actor can face. A small, serializable
 /// facing shared by data placements (an [`NpcSpawn`]'s authored facing); the
 /// overworld converts it to its own runtime facing when it builds the screen.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Default)]
@@ -655,7 +694,7 @@ pub enum Facing {
 }
 
 /// A townsfolk **appearance**: the walking sprite an NPC is drawn from, plus a
-/// display name. Reusable across placements the way an [`EncounterDef`] is — many
+/// display name. Reusable across placements the way an [`EncounterDef`] is: many
 /// villagers can share one `farmer` look while each [`NpcSpawn`] carries its own
 /// position and dialogue. Adding a new townsfolk look is a pure data entry (drop
 /// an `npcs/<id>.ron` and register its texture key).
@@ -676,8 +715,8 @@ fn default_emote() -> String {
 }
 
 /// A townsfolk placed on an overworld screen: walk up and press Confirm to talk.
-/// Its look comes from an [`NpcDef`] (`npc`); everything else — where it stands,
-/// which way it faces, the bubble bobbing over its head, and what it says — is
+/// Its look comes from an [`NpcDef`] (`npc`); everything else (where it stands,
+/// which way it faces, the bubble bobbing over its head, and what it says) is
 /// per-placement, so the same villager sprite can populate a whole town with
 /// distinct lines.
 ///
@@ -701,7 +740,7 @@ pub struct NpcSpawn {
     pub emote: String,
     /// Dialogue shown when talked to (each string is one box). Used when no
     /// [`cutscene`](Self::cutscene) is set, or once a one-time cutscene has
-    /// already played. Optional — an NPC can be pure ambience with no lines.
+    /// already played. Optional, since an NPC can be pure ambience with no lines.
     #[serde(default)]
     pub lines: Vec<String>,
     /// Optional portrait id (a character/enemy) shown beside this NPC's `lines`.
@@ -719,11 +758,11 @@ pub struct NpcSpawn {
     pub recruits: Option<String>,
 }
 
-/// A building stamped onto an overworld screen from the shared 6×4 house
+/// A building stamped onto an overworld screen from the shared 6x4 house
 /// tileset (`tiles/house/0..23.png`, laid out row-major). `col`/`row` is its
 /// top-left tile; the stone wall along its base is made solid so the player and
 /// townsfolk walk *in front of* it, while its grassy upper rows blend into the
-/// map. Purely decorative otherwise — houses aren't entered.
+/// map. Purely decorative otherwise, since houses aren't entered.
 #[derive(Clone, Debug, Deserialize)]
 pub struct HouseSpawn {
     /// Tile column / row of the house's top-left corner.
@@ -771,7 +810,7 @@ pub struct SpawnDef {
 /// A treasure chest resting on an overworld screen. Walk up and press Confirm to
 /// open it and pocket its contents. The reward fields are additive and each
 /// optional, so one chest can hold gold, a consumable, and a piece of equipment
-/// at once — mirroring the composable, pure-data extension pattern the rest of
+/// at once, mirroring the composable, pure-data extension pattern the rest of
 /// the model follows. Adding a chest is a RON edit plus a placement in a screen.
 #[derive(Clone, Debug, Deserialize)]
 pub struct ChestSpawn {
@@ -790,10 +829,10 @@ pub struct ChestSpawn {
 }
 
 /// A MIMIC lying in wait on an overworld screen: it sits perfectly still,
-/// disguised as a [chest](ChestSpawn), until the player strays close — then it
+/// disguised as a [chest](ChestSpawn), until the player strays close. Then it
 /// springs awake, gives chase, and starts the referenced [`EncounterDef`] on
 /// contact. It reuses the whole roaming-enemy chase/battle pipeline; the ambush
-/// is the only new behaviour. Adding one is pure data, like a [`SpawnDef`].
+/// is the only new behavior. Adding one is pure data, like a [`SpawnDef`].
 #[derive(Clone, Debug, Deserialize)]
 pub struct MimicSpawn {
     /// Tile column / row the disguised mimic waits on.
@@ -804,14 +843,14 @@ pub struct MimicSpawn {
 }
 
 /// A single screen (room) within a level: one ASCII tile map, its enemy spawns,
-/// and links to neighbouring screens. Walking into the mid-edge opening on a
-/// side with a neighbour flips to that screen.
+/// and links to neighboring screens. Walking into the mid-edge opening on a
+/// side with a neighbor flips to that screen.
 ///
 /// Each row of `map` is a string of tile chars (see [`crate::overworld::Tile`]
 /// for the legend). Rows may be ragged; shorter rows are grass-padded to the
-/// widest row. Neighbour fields are indices into the owning level's `screens`.
+/// widest row. Neighbor fields are indices into the owning level's `screens`.
 ///
-/// The `map` is **not** stored in the level RON — it lives in a sibling CSV
+/// The `map` is **not** stored in the level RON. It lives in a sibling CSV
 /// (`maps/<level>/<screen index>.csv`) and is filled in at load time (hence
 /// `#[serde(default)]`): the level file lists only each screen's spawns, shops,
 /// chests, and links.
@@ -856,6 +895,11 @@ fn default_chapter() -> u32 {
 #[derive(Clone, Debug, Deserialize)]
 pub struct LevelDef {
     pub id: String,
+    /// Ids this level was known by before a rename. Saves store level ids, so
+    /// listing the old ones here lets an older save keep its progress and
+    /// position in the renamed level (see [`Registry::renamed_level`]).
+    #[serde(default)]
+    pub former_ids: Vec<String>,
     pub name: String,
     /// Which story **chapter** this level belongs to. The world map only offers
     /// the current chapter's regions; clearing the last boss of a chapter (or, for
@@ -895,7 +939,7 @@ pub struct LevelDef {
 }
 
 /// One step of a [`CutsceneDef`]. This enum is the extension point: new kinds of
-/// scripted moments (set a flag, move an actor, fade, …) are new variants.
+/// scripted moments (set a flag, move an actor, fade, and so on) are new variants.
 ///
 /// Steps split into two kinds. **Dialogue / timed** steps hold the scene until
 /// they resolve: a [`Say`](Self::Say) waits for the player to dismiss the line, a
@@ -924,7 +968,7 @@ pub enum CutsceneStep {
     /// already-placed one to a new spot). `actor` is a handle later steps address;
     /// `character` is a character/enemy id whose overworld walk sprite is used;
     /// `at` is a `(col, row)` tile. These actors are extra cast brought on for the
-    /// scene — the roaming player and townsfolk are untouched. Instant.
+    /// scene; the roaming player and townsfolk are untouched. Instant.
     Place {
         actor: String,
         character: String,
@@ -946,11 +990,11 @@ pub enum CutsceneStep {
     Turn { actor: String, facing: Facing },
     /// Remove a choreography actor from the screen. Instant.
     Leave { actor: String },
-    /// Glide the camera to centre a `(col, row)` tile. Instant — the pan eases in
+    /// Glide the camera to center a `(col, row)` tile. Instant: the pan eases in
     /// over the following steps, so it can drift while a line is spoken; follow it
     /// with a [`Wait`](Self::Wait) to hold on the new framing before continuing.
     Pan { at: (u32, u32) },
-    /// Hold the scene for `secs` seconds with no dialogue — a beat for the action
+    /// Hold the scene for `secs` seconds with no dialogue, a beat for the action
     /// to breathe. Timed (a Confirm/Cancel press skips the remainder).
     Wait { secs: f32 },
 }
@@ -959,6 +1003,11 @@ pub enum CutsceneStep {
 #[derive(Clone, Debug, Deserialize)]
 pub struct CutsceneDef {
     pub id: String,
+    /// Ids this cutscene was known by before a rename, so a save that already
+    /// played it under an old id doesn't play it again (see
+    /// [`Registry::renamed_cutscene`]).
+    #[serde(default)]
+    pub former_ids: Vec<String>,
     pub steps: Vec<CutsceneStep>,
 }
 
@@ -971,23 +1020,23 @@ pub struct GameData {
     pub characters: Vec<CharacterDef>,
     pub enemies: Vec<EnemyDef>,
     pub skills: Vec<SkillDef>,
-    /// Status conditions (burn, poison, slow, …) referenced by skills via
-    /// [`SkillDef::inflicts`]. Optional — a game with no statuses just omits it.
+    /// Status conditions (burn, poison, slow, and so on) referenced by skills via
+    /// [`SkillDef::inflicts`]. Optional: a game with no statuses just omits it.
     #[serde(default)]
     pub statuses: Vec<StatusDef>,
     /// Weapons and armor referenced by characters/enemies.
     #[serde(default)]
     pub equipment: Vec<EquipmentDef>,
     /// Consumable items: bought at shops, dropped by enemies, and used in battle
-    /// (or from the inventory screen). Optional — a game with no items omits it.
+    /// (or from the inventory screen). Optional: a game with no items omits it.
     #[serde(default)]
     pub items: Vec<ItemDef>,
-    /// Shops the player can enter from the overworld. Optional — a game with no
+    /// Shops the player can enter from the overworld. Optional: a game with no
     /// shops just omits it.
     #[serde(default)]
     pub shops: Vec<ShopDef>,
     /// Townsfolk appearances referenced by screens via [`NpcSpawn::npc`].
-    /// Optional — a game with no NPCs just omits it.
+    /// Optional: a game with no NPCs just omits it.
     #[serde(default)]
     pub npcs: Vec<NpcDef>,
     pub encounters: Vec<EncounterDef>,
@@ -1017,7 +1066,7 @@ pub struct Registry {
 
 /// The top-level globals that aren't a per-entity collection: the starting party
 /// and the level **progression order**. The order is index-sensitive (screen
-/// neighbour links, save `level_progress`, and clear-to-advance all step through
+/// neighbor links, save `level_progress`, and clear-to-advance all step through
 /// it), so it's stated explicitly in `meta.ron` rather than left to however the
 /// filesystem happens to sort the `levels/` folder.
 #[derive(Debug, Deserialize)]
@@ -1031,17 +1080,18 @@ struct Meta {
 /// with their tilemaps read from CSV.
 fn load_game_data() -> GameData {
     let meta: Meta = parse_data_file("meta.ron");
+    let files = collection_files();
     GameData {
-        characters: load_collection("characters"),
-        enemies: load_collection("enemies"),
-        skills: load_collection("skills"),
-        statuses: load_collection("statuses"),
-        equipment: load_collection("equipment"),
-        items: load_collection("items"),
-        shops: load_collection("shops"),
-        npcs: load_collection("npcs"),
-        encounters: load_collection("encounters"),
-        cutscenes: load_collection("cutscenes"),
+        characters: load_collection(&files, "characters"),
+        enemies: load_collection(&files, "enemies"),
+        skills: load_collection(&files, "skills"),
+        statuses: load_collection(&files, "statuses"),
+        equipment: load_collection(&files, "equipment"),
+        items: load_collection(&files, "items"),
+        shops: load_collection(&files, "shops"),
+        npcs: load_collection(&files, "npcs"),
+        encounters: load_collection(&files, "encounters"),
+        cutscenes: load_collection(&files, "cutscenes"),
         levels: meta.levels.iter().map(|id| load_level(id)).collect(),
         starting_party: meta.starting_party,
     }
@@ -1049,38 +1099,19 @@ fn load_game_data() -> GameData {
 
 /// Parse a single embedded RON file (relative to `assets/data/`) into `T`.
 fn parse_data_file<T: DeserializeOwned>(path: &str) -> T {
-    let file = DATA_DIR
-        .get_file(path)
-        .unwrap_or_else(|| panic!("missing data file '{path}'"));
-    let src = file
-        .contents_utf8()
-        .unwrap_or_else(|| panic!("data file '{path}' is not valid UTF-8"));
-    ron::from_str(src).unwrap_or_else(|e| panic!("parse data file '{path}': {e}"))
+    let src = data_file_text(path).unwrap_or_else(|| panic!("missing data file '{path}'"));
+    ron::from_str(&src).unwrap_or_else(|e| panic!("parse data file '{path}': {e}"))
 }
 
 /// Load every `*.ron` file directly in the `sub` collection folder into a
-/// `Vec<T>`, one def per file. Sorted by filename for a deterministic order —
-/// collections are looked up by id, so the order is cosmetic (levels, whose order
+/// `Vec<T>`, one def per file. Sorted by filename for a deterministic order.
+/// Collections are looked up by id, so the order is cosmetic (levels, whose order
 /// *is* significant, are loaded via [`load_level`] in `meta.ron` order instead).
-fn load_collection<T: DeserializeOwned>(sub: &str) -> Vec<T> {
-    let dir = DATA_DIR
-        .get_dir(sub)
-        .unwrap_or_else(|| panic!("missing data folder '{sub}'"));
-    let mut files: Vec<_> = dir
-        .files()
-        .filter(|f| f.path().extension().and_then(|e| e.to_str()) == Some("ron"))
-        .collect();
-    files.sort_by_key(|f| f.path());
-    files
-        .into_iter()
-        .map(|f| {
-            let path = f.path().to_string_lossy();
-            let src = f
-                .contents_utf8()
-                .unwrap_or_else(|| panic!("data file '{path}' is not valid UTF-8"));
-            ron::from_str(src).unwrap_or_else(|e| panic!("parse data file '{path}': {e}"))
-        })
-        .collect()
+/// A folder with no RON files (or no folder at all) is an empty collection.
+fn load_collection<T: DeserializeOwned>(files: &HashMap<String, Vec<String>>, sub: &str) -> Vec<T> {
+    files.get(sub).map_or_else(Vec::new, |paths| {
+        paths.iter().map(|path| parse_data_file(path)).collect()
+    })
 }
 
 /// Load one level and fill each of its screens' tilemaps from the matching CSV
@@ -1090,13 +1121,9 @@ fn load_level(id: &str) -> LevelDef {
     let mut level: LevelDef = parse_data_file(&format!("levels/{id}.ron"));
     for (i, screen) in level.screens.iter_mut().enumerate() {
         let path = format!("maps/{id}/{i}.csv");
-        let file = DATA_DIR
-            .get_file(&path)
+        let csv = data_file_text(&path)
             .unwrap_or_else(|| panic!("level '{id}' screen {i} is missing its map '{path}'"));
-        let csv = file
-            .contents_utf8()
-            .unwrap_or_else(|| panic!("map '{path}' is not valid UTF-8"));
-        screen.map = parse_csv_map(csv);
+        screen.map = parse_csv_map(&csv);
     }
     level
 }
@@ -1212,6 +1239,28 @@ impl Registry {
     pub fn cutscene(&self, id: &str) -> Option<&CutsceneDef> {
         self.cutscenes.get(id).map(|&i| &self.data.cutscenes[i])
     }
+
+    /// The current id of the level that used to be called `old` (one of its
+    /// [`former_ids`](LevelDef::former_ids)), or `None` if no level was renamed
+    /// from it.
+    pub fn renamed_level(&self, old: &str) -> Option<&str> {
+        self.data
+            .levels
+            .iter()
+            .find(|l| l.former_ids.iter().any(|f| f == old))
+            .map(|l| l.id.as_str())
+    }
+
+    /// The current id of the cutscene that used to be called `old` (one of its
+    /// [`former_ids`](CutsceneDef::former_ids)), or `None` if none was renamed
+    /// from it.
+    pub fn renamed_cutscene(&self, old: &str) -> Option<&str> {
+        self.data
+            .cutscenes
+            .iter()
+            .find(|c| c.former_ids.iter().any(|f| f == old))
+            .map(|c| c.id.as_str())
+    }
 }
 
 impl EnemyDef {
@@ -1225,15 +1274,15 @@ impl EnemyDef {
 /// New art is registered here once; RON then references it by key. Keeping this
 /// a compile-time `match` (rather than a filesystem read) is what lets the web
 /// build ship every asset inside the wasm bundle.
-pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
-    // House tiles are addressed by index (`house_0`..`house_23`) and served from
-    // the embedded tileset folder rather than an explicit match arm each.
+pub fn embedded_texture(key: &str) -> Option<Cow<'static, [u8]>> {
+    // House tiles are addressed by index (`house_0` through `house_23`) and served
+    // from the embedded tileset folder rather than an explicit match arm each.
     if let Some(n) = key.strip_prefix("house_") {
-        return HOUSE_DIR.get_file(format!("{n}.png")).map(|f| f.contents());
+        return HouseTiles::get(&format!("{n}.png")).map(|f| f.data);
     }
-    Some(match key {
+    Some(Cow::Borrowed(match key {
         "swordsman" => include_bytes!("../assets/textures/entities/playables/swordsman.png"),
-        // The AXEMAN — a garrison soldier recruited in the HARBORWATCH village.
+        // The AXEMAN, a garrison soldier recruited in the HARBORWATCH village.
         // A 6x6 sheet: walk rows 0-3 (down/up/right/left), attack row 4, spin
         // attack row 5.
         "axeman" => include_bytes!("../assets/textures/entities/playables/axeman.png"),
@@ -1245,10 +1294,10 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "question_emote" => include_bytes!("../assets/textures/ui/question_emote.png"),
         "love_emote" => include_bytes!("../assets/textures/ui/love_emote.png"),
         "mage" => include_bytes!("../assets/textures/entities/playables/mage.png"),
-        // GARETH, the mountain hermit — Roland's sheet minus the four unused
+        // GARETH, the mountain hermit: Roland's sheet minus the four unused
         // bottom rows (6x8: walk rows 0-3, attack rows 4-7).
         "hermit" => include_bytes!("../assets/textures/entities/playables/hermit.png"),
-        // The PIRATE CAPTAIN — fought on the CASTAWAY SHORE, then a party member.
+        // The PIRATE CAPTAIN, fought on the CASTAWAY SHORE, then a party member.
         // An 8x8 sheet on the playable layout (walk rows 0-3, attack rows 4-7).
         "captain" => include_bytes!("../assets/textures/entities/playables/captain.png"),
         "demon" => include_bytes!("../assets/textures/entities/monsters/demon.png"),
@@ -1270,20 +1319,20 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "mimic" => include_bytes!("../assets/textures/entities/monsters/mimic.png"),
         "gargoyle" => include_bytes!("../assets/textures/entities/monsters/gargoyle.png"),
         "dragon" => include_bytes!("../assets/textures/entities/monsters/dragon.png"),
-        // TRAVELLER'S END denizens: scuttling crabs, undead skeletons, and the
+        // TRAVELER'S END denizens: scuttling crabs, undead skeletons, and the
         // mounted dark knights that patrol the high passes.
         "mountain_crab" => include_bytes!("../assets/textures/entities/monsters/mountain_crab.png"),
         "skeleton" => include_bytes!("../assets/textures/entities/monsters/skeleton.png"),
         "dark_knight" => include_bytes!("../assets/textures/entities/monsters/dark_knight.png"),
         // UNDERWORLD denizens: the goblin and orc families of the CHARRED DEPTHS.
-        // Prisoners of the war remade by the dark — clubbers and archers among the
+        // Prisoners of the war remade by the dark: clubbers and archers among the
         // goblins, hulking brutes among the orcs.
         "club_goblin" => include_bytes!("../assets/textures/entities/monsters/club_goblin.png"),
         "archer_goblin" => include_bytes!("../assets/textures/entities/monsters/archer_goblin.png"),
         "orc_brute" => include_bytes!("../assets/textures/entities/monsters/orc_brute.png"),
         // The BALLISTA: a siege engine tool, worked by the foes fighting beside it.
         "ballista" => include_bytes!("../assets/textures/entities/monsters/ballista.png"),
-        // CHAPTER 2 shore denizens: a hardier beach crab (mountain-crab layout — a
+        // CHAPTER 2 shore denizens: a hardier beach crab (mountain-crab layout, a
         // 3x1 scuttle row) and the PIRATE grunts and gunners that hold the coast.
         // The pirate sheets share the hermit's layout (walk rows 0-3, attack rows
         // 4-7), just 5 columns wide.
@@ -1302,13 +1351,13 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         "bolt" => include_bytes!("../assets/textures/entities/animation_helpers/bolt.png"),
         // The pirate gunners' lead shot.
         "bullet" => include_bytes!("../assets/textures/entities/animation_helpers/bullet.png"),
-        // BRENN the axeman's thrown/boomerang axe — a 4×2 spin sheet (8 frames,
+        // BRENN the axeman's thrown/boomerang axe: a 4x2 spin sheet (8 frames,
         // see `projectile_grid`), used by both AXE THROW and AXE BOOMERANG.
         "axe" => include_bytes!("../assets/textures/entities/animation_helpers/axe.png"),
         "grass" => include_bytes!("../assets/textures/tiles/grass.png"),
         "water" => include_bytes!("../assets/textures/tiles/water.png"),
         "tree" => include_bytes!("../assets/textures/tiles/tree.png"),
-        // A beach's coconut palm — a per-level `tree` override for the shore.
+        // A beach's coconut palm, used as a per-level `tree` override for the shore.
         "coconut_tree" => include_bytes!("../assets/textures/tiles/coconut_tree.png"),
         "rock" => include_bytes!("../assets/textures/tiles/rock.png"),
         "barricade" => include_bytes!("../assets/textures/tiles/barricade.png"),
@@ -1326,24 +1375,24 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
         // Dedicated dialogue-box portraits: standalone bust art, not a cut frame
         // off the battle/overworld sheet. `resolve_portrait` in `cutscene.rs`
         // prefers a `<id>_portrait` key when one is registered, falling back to
-        // the sheet's idle frame otherwise — so a portrait can be added per
+        // the sheet's idle frame otherwise, so a portrait can be added per
         // character without touching any code.
         "axeman_portrait" => include_bytes!("../assets/textures/ui/dialogue/axeman.png"),
         "captain_portrait" => include_bytes!("../assets/textures/ui/dialogue/captain.png"),
         "demon_king_portrait" => include_bytes!("../assets/textures/ui/dialogue/demon_king.png"),
         "farmer_portrait" => include_bytes!("../assets/textures/ui/dialogue/farmer.png"),
         "mage_portrait" => include_bytes!("../assets/textures/ui/dialogue/mage.png"),
-        // ROLAND's dialogue bust — filed under "knight" (his look), referenced by
+        // ROLAND's dialogue bust, filed under "knight" (his look) and referenced by
         // `portrait: Some("knight")` on his `Say` steps.
         "knight_portrait" => include_bytes!("../assets/textures/ui/dialogue/knight.png"),
-        // GARETH's dialogue bust — filed under "scout" (the king's scout),
+        // GARETH's dialogue bust, filed under "scout" (the king's scout) and
         // referenced by `portrait: Some("scout")` on his `Say` steps.
         "scout_portrait" => include_bytes!("../assets/textures/ui/dialogue/scout.png"),
-        // ELARA's dialogue bust for the moment she owns her royal identity —
+        // ELARA's dialogue bust for the moment she owns her royal identity,
         // referenced by `portrait: Some("princess")` on that one reveal line.
         "princess_portrait" => include_bytes!("../assets/textures/ui/dialogue/princess.png"),
         _ => return None,
-    })
+    }))
 }
 
 /// How a projectile texture's spin frames are laid out on its sheet, as
@@ -1351,9 +1400,9 @@ pub fn embedded_texture(key: &str) -> Option<&'static [u8]> {
 /// total tumble is `columns * rows`.
 ///
 /// Most projectiles ([`AttackAnim::Projectile`]) are a single still sprite (an
-/// arrow, a bullet) — the default `(1, 1)`. A spin sheet is a grid of square
+/// arrow, a bullet), the default `(1, 1)`. A spin sheet is a grid of square
 /// frames the projectile cycles through as it flies: the thrown `axe` (both
-/// [`AttackAnim::Projectile`] and [`AttackAnim::Boomerang`]) is a 4×2 sheet, an
+/// [`AttackAnim::Projectile`] and [`AttackAnim::Boomerang`]) is a 4x2 sheet, an
 /// 8-frame tumble through a full rotation. Kept here beside [`embedded_texture`]
 /// because the frame layout is a property of the art, registered in code the
 /// same way the bytes are.
@@ -1364,7 +1413,7 @@ pub fn projectile_grid(key: &str) -> (u32, u32) {
     }
 }
 
-/// The embedded UI font (TrueType). Rendered with macroquad's text rasteriser.
+/// The embedded UI font (TrueType). Rendered with macroquad's text rasterizer.
 pub const FONT_TTF: &[u8] = include_bytes!("../assets/textures/ui/font.ttf");
 
 /// Looping title / save-select theme (Vorbis), playing on the menus before a run

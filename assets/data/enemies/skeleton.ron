@@ -1,7 +1,7 @@
 // Skeletons: restless undead of the high boneyards. Middling all-round
 // fighters that swing a REAP with their Random AI. skeleton.png shares
 // the swordsman's 5x12 layout exactly: rows 0-3 walk down/up/right/left,
-// rows 4-7 attack down/up/right/left — so, like ROLAND, the walk-right
+// rows 4-7 attack down/up/right/left. So, like ROLAND, the walk-right
 // row reads as idle and the attack-right row (6) is the battle swing.
 EnemyDef(
     id: "skeleton",

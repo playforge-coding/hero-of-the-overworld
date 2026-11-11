@@ -1,7 +1,7 @@
 //! The controls / input-mapping screen.
 //!
 //! Opened with the **Menu** button from the title, this assigns each input
-//! *source* — the keyboard and every connected gamepad — to a **player** number.
+//! *source* (the keyboard and every connected gamepad) to a **player** number.
 //! That's how two people share the party: put the keyboard on Player 1 and a pad
 //! on Player 2 and each drives their own heroes; leave them on the same player and
 //! one person drives everything. The party is then dealt across the players
@@ -9,7 +9,7 @@
 //! [`crate::input::InputAssignment`]).
 
 use crate::input::{Button, Input, InputAssignment};
-use crate::renderer::{color, virtual_w, Renderer, VIRTUAL_H};
+use crate::renderer::{Renderer, VIRTUAL_H, color, virtual_w};
 
 /// What an [`InputConfig::update`] wants the game to do next.
 pub enum InputConfigEvent {
@@ -42,7 +42,7 @@ impl InputConfig {
     }
 
     /// One player number per input source: the keyboard plus every pad. This is
-    /// the ceiling on player count — you can't have more players than sources.
+    /// the ceiling on player count, since you can't have more players than sources.
     fn source_count(&self) -> usize {
         1 + self.gamepad_count
     }
@@ -142,7 +142,7 @@ impl InputConfig {
         self.draw_row(r, x, y, self.done_row(), "DONE", None);
 
         let hint = if self.gamepad_count == 0 {
-            "CONNECT A GAMEPAD TO SPLIT THE PARTY   —   MENU/CANCEL: BACK"
+            "CONNECT A GAMEPAD TO SPLIT THE PARTY   MENU/CANCEL: BACK"
         } else {
             "MOVE: PICK ROW   LEFT/RIGHT: CHANGE PLAYER   MENU/CANCEL: BACK"
         };

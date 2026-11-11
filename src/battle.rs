@@ -19,12 +19,12 @@ use glam::Vec2;
 use std::collections::HashMap;
 
 use crate::data::{
-    projectile_grid, AttackAnim, BattlerSprite, EnemyAi, ItemDrop, MimicryDef, Registry, SkillDef,
-    SkillKind, Stats, StatusDef, TargetKind, ToolDef,
+    AttackAnim, BattlerSprite, EnemyAi, ItemDrop, MimicryDef, Registry, SkillDef, SkillKind, Stats,
+    StatusDef, TargetKind, ToolDef, projectile_grid,
 };
 use crate::input::{Button, Controllers, Input};
 use crate::party::{ItemStack, Party};
-use crate::renderer::{color, virtual_w, Color, Renderer, TextureHandle, VIRTUAL_H};
+use crate::renderer::{Color, Renderer, TextureHandle, VIRTUAL_H, color, virtual_w};
 use crate::util::{Rng, TextureCache};
 
 // ---- Runtime animation ------------------------------------------------------
@@ -79,7 +79,7 @@ impl Anim {
 // ---- Status effects ---------------------------------------------------------
 
 /// A status condition currently afflicting a battler, with how many rounds it
-/// has left. The behaviour (damage per turn, stat shifts, colour) lives in the
+/// has left. The behavior (damage per turn, stat shifts, color) lives in the
 /// data-driven [`crate::data::StatusDef`] this `id` points at, so new effects are
 /// content, not code.
 struct ActiveStatus {
@@ -123,10 +123,10 @@ struct Battler {
     defending: bool,
     /// If this (enemy) battler has been **taunted**, the hero (battler index) it
     /// will prefer to strike on its next turn. Set by a hero's well-timed taunt
-    /// follow-up (see [`TauntTry`]) and consumed — cleared — when the enemy plans
+    /// follow-up (see [`TauntTry`]) and consumed (cleared) when the enemy plans
     /// its action. Heroes leave this `None`.
     taunted_by: Option<usize>,
-    /// Status conditions currently in effect (burn, slow, …). Drives per-round
+    /// Status conditions currently in effect (burn, slow, and so on). Drives per-round
     /// ticks and effective-stat adjustments.
     statuses: Vec<ActiveStatus>,
     ai: EnemyAi,
@@ -135,7 +135,7 @@ struct Battler {
     /// Consumable items this (enemy) battler may drop when the fight is won.
     /// Empty for heroes.
     drops: Vec<ItemDrop>,
-    /// If set, this (enemy) battler is a **tool** (a ballista, …): it never takes
+    /// If set, this (enemy) battler is a **tool** (such as a ballista): it never takes
     /// its own turn, is fired by the *aware* foes beside it, and crumbles once none
     /// remain to work it (see [`ToolDef`] and [`Battle::crumble_orphan_tools`]).
     /// `None` for heroes and ordinary enemies.
@@ -147,7 +147,7 @@ struct Battler {
     /// `(sprite, texture)` so it can revert when the copied strike ends. `None`
     /// means it is wearing its true form (see [`Battle::wear_disguise`]).
     true_form: Option<(BattlerSprite, TextureHandle)>,
-    /// If set, damage can never drop this battler below 1 HP — it cannot be killed
+    /// If set, damage can never drop this battler below 1 HP, so it cannot be killed
     /// (the scripted DEMON KING). See [`crate::data::EnemyDef::invincible`].
     invincible: bool,
     home: Vec2,
@@ -164,11 +164,7 @@ impl Battler {
     /// The lowest HP damage may bring this battler to: `1` for an **invincible**
     /// battler (it can never be killed), `0` for everyone else.
     fn hp_floor(&self) -> i32 {
-        if self.invincible {
-            1
-        } else {
-            0
-        }
+        if self.invincible { 1 } else { 0 }
     }
 
     fn present(&self) -> bool {
@@ -248,7 +244,7 @@ struct Popup {
 /// A live projectile sprite in flight. A straight [`AttackAnim::Projectile`]
 /// travels from `from` to `to` over `dur` and vanishes as the blow lands; a
 /// [`boomerang`](Self::boomerang) instead flies out to `to`, curves, and loops
-/// back to `from`, lingering until it comes home. Purely visual — the damage is
+/// back to `from`, lingering until it comes home. Purely visual: the damage is
 /// applied by the action's impact step, timed to coincide with the sweep.
 struct Projectile {
     /// Texture key (into [`Battle::projectile_textures`]).
@@ -264,8 +260,9 @@ struct Projectile {
 }
 
 impl Projectile {
-    /// Current position along its flight. A straight shot lerps `from`→`to`; a
-    /// boomerang runs `from`→`to`→`from` with a perpendicular bow so it curves.
+    /// Current position along its flight. A straight shot lerps from `from` to
+    /// `to`; a boomerang runs out to `to` and back to `from` with a perpendicular
+    /// bow so it curves.
     fn pos(&self) -> Vec2 {
         let s = (self.elapsed / self.dur).clamp(0.0, 1.0);
         if !self.boomerang {
@@ -278,7 +275,7 @@ impl Projectile {
             self.to.lerp(self.from, (s - 0.5) * 2.0)
         };
         // Bow the path sideways, peaking at the midpoint, so out and back don't
-        // overlap — a thrown-loop feel. Perpendicular to the throw direction.
+        // overlap, giving a thrown-loop feel. Perpendicular to the throw direction.
         let seg = self.to - self.from;
         let perp = Vec2::new(-seg.y, seg.x).normalize_or_zero();
         let bow = (s * std::f32::consts::PI).sin() * (seg.length() * 0.18);
@@ -296,17 +293,17 @@ impl Projectile {
 }
 
 /// A resolved projectile texture: its handle, native pixel size, and spin layout,
-/// so the draw can pick a frame, centre, and scale it without re-querying.
+/// so the draw can pick a frame, center, and scale it without re-querying.
 struct ProjTex {
     handle: TextureHandle,
     /// Grid layout of the spin sheet in `(columns, rows)` (see [`projectile_grid`]);
     /// `(1, 1)` for a still sprite. Frames read left-to-right, top-to-bottom.
     cols: u32,
     rows: u32,
-    /// Size of one frame in pixels (`sheet_w / cols` × `sheet_h / rows`).
+    /// Size of one frame in pixels (`sheet_w / cols` by `sheet_h / rows`).
     frame_w: f32,
     frame_h: f32,
-    /// Native→drawn scale. A still sprite keeps the classic 2.2×; a spin sheet
+    /// Scale from native to drawn size. A still sprite keeps the classic 2.2x; a spin sheet
     /// (the axe) is scaled to a sane on-field size instead.
     scale: f32,
 }
@@ -321,8 +318,8 @@ impl ProjTex {
         let (cols, rows) = (cols.max(1), rows.max(1));
         let frame_w = w / cols as f32;
         let frame_h = h / rows as f32;
-        // Multi-frame spin sheets (the axe) are drawn to a fixed ~28px height;
-        // single-frame shots keep the original 2.2× blow-up.
+        // Multi-frame spin sheets (the axe) are drawn to a fixed height of about
+        // 28px; single-frame shots keep the original 2.2x blow-up.
         let scale = if cols * rows > 1 { 28.0 / frame_h } else { 2.2 };
         ProjTex {
             handle,
@@ -343,12 +340,12 @@ impl ProjTex {
 // ---- Action timing (attack / block timed hits) ------------------------------
 
 // SMRPG-style timed hits: there is *no* on-screen indicator. The window is woven
-// into the strike animation itself — you have to read the swing and tap Confirm
+// into the strike animation itself: you have to read the swing and tap Confirm
 // as the blow connects. The weapon connects at `STRIKE_CONNECT` (the peak of the
-// lunge); a tap within `STRIKE_PERFECT` of it is "on time" → the full bonus,
-// within `STRIKE_GOOD` is a hair early/late → the lesser bonus, and anything
-// further out (or no tap) misses. Tapping *before* the animation gets you nothing
-// — an early panic tap simply whiffs.
+// lunge). A tap within `STRIKE_PERFECT` of it is "on time" and earns the full
+// bonus, a tap within `STRIKE_GOOD` is a hair early or late and earns the lesser
+// bonus, and anything further out (or no tap) misses. Tapping *before* the
+// animation gets you nothing, so an early panic tap simply whiffs.
 //
 // `STRIKE_PERFECT` / `STRIKE_GOOD` are the *default* window half-widths. A
 // character can widen their own window (for both attacks and blocks) via
@@ -357,14 +354,14 @@ impl ProjTex {
 const STRIKE_CONNECT: f32 = 0.2;
 const STRIKE_PERFECT: f32 = 0.05;
 const STRIKE_GOOD: f32 = 0.13;
-/// When the blow actually lands — just after the timing window shuts, so the tap
+/// When the blow actually lands: just after the timing window shuts, so the tap
 /// is already known. Kept in step with the lunge's hold (see the timeline in
 /// [`Battle::update_execute`]).
 const STRIKE_APPLY: f32 = STRIKE_CONNECT + STRIKE_GOOD;
 
 // ---- Attack-animation timeline (see `AttackAnim` + `update_execute`) ---------
 // The timed-hit window always sits at `STRIKE_CONNECT` (you tap as the move is
-// *committed* — the swing, the cast, the spur of the charge). Each animation then
+// *committed*: the swing, the cast, the spur of the charge). Each animation then
 // carries its own **impact** time (when damage lands) and **end** time (when the
 // actor returns to idle). Impact is never earlier than the timing window's close,
 // so a well-timed tap (or block) is always resolved before the blow is applied.
@@ -378,7 +375,7 @@ const PROJ_END: f32 = 0.95;
 const PROJ_SPIN_FPS: f32 = 22.0;
 
 /// Boomerang attacks (the AXE BOOMERANG): a single spinning axe hurls out across
-/// the whole enemy line and loops home — a longer beat than a straight shot. It
+/// the whole enemy line and loops home, a longer beat than a straight shot. It
 /// launches with the other projectiles, but lands its blow as it sweeps *out*
 /// through the foes (roughly the midpoint of its flight) and keeps going, so the
 /// end comes well after impact.
@@ -386,7 +383,7 @@ const BOOMERANG_IMPACT: f32 = 0.6;
 const BOOMERANG_END: f32 = 1.15;
 
 /// Charge attacks: the actor sweeps across the field, striking mid-dash, then
-/// wraps the screen and returns — a longer beat than a lunge.
+/// wraps the screen and returns, a longer beat than a lunge.
 const CHARGE_IMPACT: f32 = 0.34;
 const CHARGE_END: f32 = 1.1;
 
@@ -394,7 +391,7 @@ const CHARGE_END: f32 = 1.1;
 const LUNGE_END: f32 = 0.9;
 
 /// Crowd attacks: a swarm of allies floods the screen, the blow landing at peak
-/// density, then they clear out — the grandest, longest beat (a summoned finale).
+/// density, then they clear out. The grandest, longest beat (a summoned finale).
 const CROWD_IMPACT: f32 = 0.55;
 const CROWD_END: f32 = 1.25;
 /// How many allies fill the screen during a [`AttackAnim::Crowd`] swarm.
@@ -410,7 +407,7 @@ enum TimingKind {
     /// A hero's own strike: a well-timed tap *adds* damage (+50% / +100%).
     Attack,
     /// A hero bracing for an incoming blow: a well-timed tap *subtracts* the
-    /// enemy's damage (−50% / −100%).
+    /// enemy's damage (-50% / -100%).
     Block,
 }
 
@@ -425,7 +422,7 @@ enum TimingResult {
 /// the `presser` gets exactly **one** clean Confirm tap, recorded as the elapsed
 /// *animation* time [`press_t`](Self::press_t), and how close that is to
 /// [`STRIKE_CONNECT`] decides the [`TimingResult`] and its damage [`HitMod`].
-/// Mashing the button ([`presses`](Self::presses) > 1) earns nothing — you can't
+/// Mashing the button ([`presses`](Self::presses) > 1) earns nothing: you can't
 /// hammer your way to a perfect.
 struct TimedHit {
     kind: TimingKind,
@@ -433,7 +430,7 @@ struct TimedHit {
     /// [`TimingKind::Attack`], the defender for [`TimingKind::Block`].
     presser: usize,
     /// Elapsed animation time of the *first* tap, for scoring (`None` until the
-    /// presser taps — a tap only counts while the strike is playing out).
+    /// presser taps; a tap only counts while the strike is playing out).
     press_t: Option<f32>,
     /// How many taps landed during the swing. Only a single, deliberate tap is
     /// eligible: zero is a plain miss, and two or more is button-mashing, which
@@ -466,7 +463,7 @@ impl TimedHit {
     }
 
     /// How well the tap landed, from its distance to the connect moment. Anything
-    /// but a single clean tap misses — no tap, or mashing.
+    /// but a single clean tap misses (no tap, or mashing).
     fn result(&self) -> TimingResult {
         if self.presses != 1 {
             return TimingResult::Miss;
@@ -503,8 +500,8 @@ impl TimedHit {
         }
     }
 
-    /// Label + colour for the floating feedback shown when the blow lands. A miss
-    /// shows nothing — you simply don't earn the bonus, no scolding text.
+    /// Label and color for the floating feedback shown when the blow lands. A miss
+    /// shows nothing: you simply don't earn the bonus, no scolding text.
     fn flash(&self) -> Option<(&'static str, Color)> {
         match (self.kind, self.result()) {
             (_, TimingResult::Miss) => None,
@@ -547,14 +544,14 @@ impl HitMod {
 // its next turn. Like the damage timed-hit there's no prompt: read the swing and
 // tap Confirm on the pull-back. The window sits safely after the damage window
 // shuts (even for a wide-window fighter) and before the swing ends, so the two
-// taps never collide. The first post-hit tap is the attempt — an early panic tap
+// taps never collide. The first post-hit tap is the attempt, and an early panic tap
 // misses, so it's a genuine bit of timing, not a mash.
 const TAUNT_CONNECT: f32 = 0.62;
 const TAUNT_WINDOW: f32 = 0.12;
 
 // Invariants (checked at compile time): the taunt window must open only after the
-// damage window has fully shut — even for the most forgiving fighter (a `good` of
-// 0.20, Gareth's) — and close before the swing ends at 0.9, so the two taps can
+// damage window has fully shut (even for the most forgiving fighter, Gareth, with
+// a `good` of 0.20) and close before the swing ends at 0.9, so the two taps can
 // never be confused for one another.
 const _: () = assert!(TAUNT_CONNECT - TAUNT_WINDOW > STRIKE_CONNECT + 0.20);
 const _: () = assert!(TAUNT_CONNECT + TAUNT_WINDOW < 0.9);
@@ -701,9 +698,9 @@ pub struct Battle {
     projectile_textures: HashMap<String, ProjTex>,
     /// Crowd art (keyed by texture key) preloaded from every skill's
     /// [`AttackAnim::Crowd`], so the swarm can be drawn without touching the cache
-    /// mid-frame. Just the handle — the crowd draws fixed 16px walk frames.
+    /// mid-frame. Just the handle, since the crowd draws fixed 16px walk frames.
     crowd_textures: HashMap<String, TextureHandle>,
-    /// The last skill a **hero** cast this battle, as `(battler index, skill id)` —
+    /// The last skill a **hero** cast this battle, as `(battler index, skill id)`:
     /// the move a [mimic](MimicryDef) apes (and whose caster's shape it borrows).
     /// Recorded whenever a hero resolves a skill; `None` until the party casts one.
     last_hero_skill: Option<(usize, String)>,
@@ -719,8 +716,8 @@ impl Battle {
     ) -> Self {
         let mut battlers = Vec::new();
 
-        // Heroes on the left: only the **active line-up** — the first
-        // `ACTIVE_PARTY` members in roster order — fight; the rest are reserves
+        // Heroes on the left: only the **active line-up** (the first
+        // `ACTIVE_PARTY` members in roster order) fight; the rest are reserves
         // swapped in from the overworld party menu. Among the active line-up, the
         // living take the field (a downed one sits the fight out).
         let active = party.members.len().min(crate::party::ACTIVE_PARTY);
@@ -910,7 +907,7 @@ impl Battle {
         !self.living(Side::Enemy).is_empty()
     }
 
-    /// Whether any **aware** enemy is still standing — a living foe that is not
+    /// Whether any **aware** enemy is still standing: a living foe that is not
     /// itself a [tool](ToolDef). These are the ones who work the tools; once the
     /// last of them falls, every tool crumbles (see [`crumble_orphan_tools`]).
     fn aware_enemies_alive(&self) -> bool {
@@ -929,8 +926,8 @@ impl Battle {
 
     /// Crumble every tool left with no aware enemy to work it. Called at each point
     /// the roster may have changed (after an action, at round start) *before* the
-    /// win check, so felling the last operator ends the fight at once — the
-    /// abandoned engine falls with them. Directly destroyed tools are handled by
+    /// win check, so felling the last operator ends the fight at once (the
+    /// abandoned engine falls with them). Directly destroyed tools are handled by
     /// the normal HP path; this only covers the "no one left to fire it" case.
     fn crumble_orphan_tools(&mut self) {
         if self.aware_enemies_alive() {
@@ -959,7 +956,7 @@ impl Battle {
         }
     }
 
-    /// Ally candidates for a **reviving** heal — allies that are still on the
+    /// Ally candidates for a **reviving** heal: allies that are still on the
     /// field whether alive *or* downed, so a revive can pick a fallen member. For
     /// non-ally target kinds this is just the usual living [`candidates`].
     fn revive_candidates(&self, actor: usize, target: TargetKind) -> Vec<usize> {
@@ -989,8 +986,8 @@ impl Battle {
 
     /// A battler's effective combat stats: base+equipment with every active
     /// status's [`stat_mods`](crate::data::StatusDef::stat_mods) folded in. This
-    /// is the single place status stat shifts (slow, weaken, …) take effect, so
-    /// they apply everywhere — turn order, damage, hit rolls — and revert on their
+    /// is the single place status stat shifts (slow, weaken, and so on) take
+    /// effect, so they apply everywhere (turn order, damage, hit rolls) and revert on their
     /// own once the status list no longer contains them.
     fn eff_stats(&self, reg: &Registry, i: usize) -> Stats {
         let b = &self.battlers[i];
@@ -1016,7 +1013,7 @@ impl Battle {
         dt: f32,
     ) -> Option<BattleOutcome> {
         // DEV-ONLY: instantly win the fight, awarding the encounter's full spoils
-        // (XP, gold, and rolled drops) exactly as a real victory would — so the map
+        // (XP, gold, and rolled drops) exactly as a real victory would, so the map
         // enemy clears, rewards land, and any level-clear cutscene still fires. Lets
         // a developer blow past encounters while testing. Compiled out of release
         // builds via `debug_assertions`, so players cannot skip fights. Shares the
@@ -1041,7 +1038,8 @@ impl Battle {
 
         // Take the state out so we can freely borrow self.
         let mut state = std::mem::replace(&mut self.state, State::Intro(0.0));
-        let outcome = match &mut state {
+
+        match &mut state {
             State::Intro(timer) => {
                 *timer -= dt;
                 if *timer <= 0.0 {
@@ -1094,12 +1092,11 @@ impl Battle {
                     None
                 }
             }
-        };
-        outcome
+        }
     }
 
     /// Total XP and gold from the defeated enemies, plus the item drops they
-    /// yield — each enemy's drop table rolled independently against its chance.
+    /// yield, with each enemy's drop table rolled independently against its chance.
     /// Rolling here (rather than at spawn) keeps the outcome deterministic per RNG
     /// stream and out of the render path.
     fn spoils(&self, rng: &mut Rng) -> (i32, i32, Vec<String>) {
@@ -1138,7 +1135,7 @@ impl Battle {
         // swift usually act first but the exact order shifts round to round and
         // near-equal units trade the lead. Rolls are done once per unit here (not
         // inside the sort) so every entry keeps a single stable initiative. Tools
-        // are inert — they never take a turn — so they sit out the order entirely
+        // are inert (they never take a turn), so they sit out the order entirely
         // (and don't skew the field's average speed).
         let living: Vec<usize> = (0..self.battlers.len())
             .filter(|&i| self.battlers[i].alive() && self.battlers[i].tool.is_none())
@@ -1171,7 +1168,7 @@ impl Battle {
     }
 
     /// Win (`Some(true)`) if all enemies are down, loss (`Some(false)`) if all
-    /// heroes are, else `None` — the fight goes on.
+    /// heroes are, else `None` while the fight goes on.
     fn battle_over(&self) -> Option<bool> {
         if !self.enemies_alive() {
             Some(true)
@@ -1186,7 +1183,7 @@ impl Battle {
     /// wiped, otherwise pass the turn to the next unit.
     fn after_action(&mut self, rng: &mut Rng, reg: &Registry) -> State {
         // If that action fell the last aware enemy, the tool it left behind has no
-        // one to work it — crumble it now so victory lands immediately.
+        // one to work it, so crumble it now and let victory land immediately.
         self.crumble_orphan_tools();
         if let Some(win) = self.battle_over() {
             return State::Result { win, timer: 1.6 };
@@ -1202,10 +1199,10 @@ impl Battle {
             let actor = self.turn_order[self.turn_idx];
             self.turn_idx += 1;
             if !self.battlers[actor].alive() {
-                continue; // fell earlier this round — skip its turn
+                continue; // fell earlier this round, so skip its turn
             }
             if self.battlers[actor].tool.is_some() {
-                continue; // a tool never acts on its own — the aware foes work it
+                continue; // a tool never acts on its own; the aware foes work it
             }
             return match self.battlers[actor].side {
                 Side::Hero => State::Command(Command {
@@ -1276,7 +1273,7 @@ impl Battle {
     ) -> CommandResult {
         let hero = cmd.hero;
         // Each hero is commanded by the player its party slot maps to (round-robin
-        // over the connected pads — so two players cleanly share three heroes). A
+        // over the connected pads, so two players cleanly share three heroes). A
         // lone player, with a single input source, commands every hero in turn.
         let input = controllers.player(self.battlers[hero].party_index.unwrap_or(0));
 
@@ -1321,7 +1318,7 @@ impl Battle {
                         cmd.stage = Stage::Root { cursor: 2 };
                     } else if let Some(item) = reg.item(&self.items[*cursor].id) {
                         // The item is spent when its action resolves (see
-                        // `apply_action`), not here — so backing out of target
+                        // `apply_action`), not here, so backing out of target
                         // selection doesn't waste it, mirroring how skills bill MP.
                         let kind = ActionKind::Item(item.id.clone());
                         let target = item.target;
@@ -1423,38 +1420,37 @@ impl Battle {
         // tool* (it is the actor, so it animates and its stats drive the shot).
         if let Some(tool) = self.available_tool() {
             let tdef = self.battlers[tool].tool.clone().expect("available_tool");
-            if rng.chance(tdef.operate_chance) {
-                if let Some(def) = reg.skill(&tdef.skill) {
-                    let targets = self.pick_targets(tool, def.target, rng);
-                    if !targets.is_empty() {
-                        return Action {
-                            actor: tool,
-                            kind: ActionKind::Skill(def.id.clone()),
-                            targets,
-                        };
-                    }
+            if rng.chance(tdef.operate_chance)
+                && let Some(def) = reg.skill(&tdef.skill)
+            {
+                let targets = self.pick_targets(tool, def.target, rng);
+                if !targets.is_empty() {
+                    return Action {
+                        actor: tool,
+                        kind: ActionKind::Skill(def.id.clone()),
+                        targets,
+                    };
                 }
             }
         }
 
         // A mimic may ape the party's last move, taking on that hero's shape as it
         // strikes. Kept in check by its allow-list, a power nerf, and a per-turn
-        // roll — and only fires once a copyable move has actually been cast this
+        // roll, and only fires once a copyable move has actually been cast this
         // fight; otherwise it drops through to its own skills and basic attack.
-        if let Some(mim) = self.battlers[enemy].mimicry.clone() {
-            if let Some((source, skill)) = self.last_hero_skill.clone() {
-                if mim.copyable.contains(&skill) && rng.chance(mim.chance) {
-                    if let Some(def) = reg.skill(&skill) {
-                        let targets = self.pick_targets(enemy, def.target, rng);
-                        if !targets.is_empty() {
-                            return Action {
-                                actor: enemy,
-                                kind: ActionKind::Mimic { skill, source },
-                                targets,
-                            };
-                        }
-                    }
-                }
+        if let Some(mim) = self.battlers[enemy].mimicry.clone()
+            && let Some((source, skill)) = self.last_hero_skill.clone()
+            && mim.copyable.contains(&skill)
+            && rng.chance(mim.chance)
+            && let Some(def) = reg.skill(&skill)
+        {
+            let targets = self.pick_targets(enemy, def.target, rng);
+            if !targets.is_empty() {
+                return Action {
+                    actor: enemy,
+                    kind: ActionKind::Mimic { skill, source },
+                    targets,
+                };
             }
         }
 
@@ -1462,7 +1458,7 @@ impl Battle {
         // Random AI may use a skill; Basic always attacks.
         let use_skill = matches!(b.ai, EnemyAi::Random) && !b.skills.is_empty();
         // Roll each turn whether to cast, then start at a random known skill and
-        // take the first affordable one with a live target — so a multi-skill foe
+        // take the first affordable one with a live target, so a multi-skill foe
         // (a demon with FIREBALL/CLAW, the minotaur's three moves) genuinely mixes
         // them up instead of leaning on any one.
         if use_skill && rng.chance(ENEMY_SKILL_CHANCE) {
@@ -1497,15 +1493,15 @@ impl Battle {
         match target {
             TargetKind::AllEnemies | TargetKind::AllAllies => cands,
             TargetKind::SelfOnly => vec![actor],
-            // Single target: a taunt overrides the choice — the enemy prefers the
+            // Single target: a taunt overrides the choice, so the enemy prefers the
             // hero who taunted it, as long as that hero is still a living target.
             // Otherwise pick a random living candidate so foes spread their attacks
             // around instead of always focusing the frontmost hero.
             _ => {
-                if let Some(h) = self.battlers[actor].taunted_by {
-                    if cands.contains(&h) {
-                        return vec![h];
-                    }
+                if let Some(h) = self.battlers[actor].taunted_by
+                    && cands.contains(&h)
+                {
+                    return vec![h];
                 }
                 match cands.len() {
                     0 => vec![],
@@ -1532,7 +1528,7 @@ impl Battle {
 
         if exec.idx >= exec.queue.len() {
             // The action (if any) has resolved. At the tail of a round, tick
-            // status effects once (burn damage, regen, …). Then wait for the
+            // status effects once (burn damage, regen, and so on). Then wait for the
             // damage numbers to clear before handing off.
             if exec.end_of_round && !exec.statuses_ticked {
                 exec.statuses_ticked = true;
@@ -1550,9 +1546,9 @@ impl Battle {
         let action = exec.queue[exec.idx].clone();
         let actor = action.actor;
 
-        // Action start-up: announce it, resolve its animation, and — if it
-        // warrants one — arm the timed hit (a hero's attack, or a blockable enemy
-        // blow on a hero). No prompt or bar is shown — the window lives inside the
+        // Action start-up: announce it, resolve its animation, and (if it
+        // warrants one) arm the timed hit (a hero's attack, or a blockable enemy
+        // blow on a hero). No prompt or bar is shown; the window lives inside the
         // swing/cast below.
         if !exec.started {
             exec.started = true;
@@ -1596,15 +1592,15 @@ impl Battle {
 
         // Tally the presser's taps as they happen: the first fixes the timing, and
         // any beyond it mark this as mashing (which forfeits the bonus in
-        // `TimedHit::result`). Only taps *before* the window closes count — a later
+        // `TimedHit::result`). Only taps *before* the window closes count; a later
         // tap belongs to the taunt follow-up below, not to mashing.
-        if !exec.timing_locked {
-            if let Some(th) = &mut exec.timed {
-                let pi = self.battlers[th.presser].party_index.unwrap_or(0);
-                if controllers.player(pi).pressed(Button::Confirm) {
-                    th.press_t.get_or_insert(t);
-                    th.presses += 1;
-                }
+        if !exec.timing_locked
+            && let Some(th) = &mut exec.timed
+        {
+            let pi = self.battlers[th.presser].party_index.unwrap_or(0);
+            if controllers.player(pi).pressed(Button::Confirm) {
+                th.press_t.get_or_insert(t);
+                th.presses += 1;
             }
         }
 
@@ -1619,54 +1615,55 @@ impl Battle {
             AttackAnim::Boomerang { texture } => (Some(texture.clone()), true),
             _ => (None, false),
         };
-        if let Some(tex) = proj_tex {
-            if !exec.projectiles_spawned && t >= PROJ_LAUNCH {
-                exec.projectiles_spawned = true;
-                let dir = self.battlers[actor].facing_dir();
-                let from = self.battlers[actor].pos() + Vec2::new(dir * 6.0, -6.0);
-                let targets: Vec<usize> = action
-                    .targets
+        if let Some(tex) = proj_tex
+            && !exec.projectiles_spawned
+            && t >= PROJ_LAUNCH
+        {
+            exec.projectiles_spawned = true;
+            let dir = self.battlers[actor].facing_dir();
+            let from = self.battlers[actor].pos() + Vec2::new(dir * 6.0, -6.0);
+            let targets: Vec<usize> = action
+                .targets
+                .iter()
+                .copied()
+                .filter(|&x| self.battlers[x].alive())
+                .collect();
+            if boomerang {
+                // One axe, aimed past the *farthest* target so it sweeps the
+                // whole line, and flying the full out-and-back beat.
+                let tgt_pt = |x: usize| self.battlers[x].pos() + Vec2::new(0.0, -6.0);
+                let far = targets
                     .iter()
                     .copied()
-                    .filter(|&x| self.battlers[x].alive())
-                    .collect();
-                if boomerang {
-                    // One axe, aimed past the *farthest* target so it sweeps the
-                    // whole line, and flying the full out-and-back beat.
-                    let tgt_pt = |x: usize| self.battlers[x].pos() + Vec2::new(0.0, -6.0);
-                    let far = targets
-                        .iter()
-                        .copied()
-                        .max_by(|&a, &b| {
-                            let da = (tgt_pt(a) - from).length();
-                            let db = (tgt_pt(b) - from).length();
-                            da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
-                        })
-                        .map(tgt_pt);
-                    if let Some(to) = far {
-                        let dur = (end_t - PROJ_LAUNCH).max(0.1);
-                        exec.projectiles.push(Projectile {
-                            tex,
-                            from,
-                            to,
-                            elapsed: 0.0,
-                            dur,
-                            boomerang: true,
-                        });
-                    }
-                } else {
-                    let dur = (impact_t - PROJ_LAUNCH).max(0.05);
-                    for tgt in targets {
-                        let to = self.battlers[tgt].pos() + Vec2::new(0.0, -6.0);
-                        exec.projectiles.push(Projectile {
-                            tex: tex.clone(),
-                            from,
-                            to,
-                            elapsed: 0.0,
-                            dur,
-                            boomerang: false,
-                        });
-                    }
+                    .max_by(|&a, &b| {
+                        let da = (tgt_pt(a) - from).length();
+                        let db = (tgt_pt(b) - from).length();
+                        da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                    .map(tgt_pt);
+                if let Some(to) = far {
+                    let dur = (end_t - PROJ_LAUNCH).max(0.1);
+                    exec.projectiles.push(Projectile {
+                        tex,
+                        from,
+                        to,
+                        elapsed: 0.0,
+                        dur,
+                        boomerang: true,
+                    });
+                }
+            } else {
+                let dur = (impact_t - PROJ_LAUNCH).max(0.05);
+                for tgt in targets {
+                    let to = self.battlers[tgt].pos() + Vec2::new(0.0, -6.0);
+                    exec.projectiles.push(Projectile {
+                        tex: tex.clone(),
+                        from,
+                        to,
+                        elapsed: 0.0,
+                        dur,
+                        boomerang: false,
+                    });
                 }
             }
         }
@@ -1705,29 +1702,28 @@ impl Battle {
         // Taunt follow-up: once the timing is resolved, the hero's first tap on the
         // recovery is their taunt attempt. Land it in the window and the struck
         // foe is marked to prefer this hero next turn; an early tap misses.
-        if exec.timing_locked {
-            if let Some(tt) = &mut exec.taunt {
-                if !tt.resolved {
-                    let pi = self.battlers[tt.presser].party_index.unwrap_or(0);
-                    if tt.press_t.is_none() && controllers.player(pi).pressed(Button::Confirm) {
-                        tt.press_t = Some(t);
-                    }
-                    // Resolve as soon as the outcome is known: a recorded tap, or
-                    // the window closing with none.
-                    if tt.press_t.is_some() || t > TAUNT_CONNECT + TAUNT_WINDOW {
-                        tt.resolved = true;
-                        let (target, presser, landed) = (tt.target, tt.presser, tt.landed());
-                        if landed && self.battlers[target].alive() {
-                            self.battlers[target].taunted_by = Some(presser);
-                            let pos = self.battlers[target].pos() + Vec2::new(0.0, -20.0);
-                            exec.popups.push(Popup {
-                                text: "TAUNT!".to_string(),
-                                pos,
-                                t: 0.0,
-                                color: color::rgb(255, 120, 200),
-                            });
-                        }
-                    }
+        if exec.timing_locked
+            && let Some(tt) = &mut exec.taunt
+            && !tt.resolved
+        {
+            let pi = self.battlers[tt.presser].party_index.unwrap_or(0);
+            if tt.press_t.is_none() && controllers.player(pi).pressed(Button::Confirm) {
+                tt.press_t = Some(t);
+            }
+            // Resolve as soon as the outcome is known: a recorded tap, or
+            // the window closing with none.
+            if tt.press_t.is_some() || t > TAUNT_CONNECT + TAUNT_WINDOW {
+                tt.resolved = true;
+                let (target, presser, landed) = (tt.target, tt.presser, tt.landed());
+                if landed && self.battlers[target].alive() {
+                    self.battlers[target].taunted_by = Some(presser);
+                    let pos = self.battlers[target].pos() + Vec2::new(0.0, -20.0);
+                    exec.popups.push(Popup {
+                        text: "TAUNT!".to_string(),
+                        pos,
+                        t: 0.0,
+                        color: color::rgb(255, 120, 200),
+                    });
                 }
             }
         }
@@ -1753,7 +1749,7 @@ impl Battle {
         match &action.kind {
             ActionKind::Skill(id) => reg.skill(id).map(|s| s.anim.clone()).unwrap_or_default(),
             // A mimicry plays the *copied* move's animation (so an aped fireball
-            // still hurls a fireball) — atop the borrowed hero sprite.
+            // still hurls a fireball), atop the borrowed hero sprite.
             ActionKind::Mimic { skill, .. } => {
                 reg.skill(skill).map(|s| s.anim.clone()).unwrap_or_default()
             }
@@ -1797,7 +1793,7 @@ impl Battle {
             AttackAnim::Charge => {
                 // Sweep across the field in the facing direction, wrapping the
                 // screen exactly once so the charger ends back home. `s` eases
-                // 0->1 over the whole charge; travelling one full wrap-band width
+                // from 0 to 1 over the whole charge; traveling one full wrap-band width
                 // (screen + margins) returns the drawn position to the start.
                 let w = virtual_w();
                 let margin = 44.0;
@@ -1810,7 +1806,7 @@ impl Battle {
                 Vec2::new(drawn - home_x, 0.0)
             }
             AttackAnim::Crowd { .. } => {
-                // The captain holds his post and gives the order — a small backward
+                // The captain holds his post and gives the order with a small backward
                 // brace as he calls the crowd in; his allies do the charging.
                 let brace = 4.0 * FIELD_SCALE;
                 let x = if t < 0.2 {
@@ -2061,7 +2057,7 @@ impl Battle {
     /// power (100 = full strength). Shared by a battler casting a real skill and by
     /// a [mimic](MimicryDef) aping one at reduced power. Spends `def.mp_cost` only
     /// when `spend_mp` (a mimic's copy is free). Damage/heal, targeting, and status
-    /// riders are otherwise identical to a normal cast — the nerf is a pure scalar.
+    /// riders are otherwise identical to a normal cast; the nerf is a pure scalar.
     #[allow(clippy::too_many_arguments)]
     fn apply_skill(
         &mut self,
@@ -2143,7 +2139,7 @@ impl Battle {
     /// Cloak mimic `actor` in hero `source`'s appearance for its copied strike,
     /// stashing the mimic's own art in `true_form` so [`shed_disguise`] can restore
     /// it. It simply overwrites the fields [`draw_battler`](Self::draw_battler)
-    /// reads — `sprite`, `texture`, and the `idle` clip — so nothing in the drawing
+    /// reads (`sprite`, `texture`, and the `idle` clip), so nothing in the drawing
     /// path needs to know a disguise is in play; the caller sets the attack clip
     /// (from the freshly borrowed sprite) right after.
     fn wear_disguise(&mut self, actor: usize, source: usize) {
@@ -2159,7 +2155,7 @@ impl Battle {
         self.battlers[actor].idle = idle;
     }
 
-    /// Restore a mimic's true form after its copied strike — a no-op if it was
+    /// Restore a mimic's true form after its copied strike. A no-op if it was
     /// never disguised.
     fn shed_disguise(&mut self, actor: usize) {
         if let Some((sprite, texture)) = self.battlers[actor].true_form.take() {
@@ -2219,7 +2215,7 @@ impl Battle {
 
     /// Like [`resolve_live_targets`], but for a **reviving** heal: a downed ally is
     /// still a valid target (they're present on the field), so it's kept rather
-    /// than dropped. Only retargets — to a fresh present ally — if every original
+    /// than dropped. Only retargets (to a fresh present ally) if every original
     /// target has actually left the field.
     fn resolve_revive_targets(
         &self,
@@ -2261,7 +2257,7 @@ impl Battle {
         popups: &mut Vec<Popup>,
     ) -> bool {
         // Read attacker/target attributes up front, before borrowing the target.
-        // Speed and defense come from effective stats so statuses (slow, …) count.
+        // Speed and defense come from effective stats so statuses (like slow) count.
         let atk_acc = self.battlers[actor].accuracy;
         let atk_crit = self.battlers[actor].crit;
         let atk_spd = self.eff_stats(reg, actor).speed;
@@ -2308,8 +2304,8 @@ impl Battle {
         if hit_mod.attack_mult != 1.0 {
             dmg = ((dmg as f32 * hit_mod.attack_mult).round() as i32).max(1);
         }
-        // Block-timing reduction (the defender's well-timed block does less to
-        // them — a perfect block subtracts all of it).
+        // Block-timing reduction (the defender's well-timed block means less
+        // damage to them, and a perfect block subtracts all of it).
         let blocked = hit_mod.block_reduce > 0.0;
         if blocked {
             dmg = (dmg as f32 * (1.0 - hit_mod.block_reduce)).round().max(0.0) as i32;
@@ -2387,7 +2383,7 @@ impl Battle {
                 self.battlers[i].statuses.clear();
                 continue;
             }
-            // Sum this round's HP change and remember a colour, decrementing each
+            // Sum this round's HP change and remember a color, decrementing each
             // status and keeping only those with rounds left.
             let taken = std::mem::take(&mut self.battlers[i].statuses);
             let mut kept = Vec::with_capacity(taken.len());
@@ -2484,10 +2480,10 @@ impl Battle {
                     }
                 }
                 // A crowd attack floods the field with the caller's allies.
-                if let AttackAnim::Crowd { texture } = &exec.anim {
-                    if let Some(&tex) = self.crowd_textures.get(texture) {
-                        Self::draw_crowd(r, tex, exec.elapsed);
-                    }
+                if let AttackAnim::Crowd { texture } = &exec.anim
+                    && let Some(&tex) = self.crowd_textures.get(texture)
+                {
+                    Self::draw_crowd(r, tex, exec.elapsed);
                 }
                 if !exec.banner.is_empty() {
                     draw_banner(r, &exec.banner);
@@ -2532,7 +2528,7 @@ impl Battle {
     /// Draw an [`AttackAnim::Crowd`] swarm: allies swell in to flood the whole
     /// screen at peak density, then clear out, drawn from the sheet's front-facing
     /// walk row. `t` is the action's elapsed time; scatter is deterministic (no RNG
-    /// in a draw). Purely decorative — the damage is applied by `apply_action`.
+    /// in a draw). Purely decorative; the damage is applied by `apply_action`.
     fn draw_crowd(r: &mut Renderer, tex: TextureHandle, t: f32) {
         let s = (t / CROWD_END).clamp(0.0, 1.0);
         // Fade/scale envelope: swell in, hold the crowded peak, clear out.
@@ -2594,7 +2590,7 @@ impl Battle {
         );
 
         // State tint (hit flash / KO desaturation) multiplied by the sprite's
-        // own recolour so reskinned characters keep their palette.
+        // own recolor so reskinned characters keep their palette.
         let (sr, sg, sb) = b
             .sprite
             .tint
@@ -2822,7 +2818,7 @@ pub(crate) fn item_effect_summary(reg: &Registry, def: &crate::data::ItemDef) ->
 
 enum CommandResult {
     Stay,
-    /// Boxed to keep the enum small — an [`Execute`] is large, and most command
+    /// Boxed to keep the enum small: an [`Execute`] is large, and most command
     /// frames return the empty [`Stay`](CommandResult::Stay) variant.
     Execute(Box<Execute>),
 }
@@ -2888,7 +2884,7 @@ fn smoothstep(x: f32) -> f32 {
     x * x * (3.0 - 2.0 * x)
 }
 
-/// A status's popup colour: its configured `tint`, or a warm orange default.
+/// A status's popup color: its configured `tint`, or a warm orange default.
 fn status_color(def: &StatusDef) -> Color {
     def.tint
         .map(|(r, g, b)| color::rgb(r, g, b))
@@ -2919,7 +2915,6 @@ fn crit_chance(atk_crit: i32) -> i32 {
     (BASE_CRIT + atk_crit).clamp(0, MAX_CRIT)
 }
 
-/// A compact "+6 ATK  +5% CRIT" line summarising an item's bonuses.
 /// Greedy word-wrap to at most `max` characters per line (fixed-width font).
 fn wrap_text(text: &str, max: usize) -> Vec<String> {
     let mut lines = Vec::new();
@@ -2941,14 +2936,14 @@ fn wrap_text(text: &str, max: usize) -> Vec<String> {
     lines
 }
 
-/// Battlefield zoom-out. The combat scene — battler sprites and the spacing
-/// between them — is drawn at this fraction of full size, framed around
+/// Battlefield zoom-out. The combat scene (battler sprites and the spacing
+/// between them) is drawn at this fraction of full size, framed around
 /// [`field_focus`], so a full party (now up to three) and a pack of foes have room
 /// to breathe instead of crowding each other and the bottom UI panels. Only the
 /// *field* scales: menus, bars, and banners keep their normal size.
 const FIELD_SCALE: f32 = 0.75;
 
-/// The point the battlefield zoom pulls toward — horizontally centred (hence the
+/// The point the battlefield zoom pulls toward: horizontally centered (hence the
 /// `w` = virtual canvas width) and set high enough that the lowest hero clears
 /// the party panel along the bottom. Takes `w` explicitly so the geometry stays
 /// context-free and unit-testable (no live macroquad window needed).
@@ -2957,7 +2952,7 @@ fn field_focus(w: f32) -> Vec2 {
 }
 
 /// Pull a full-size battlefield position in toward [`field_focus`] by
-/// [`FIELD_SCALE`] — the camera "zooming out" about that point.
+/// [`FIELD_SCALE`], the camera "zooming out" about that point.
 fn zoom_field(p: Vec2, w: f32) -> Vec2 {
     let f = field_focus(w);
     f + (p - f) * FIELD_SCALE
@@ -3084,7 +3079,7 @@ mod tests {
         // three-hero party, from the same formula draw_party_panel uses.
         let panel_top = VIRTUAL_H - (8.0 + 3.0 * 16.0);
         // The lowest hero's feet (its home y) must sit above that panel so a full
-        // party doesn't render into it — this is what the zoom-out buys us.
+        // party doesn't render into it. This is what the zoom-out buys us.
         // (y is independent of canvas width; use the classic width.)
         assert!(
             hero_home(2, VIRTUAL_W_MIN).y <= panel_top,
@@ -3092,7 +3087,7 @@ mod tests {
             hero_home(2, VIRTUAL_W_MIN).y
         );
 
-        // Everyone stays on screen, heroes on the left, foes on the right — at
+        // Everyone stays on screen, heroes on the left, foes on the right, at
         // both the narrowest and widest virtual canvas (a landscape phone).
         for w in [VIRTUAL_W_MIN, VIRTUAL_W_MAX] {
             for slot in 0..3 {
@@ -3139,14 +3134,14 @@ mod tests {
 
     #[test]
     fn attack_timing_scales_damage_by_lateness() {
-        // Dead on the connect → perfect, double damage.
+        // Dead on the connect is perfect: double damage.
         assert_eq!(tap_at(TimingKind::Attack, 0.0), TimingResult::Perfect);
-        // A hair off (inside GOOD but outside PERFECT) → good, +50%.
+        // A hair off (inside GOOD but outside PERFECT) is good: +50%.
         assert_eq!(
             tap_at(TimingKind::Attack, STRIKE_PERFECT + 0.02),
             TimingResult::Good
         );
-        // Well before the connect → miss, no bonus. An early panic tap whiffs.
+        // Well before the connect is a miss, no bonus. An early panic tap whiffs.
         assert_eq!(
             tap_at(TimingKind::Attack, -(STRIKE_GOOD + 0.05)),
             TimingResult::Miss
@@ -3230,7 +3225,7 @@ mod tests {
 
     #[test]
     fn untapped_timing_misses() {
-        // No tap at all during the swing → miss, no bonus.
+        // No tap at all during the swing is a miss, no bonus.
         let t = TimedHit::new(TimingKind::Attack, 0);
         assert_eq!(t.result(), TimingResult::Miss);
         assert_eq!(t.hit_mod().attack_mult, 1.0);
@@ -3238,11 +3233,11 @@ mod tests {
 
     #[test]
     fn mashing_forfeits_the_bonus() {
-        // Multiple taps — even with one landing dead on the connect — earn
+        // Multiple taps (even with one landing dead on the connect) earn
         // nothing, so hammering the button can't fish for a perfect.
         let mut t = TimedHit::new(TimingKind::Attack, 0);
-        t.press_t = Some(STRIKE_CONNECT); // first tap was perfectly timed…
-        t.presses = 4; // …but it was part of a mash
+        t.press_t = Some(STRIKE_CONNECT); // first tap was perfectly timed...
+        t.presses = 4; // ...but it was part of a mash
         assert_eq!(t.result(), TimingResult::Miss);
         assert_eq!(t.hit_mod().attack_mult, 1.0);
     }
@@ -3262,8 +3257,8 @@ mod tests {
                 "{id} should be unblockable"
             );
         }
-        // TRAMPLE is a heavy but brace-able stomp — blockable, unlike the piercing
-        // LANCE CHARGE — so the party keeps timing counterplay against a knight pack.
+        // TRAMPLE is a heavy but brace-able stomp (blockable, unlike the piercing
+        // LANCE CHARGE), so the party keeps timing counterplay against a knight pack.
         for id in ["claw", "tail_swipe", "reap", "trample"] {
             assert!(
                 !reg.skill(id).expect(id).is_unblockable(),

@@ -4,9 +4,9 @@ comments: true
 
 # Skeleton
 
-The restless undead of **Traveller's End**, rattling up out of the high boneyards.
-A skeleton is a middling all-round fighter — no glaring weakness, no great strength
-— that swings a **REAP** with its unpredictable AI.
+The restless undead of **Traveler's End**, rattling up out of the high boneyards.
+A skeleton is a middling all-round fighter (no glaring weakness, no great strength)
+that swings a **REAP** with its unpredictable AI.
 
 | Stat | Value |
 |---|---|
@@ -17,14 +17,14 @@ A skeleton is a middling all-round fighter — no glaring weakness, no great str
 | **Magic** | 2 |
 | **Speed** | 12 |
 | **AI** | Random (mixes its basic attack with REAP) |
-| **Rewards** | 15 XP · 11 gold on defeat |
+| **Rewards** | 15 XP, 11 gold on defeat |
 | **Drops** | [BOMB](../items.md) (22%) |
-| **Found in** | Traveller's End |
+| **Found in** | Traveler's End |
 
 Skeletons are the backbone of the pass's mid-tier packs. They act at a fair clip
 (speed 12, on par with your heroes) and their **REAP** hits noticeably harder than
 a plain swing, so a trio can wear you down if you let them all connect. Their thin
-bones give them **low defense**, though — they fold fast to focused fire.
+bones give them **low defense**, though, so they fold fast to focused fire.
 
 ## Skills
 
@@ -46,7 +46,7 @@ knights deeper in:
 
 ## Appearance
 
-The skeleton shares **Roland's** sheet layout exactly (`skeleton.png`, a 5×12 grid
-of 16×16 frames): walk rows 0–3 (down/up/right/left) for roaming, attack rows 4–7,
-and — like Roland — its walk-right row reads as the battle idle with the
+The skeleton shares **Roland's** sheet layout exactly (`skeleton.png`, a 5x12 grid
+of 16x16 frames): walk rows 0-3 (down/up/right/left) for roaming, attack rows 4-7,
+and, like Roland, its walk-right row reads as the battle idle with the
 attack-right row (6) as the swing. As an enemy it's flipped to face the party.

@@ -2,17 +2,19 @@
 //! on both native and web; this module just wires the game's update/draw into
 //! its per-frame loop.
 
-use macroquad::prelude::{get_frame_time, next_frame, Conf};
+use macroquad::prelude::{Conf, get_frame_time, next_frame};
 
 use crate::audio::Audio;
 use crate::data::FONT_TTF;
 use crate::game::Game;
-use crate::input::Controllers;
-use crate::renderer::{color, Renderer};
+use crate::input::{Controllers, TouchButton, TouchIcon};
+use crate::renderer::{Color, Renderer, color};
 
-/// Window configuration passed to `#[macroquad::main]`. Honours
-/// `HOTO_TEST_WINDOW` (used by the e2e suite) to run fullscreen so the game owns
-/// the whole screen for reproducible screenshots.
+/// Window configuration passed to `#[macroquad::main]`. Honors
+/// `HOTO_TEST_WINDOW` (used by the e2e suite) by asking for a fullscreen window
+/// so the game owns the whole screen for reproducible screenshots. Without a
+/// window manager (as under Xvfb) the request is ignored and the window keeps
+/// its default size.
 pub fn window_conf() -> Conf {
     let fullscreen = std::env::var("HOTO_TEST_WINDOW").is_ok();
     Conf {
@@ -69,7 +71,7 @@ pub async fn run() {
 
 /// Paint the on-screen touch controls over everything (only present on a
 /// touchscreen session; see [`Controllers::touch_overlay`]). Each button is a
-/// translucent rounded pad with its glyph, brightened while held so a thumb gets
+/// translucent square pad with its icon, brightened while held so a thumb gets
 /// visible feedback; the overworld's [joystick](Controllers::touch_stick) is a
 /// base ring with a thumb knob that follows the finger. Drawn in raw window
 /// pixels so the controls sit in the letterbox margins around the game.
@@ -86,13 +88,7 @@ fn draw_touch_controls(controllers: &Controllers, renderer: &mut Renderer) {
         };
         renderer.draw_overlay_rect(tb.x, tb.y, tb.w, tb.h, fill);
         renderer.draw_overlay_rect_outline(tb.x, tb.y, tb.w, tb.h, 2.0, border);
-        renderer.draw_overlay_text_centered(
-            tb.label,
-            tb.x + tb.w / 2.0,
-            tb.y + tb.h / 2.0,
-            tb.h * 0.5,
-            if held { held_col } else { idle_col },
-        );
+        draw_touch_icon(renderer, tb, if held { held_col } else { idle_col });
     }
 
     // The overworld joystick: a translucent base ring with a brighter thumb knob
@@ -107,5 +103,49 @@ fn draw_touch_controls(controllers: &Controllers, renderer: &mut Renderer) {
         };
         renderer.draw_overlay_circle(s.knob_x, s.knob_y, s.radius * 0.5, knob);
         renderer.draw_overlay_circle_outline(s.knob_x, s.knob_y, s.radius * 0.5, 2.0, border);
+    }
+}
+
+/// Draw one touch button's icon centered on the button: a triangle for the
+/// arrows, three bars for the menu, and text for the lettered face buttons.
+fn draw_touch_icon(renderer: &mut Renderer, tb: &TouchButton, col: Color) {
+    let (cx, cy) = (tb.x + tb.w / 2.0, tb.y + tb.h / 2.0);
+    // Half the arrow's length along its direction and half its base width.
+    let (len, half) = (tb.h * 0.2, tb.h * 0.24);
+    match tb.icon {
+        TouchIcon::ArrowUp => renderer.draw_overlay_triangle(
+            (cx, cy - len),
+            (cx - half, cy + len),
+            (cx + half, cy + len),
+            col,
+        ),
+        TouchIcon::ArrowDown => renderer.draw_overlay_triangle(
+            (cx, cy + len),
+            (cx - half, cy - len),
+            (cx + half, cy - len),
+            col,
+        ),
+        TouchIcon::ArrowLeft => renderer.draw_overlay_triangle(
+            (cx - len, cy),
+            (cx + len, cy - half),
+            (cx + len, cy + half),
+            col,
+        ),
+        TouchIcon::ArrowRight => renderer.draw_overlay_triangle(
+            (cx + len, cy),
+            (cx - len, cy - half),
+            (cx - len, cy + half),
+            col,
+        ),
+        TouchIcon::Menu => {
+            let (w, bar) = (tb.w * 0.5, (tb.h * 0.08).max(2.0));
+            for i in -1..=1 {
+                let y = cy + i as f32 * bar * 2.5 - bar / 2.0;
+                renderer.draw_overlay_rect(cx - w / 2.0, y, w, bar, col);
+            }
+        }
+        TouchIcon::Letter(text) => {
+            renderer.draw_overlay_text_centered(text, cx, cy, tb.h * 0.5, col);
+        }
     }
 }

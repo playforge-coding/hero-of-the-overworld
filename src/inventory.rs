@@ -3,23 +3,24 @@
 //! Opened with the **Menu** button while walking a level, this is the party's
 //! out-of-battle hub. Pick a hero, then from their **action menu** you can:
 //!
-//! - **EQUIP** — swap the hero's weapon/armor with the shared **bag** of
+//! - **EQUIP:** swap the hero's weapon/armor with the shared **bag** of
 //!   unequipped gear (see [`crate::party::Party::bag`]); nothing is bought or
 //!   lost, gear only moves between heroes and the bag.
-//! - **USE ITEM** — spend a restorative [item](crate::data::ItemDef) (a potion,
+//! - **USE ITEM:** spend a restorative [item](crate::data::ItemDef) (a potion,
 //!   an ether) on a chosen hero, right here on the map.
-//! - **USE MOVE** — have the hero cast a healing [skill](crate::data::SkillDef)
+//! - **USE MOVE:** have the hero cast a healing [skill](crate::data::SkillDef)
 //!   they know on a chosen ally, spending MP just like in battle.
 //!
-//! So healing — by item *or* move — works between fights, not only mid-battle.
+//! So healing, by item *or* move, works between fights, not only mid-battle.
 //! Offensive items and buffs are deliberately battle-only (they need a foe / don't
 //! persist), so only restorative effects show up here.
 
 use crate::data::{EquipSlot, Registry};
 use crate::input::{Button, Input};
-use crate::party::{FieldUse, Party, ACTIVE_PARTY};
-use crate::renderer::{color, virtual_w, Renderer, VIRTUAL_H};
+use crate::party::{ACTIVE_PARTY, FieldUse, Party};
+use crate::renderer::{Renderer, VIRTUAL_H, color, virtual_w};
 use crate::shop::summarize;
+use crate::util::{draw_scrollbar, list_window_start};
 
 /// What an [`Inventory::update`] wants the game to do next.
 pub enum InventoryEvent {
@@ -60,6 +61,14 @@ const UNEQUIP: usize = usize::MAX;
 /// out of) the battle line from the overworld.
 const ACTIONS: [&str; 5] = ["EQUIP", "USE ITEM", "USE MOVE", "MOVE UP", "MOVE DOWN"];
 
+/// Height of one hero's block in the member panel: the name and vitals line plus
+/// the weapon and armor lines.
+const MEMBER_ROW_H: f32 = 34.0;
+/// Most heroes the member panel shows at once. Three blocks keep it inside the
+/// side panel's height, clear of the feedback line and hint along the bottom; a
+/// longer roster scrolls with the cursor.
+const VISIBLE_MEMBERS: usize = 3;
+
 /// A rectangular panel's geometry, bundled so the chooser draw helpers take one
 /// argument instead of four loose floats.
 #[derive(Clone, Copy)]
@@ -72,7 +81,7 @@ struct Panel {
 
 pub struct Inventory {
     focus: Focus,
-    /// Selected party member — the hero being acted on (and the caster of moves).
+    /// Selected party member: the hero being acted on (and the caster of moves).
     member: usize,
     /// Selected equipment slot for that member.
     slot: EquipSlot,
@@ -269,14 +278,14 @@ impl Inventory {
     }
 
     /// Move the selected member one place up (`dir = -1`) or down (`dir = 1`) the
-    /// roster, swapping with its neighbour; the cursor follows the member. Clamped
+    /// roster, swapping with its neighbor; the cursor follows the member. Clamped
     /// at the ends (no wrap). Reordering is how the player sets the **battle
     /// line-up**: the first [`ACTIVE_PARTY`](crate::party::ACTIVE_PARTY) members are
     /// the ones who fight, so pulling a reserve up past that mark deploys them.
     ///
     /// **Slot 0 is fixed:** the party **leader** (Roland) always walks the overworld
     /// (see [`leader_walk`](crate::overworld::leader_walk)), so he can't be moved and
-    /// no one can be swapped into his place — reordering only shuffles slots `1..`.
+    /// no one can be swapped into his place. Reordering only shuffles slots `1..`.
     fn move_member(&mut self, party: &mut Party, dir: isize) {
         let n = party.members.len();
         let j = self.member as isize + dir;
@@ -284,7 +293,7 @@ impl Inventory {
             return;
         }
         let j = j as usize;
-        // The leader (slot 0) is locked in place — never move him, never displace him.
+        // The leader (slot 0) is locked in place: never move him, never displace him.
         if self.member == 0 || j == 0 {
             return;
         }
@@ -363,18 +372,40 @@ impl Inventory {
         self.draw_hint(r);
     }
 
-    /// Left panel: each member with HP/MP and their weapon and armor.
+    /// Left panel: each member with HP/MP and their weapon and armor. Shows at
+    /// most [`VISIBLE_MEMBERS`] heroes, scrolled to follow the cursor, with a
+    /// scrollbar along the right edge when the roster is longer.
     fn draw_members(&self, r: &mut Renderer, party: &Party, reg: &Registry) {
         let (px, py, pw) = (6.0, 20.0, 176.0);
-        let rows = party.members.len().max(1);
-        let ph = rows as f32 * 34.0 + 6.0;
+        let count = party.members.len();
+        let shown = count.clamp(1, VISIBLE_MEMBERS);
+        let ph = shown as f32 * MEMBER_ROW_H + 6.0;
         r.draw_rect(px, py, pw, ph, color::rgba(10, 12, 24, 230));
         r.draw_rect_outline(px, py, pw, ph, 1.0, color::rgba(80, 90, 140, 255));
 
         let picking_target = self.focus == Focus::Target;
+        let cursor = if picking_target {
+            self.target_cursor
+        } else {
+            self.member
+        };
+        let first = list_window_start(cursor, count, VISIBLE_MEMBERS);
+        draw_scrollbar(
+            r,
+            (px + pw - 3.0, py + 3.0, ph - 6.0),
+            first,
+            VISIBLE_MEMBERS,
+            count,
+        );
 
-        for (i, m) in party.members.iter().enumerate() {
-            let y = py + 5.0 + i as f32 * 34.0;
+        for (i, m) in party
+            .members
+            .iter()
+            .enumerate()
+            .skip(first)
+            .take(VISIBLE_MEMBERS)
+        {
+            let y = py + 5.0 + (i - first) as f32 * MEMBER_ROW_H;
             let selected = i == self.member;
             // While picking a target, the green cursor tracks the recipient row.
             let targeted = picking_target && i == self.target_cursor;
@@ -387,7 +418,7 @@ impl Inventory {
                     color::rgba(30, 70, 40, 255),
                 );
             }
-            // Members past the active line-up are reserves — they don't fight until
+            // Members past the active line-up are reserves. They don't fight until
             // swapped up (MOVE UP), so their rows read dimmer.
             let reserve = i >= ACTIVE_PARTY;
             let name_col = if targeted {
@@ -420,7 +451,7 @@ impl Inventory {
             let vw = r.text_width(&vitals, 1.0);
             r.draw_text(
                 &vitals,
-                px + pw - vw - 4.0,
+                px + pw - vw - 5.0,
                 y,
                 1.0,
                 color::rgb(150, 200, 160),
@@ -464,14 +495,15 @@ impl Inventory {
 
         // When the roster runs deeper than the battle line-up, draw the divide: the
         // first ACTIVE_PARTY rows are who fights, the (dimmed) rest wait in reserve.
-        if party.members.len() > ACTIVE_PARTY {
-            let dy = py + 3.0 + ACTIVE_PARTY as f32 * 34.0;
-            r.draw_rect(px + 3.0, dy, pw - 6.0, 1.0, color::rgba(170, 145, 95, 230));
+        // Only drawn when that boundary falls inside the visible window.
+        if count > ACTIVE_PARTY && ACTIVE_PARTY > first && ACTIVE_PARTY < first + VISIBLE_MEMBERS {
+            let dy = py + 3.0 + (ACTIVE_PARTY - first) as f32 * MEMBER_ROW_H;
+            r.draw_rect(px + 3.0, dy, pw - 7.0, 1.0, color::rgba(170, 145, 95, 230));
         }
     }
 
-    /// Right panel: its contents follow the current focus — a bag+stash overview,
-    /// the equip chooser, or the item / move chooser.
+    /// Right panel: its contents follow the current focus (a bag and stash overview,
+    /// the equip chooser, or the item / move chooser).
     fn draw_side(&self, r: &mut Renderer, party: &Party, reg: &Registry) {
         let p = Panel {
             x: 188.0,
@@ -595,18 +627,17 @@ impl Inventory {
             };
             r.draw_text(&text, px + 6.0, y, 1.0, col);
         }
-        if let Some(&idx) = choices.get(self.bag_cursor) {
-            if idx != UNEQUIP {
-                if let Some(item) = party.bag.get(idx).and_then(|id| reg.equipment(id)) {
-                    r.draw_text(
-                        &summarize(item),
-                        px + 4.0,
-                        py + ph - 10.0,
-                        1.0,
-                        color::rgb(150, 220, 160),
-                    );
-                }
-            }
+        if let Some(&idx) = choices.get(self.bag_cursor)
+            && idx != UNEQUIP
+            && let Some(item) = party.bag.get(idx).and_then(|id| reg.equipment(id))
+        {
+            r.draw_text(
+                &summarize(item),
+                px + 4.0,
+                py + ph - 10.0,
+                1.0,
+                color::rgb(150, 220, 160),
+            );
         }
     }
 
@@ -663,16 +694,15 @@ impl Inventory {
         if let Some(stack) = items
             .get(self.list_cursor)
             .and_then(|&i| party.items.get(i))
+            && let Some(it) = reg.item(&stack.id)
         {
-            if let Some(it) = reg.item(&stack.id) {
-                r.draw_text(
-                    &crate::battle::item_effect_summary(reg, it),
-                    px + 4.0,
-                    py + ph - 10.0,
-                    1.0,
-                    color::rgb(150, 220, 160),
-                );
-            }
+            r.draw_text(
+                &crate::battle::item_effect_summary(reg, it),
+                px + 4.0,
+                py + ph - 10.0,
+                1.0,
+                color::rgb(150, 220, 160),
+            );
         }
     }
 
@@ -713,7 +743,7 @@ impl Inventory {
                 );
             }
             let Some(def) = reg.skill(id) else { continue };
-            // Grey out moves the caster can't currently afford.
+            // Gray out moves the caster can't currently afford.
             let col = if caster_mp >= def.mp_cost {
                 color::WHITE
             } else {

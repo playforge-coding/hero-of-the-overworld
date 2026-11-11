@@ -6,22 +6,22 @@
 //! only doorway is the wall the keeper faces, so **you leave the way the keeper
 //! is looking**. Walk up to the counter and press Confirm to open the buy menu,
 //! pick an item and a party member, and Confirm again to purchase-and-equip
-//! (gold is the only limiter — stock is unlimited).
+//! (gold is the only limiter, since stock is unlimited).
 //!
 //! Adding a shop is a RON edit plus a [`crate::data::ShopSpawn`] placement in an
-//! overworld screen — no engine change, the same "extensible content" contract
+//! overworld screen. No engine change is needed: it's the same "extensible content" contract
 //! the rest of the game follows.
 
 use glam::Vec2;
 
 use crate::data::{EquipSlot, Registry, ShopDef, ShopFacing};
 use crate::input::{Button, Input};
-use crate::overworld::{leader_walk, walk_src, Facing, TILE};
+use crate::overworld::{Facing, TILE, leader_walk, walk_src};
 use crate::party::Party;
-use crate::renderer::{color, virtual_w, Renderer, TextureHandle, VIRTUAL_H};
-use crate::util::TextureCache;
+use crate::renderer::{Color, Renderer, TextureHandle, VIRTUAL_H, color, virtual_w};
+use crate::util::{TextureCache, draw_scrollbar, list_window_start};
 
-/// Interior size in tiles. 20x11 at 16px is 320x176 — the whole virtual screen,
+/// Interior size in tiles. 20x11 at 16px is 320x176, the whole virtual screen,
 /// so the room needs no scrolling camera.
 const W: usize = 20;
 const H: usize = 11;
@@ -31,18 +31,22 @@ const PLAYER_SPEED: f32 = 62.0;
 const HALF: Vec2 = Vec2::new(5.0, 4.0);
 /// How close (px) the player must stand to the counter to open the menu.
 const COUNTER_REACH: f32 = 30.0;
+/// Height of one row in the buy menu's list of wares.
+const WARE_ROW_H: f32 = 12.0;
+/// Text color of the transient purchase feedback line.
+const MESSAGE_COLOR: Color = [1.0, 230.0 / 255.0, 140.0 / 255.0, 1.0];
 
-/// Horizontal offset that centres the fixed-width room in the (possibly wider)
-/// virtual canvas, so on landscape phones the shop stays centred instead of
-/// hugging the left edge. Zero at the classic 16:9 width. Purely presentational
-/// — collision and the doorway stay in the room's local coordinates.
+/// Horizontal offset that centers the fixed-width room in the (possibly wider)
+/// virtual canvas, so on landscape phones the shop stays centered instead of
+/// hugging the left edge. Zero at the classic 16:9 width. Purely presentational:
+/// collision and the doorway stay in the room's local coordinates.
 fn room_dx() -> f32 {
     ((virtual_w() - W as f32 * TILE) / 2.0).max(0.0)
 }
 
 /// What a [`Shop::update`] wants the game to do next.
 pub enum ShopEvent {
-    /// The player walked out the doorway — return to the overworld.
+    /// The player walked out the doorway, so return to the overworld.
     Exit,
 }
 
@@ -320,20 +324,20 @@ impl Shop {
         } else {
             self.draw_hud(r, party.gold);
         }
-        if let Some((text, _)) = &self.message {
-            let y = if self.menu_open {
-                VIRTUAL_H - 22.0
-            } else {
-                14.0
-            };
+        // In the buy menu the feedback line takes over the controls hint (see
+        // `draw_menu`); out on the floor it gets a strip near the top.
+        if let Some((text, _)) = &self.message
+            && !self.menu_open
+        {
+            let y = 14.0;
             r.draw_rect(0.0, y - 2.0, virtual_w(), 12.0, color::rgba(10, 8, 16, 200));
-            r.draw_text_centered(text, virtual_w() / 2.0, y, 1.0, color::rgb(255, 230, 140));
+            r.draw_text_centered(text, virtual_w() / 2.0, y, 1.0, MESSAGE_COLOR);
         }
     }
 
     fn draw_room(&self, r: &mut Renderer) {
         let dx = room_dx();
-        // On a wide screen the fixed-width room is centred, leaving side margins.
+        // On a wide screen the fixed-width room is centered, leaving side margins.
         // Tile wall across the whole canvas underneath first, so those margins
         // read as more stone wall (matching the room's own wall border) rather
         // than an empty gap. A no-op at the classic 16:9 width.
@@ -450,7 +454,7 @@ impl Shop {
         );
         if (self.time * 2.0) as i32 % 2 == 0 {
             r.draw_text_centered(
-                "WALK TO THE COUNTER - OR OUT THE DOOR TO LEAVE",
+                "WALK TO THE COUNTER, OR OUT THE DOOR TO LEAVE",
                 virtual_w() / 2.0,
                 VIRTUAL_H - 10.0,
                 1.0,
@@ -493,11 +497,16 @@ impl Shop {
             color::rgba(190, 200, 210, 255),
         );
 
-        // Left column: the wares.
+        // Left column: the wares, as many rows as fit above the bottom row's
+        // panel, scrolled to follow the cursor when the stock runs longer.
         let list_x = px + 8.0;
-        let mut y = py + 36.0;
+        let list_top = py + 36.0;
+        let mut y = list_top;
         let split = px + pw * 0.52;
-        for (i, e) in self.stock.iter().enumerate() {
+        let row_y = py + ph - 38.0;
+        let visible = (((row_y - 2.0) - list_top) / WARE_ROW_H).floor() as usize;
+        let first = list_window_start(self.item_cursor, self.stock.len(), visible);
+        for (i, e) in self.stock.iter().enumerate().skip(first).take(visible) {
             let selected = i == self.item_cursor;
             if selected {
                 r.draw_rect(
@@ -528,8 +537,20 @@ impl Shop {
                 color::rgb(170, 110, 110)
             };
             r.draw_text(&price, split - prw - 6.0, y, 1.0, price_col);
-            y += 12.0;
+            y += WARE_ROW_H;
         }
+        // Drawn after the rows so the selection highlight doesn't cover it.
+        draw_scrollbar(
+            r,
+            (
+                split - 2.0,
+                list_top - 1.0,
+                visible as f32 * WARE_ROW_H - 2.0,
+            ),
+            first,
+            visible,
+            self.stock.len(),
+        );
 
         // Right column: detail of the selected line.
         let selected_kind = self.stock.get(self.item_cursor).map(|e| e.kind);
@@ -553,7 +574,6 @@ impl Shop {
 
         // Bottom row. For gear, the member being outfitted and their current item
         // in that slot; for a consumable, that it just goes to the shared stash.
-        let row_y = py + ph - 38.0;
         r.draw_rect(
             px + 2.0,
             row_y - 2.0,
@@ -600,13 +620,16 @@ impl Shop {
             }
         }
 
-        r.draw_text_centered(
-            "UP/DOWN ITEM   LEFT/RIGHT WHO   Z BUY   X BACK",
-            virtual_w() / 2.0,
-            py + ph - 10.0,
-            1.0,
-            color::rgba(180, 185, 205, 235),
-        );
+        // The controls hint, or the purchase feedback in its place while one is
+        // showing, so the two never draw over each other.
+        let (footer, footer_color) = match &self.message {
+            Some((text, _)) => (text.as_str(), MESSAGE_COLOR),
+            None => (
+                "UP/DOWN ITEM   LEFT/RIGHT WHO   Z BUY   X BACK",
+                color::rgba(180, 185, 205, 235),
+            ),
+        };
+        r.draw_text_centered(footer, virtual_w() / 2.0, py + ph - 10.0, 1.0, footer_color);
     }
 }
 
@@ -640,7 +663,7 @@ impl Layout {
         // just inside the doorway, facing inward.
         let (cc0, cc1) = (W / 2 - 1, W / 2); // 9, 10 (exact horizontal center)
         let (cr0, cr1) = (H / 2 - 1, H / 2); // 4, 5
-        let mid_x = (W / 2) as f32 * TILE; // 160 — between cc0 and cc1
+        let mid_x = (W / 2) as f32 * TILE; // 160, between cc0 and cc1
         let mid_y = (H / 2) as f32 * TILE;
 
         let (exit_tiles, keeper_pos, player_pos, player_facing) = match facing {

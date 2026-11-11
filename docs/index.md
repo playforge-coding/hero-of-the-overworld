@@ -7,11 +7,11 @@ comments: true
 **Hero of the Overworld** is a small, **extensible** turn-based JRPG written in
 Rust. You lead a party of heroes across a **world map**, explore tile-mapped
 **levels** full of roaming monsters, and fight **turn-based battles** with a
-classic ATTACK / SKILL / DEFEND menu. Clear a level and a scripted **cutscene**
-may usher a new ally into your party.
+classic ATTACK / SKILL / ITEM / DEFEND menu. Clear a level and a scripted
+**cutscene** may usher a new ally into your party.
 
-It's built on **[macroquad](https://macroquad.rs)** — one small crate for the
-window, rendering, input, text, and audio — and runs both natively and in the
+It's built on **[macroquad](https://macroquad.rs)**, one small crate for the
+window, rendering, input, text, and audio, and runs both natively and in the
 browser (WebAssembly / WebGL).
 
 <div class="grid cards" markdown>
@@ -46,13 +46,13 @@ browser (WebAssembly / WebGL).
 | --------------- | ------------------------------------------------------------------- |
 | **Genre**       | Single-player, turn-based JRPG                                       |
 | **Engine**      | macroquad (OpenGL on native, WebGL in the browser)                  |
-| **Canvas**      | 180px-tall virtual resolution; width (320–480px) tracks the window's aspect |
+| **Canvas**      | 180px-tall virtual resolution; width (320 to 480px) tracks the window's aspect |
 | **You control** | The party leader on the map; each hero's action in battle           |
 | **Overworld**   | A world map of levels, each a set of connected tile screens          |
-| **Enemies**     | Slimes, gargoyles, and demons that roam levels and chase you into battle |
+| **Enemies**     | Slimes, crabs, goblins, skeletons, demons, pirates, and more that roam levels and chase you into battle (see the [Bestiary](entities/index.md)) |
 | **Shops**       | Step into a keeper's store to spend gold on weapons, armor, and items |
-| **Items**       | Consumables — potions, bombs, tonics — used in battle, bought or dropped |
-| **Content**     | Heroes, enemies, skills, items, levels, shops, and cutscenes live in one RON file |
+| **Items**       | Consumables (potions, bombs, tonics) used in battle, bought or dropped |
+| **Content**     | Heroes, enemies, skills, items, levels, shops, and cutscenes live in per-entity RON files |
 | **Platforms**   | Native (Windows/macOS/Linux) and web (WebAssembly)                   |
 
 !!! tip "New here?"

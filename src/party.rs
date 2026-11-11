@@ -1,8 +1,8 @@
 //! The persistent party.
 //!
 //! The party is a plain `Vec` of [`PartyMember`], so supporting more than one
-//! hero — recruiting new characters mid-game, swapping the active line-up — is
-//! just pushing/removing entries. Battle code iterates whatever is here, so a
+//! hero (recruiting new characters mid-game, swapping the active line-up) is
+//! just pushing and removing entries. Battle code iterates whatever is here, so a
 //! second or third character assisting in battle needs no special-casing.
 
 use crate::data::{BattlerSprite, CharacterDef, EquipSlot, ItemEffect, Registry, SkillKind, Stats};
@@ -15,7 +15,7 @@ use crate::data::{BattlerSprite, CharacterDef, EquipSlot, ItemEffect, Registry, 
 pub const ACTIVE_PARTY: usize = 3;
 
 /// One level a member gained from an XP award, together with any skills that
-/// level unlocked — enough for the battle-victory report to announce both the
+/// level unlocked. That's enough for the battle-victory report to announce both the
 /// level and every newly learned move.
 pub struct LevelUp {
     /// Index into [`Party::members`].
@@ -34,12 +34,12 @@ pub enum FieldUse {
     /// Nothing to do (target already full, or the move/item isn't restorative), so
     /// no MP or item was spent.
     NoEffect,
-    /// A move the caster couldn't afford — not enough MP. Nothing was spent.
+    /// A move the caster couldn't afford (not enough MP). Nothing was spent.
     NotEnoughMp,
 }
 
 /// A stack of one consumable item and how many the party carries. Items stack
-/// (you hold several potions), so — unlike the equipment [bag](Party::bag) — the
+/// (you hold several potions), so unlike the equipment [bag](Party::bag), the
 /// item stash is a counted multiset keyed by item id.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ItemStack {
@@ -93,7 +93,7 @@ impl PartyMember {
     /// Learn every skill `def`'s learnset unlocks at or below this member's
     /// current level that they don't already know, returning the ids newly
     /// learned. Idempotent (already-known skills are skipped), so it's safe to
-    /// call after any level change — a fresh level-up, a mid-game recruit brought
+    /// call after any level change: a fresh level-up, a mid-game recruit brought
     /// up to party level, or a save reloaded at a higher level.
     pub fn learn_skills_for_level(&mut self, def: &CharacterDef) -> Vec<String> {
         let mut learned = Vec::new();
@@ -109,9 +109,9 @@ impl PartyMember {
     /// Apply a consumable item's **restorative** effect to this member outside of
     /// battle (from the inventory screen). Returns the HP and MP actually restored
     /// (either may be 0), so a full-health target refuses the item rather than
-    /// wasting it. Damage and status effects are ignored here — they only mean
+    /// wasting it. Damage and status effects are ignored here, since they only mean
     /// something in a fight (see [`ItemEffect::usable_in_field`]). Items only top up
-    /// the **living**; a downed hero can't be potioned back — reviving is the
+    /// the **living**; a downed hero can't be potioned back, because reviving is the
     /// domain of a reviving heal like MEND (see [`SkillDef::revives`]).
     ///
     /// [`SkillDef::revives`]: crate::data::SkillDef::revives
@@ -136,7 +136,7 @@ impl PartyMember {
 
     /// Apply one level's worth of growth: bump the level, add the modest,
     /// extensible stat gains, and refill HP/MP. Speed is intentionally left
-    /// unchanged — enemies don't gain speed with level either, so leveling it
+    /// unchanged: enemies don't gain speed with level either, so leveling it
     /// would skew turn order. This is the single source of the growth curve,
     /// shared by [`Party::grant_xp`] (earning a level in battle) and
     /// [`Party::recruit`] (bringing a new hero up to the party's level). Returns
@@ -162,7 +162,7 @@ pub struct Party {
     pub members: Vec<PartyMember>,
     pub gold: i32,
     /// Owned but **unequipped** equipment (ids into the registry's `equipment`),
-    /// a multiset — duplicates allowed. Gear bought at a shop that displaces an
+    /// a multiset with duplicates allowed. Gear bought at a shop that displaces an
     /// equipped item lands here, and the inventory screen equips/unequips between
     /// this bag and party members. Persisted in the save file.
     pub bag: Vec<String>,
@@ -182,16 +182,21 @@ impl Party {
         party
     }
 
-    /// Add a character to the party by id. Returns whether it was added.
+    /// Add a character to the party by id. Returns whether it was added: an
+    /// unknown id, or a character who is already in the party, is refused, so a
+    /// replayed recruit scene or the dev menu can't make duplicates.
     /// This is the primary extension point for "more characters in battle".
     ///
     /// A new recruit joins at the **party's current level** rather than level 1,
     /// so a hero picked up mid-game (Elara after GREENWOOD, Gareth after
-    /// TRAVELLER'S END) arrives on par with Roland instead of as dead weight —
+    /// TRAVELER'S END) arrives on par with Roland instead of as dead weight:
     /// their base stats are grown up the same curve leveling grants. The starting
     /// party is unaffected: it is built one member at a time from an empty party,
     /// so the level target is 1.
     pub fn recruit(&mut self, reg: &Registry, id: &str) -> bool {
+        if self.members.iter().any(|m| m.def_id == id) {
+            return false;
+        }
         let target_level = self.level();
         let Some(def) = reg.character(id) else {
             log::warn!("recruit failed: unknown character '{id}'");
@@ -200,7 +205,7 @@ impl Party {
         let Some(mut m) = PartyMember::from_def(reg, id) else {
             return false;
         };
-        // Grow up to the party's level, learning each level's skills on the way —
+        // Grow up to the party's level, learning each level's skills on the way,
         // so a hero recruited mid-game arrives knowing everything their level
         // grants, not just their starting kit.
         while m.level < target_level {
@@ -258,10 +263,10 @@ impl Party {
     /// Move a member's equipped item in `slot` back into the [bag](Self::bag),
     /// leaving the slot empty. No-op if the slot is already empty.
     pub fn unequip(&mut self, member: usize, slot: EquipSlot) {
-        if let Some(m) = self.members.get_mut(member) {
-            if let Some(id) = Self::slot_id_mut(m, slot).take() {
-                self.bag.push(id);
-            }
+        if let Some(m) = self.members.get_mut(member)
+            && let Some(id) = Self::slot_id_mut(m, slot).take()
+        {
+            self.bag.push(id);
         }
     }
 
@@ -385,7 +390,7 @@ impl Party {
 
     /// Use the item at `item_index` on member `member` **from the field** (the
     /// inventory screen). Applies its restorative effect and, only if that did
-    /// something, consumes one from the stack — emptied stacks are removed.
+    /// something, consumes one from the stack. Emptied stacks are removed.
     /// Battle usage is handled separately in [`crate::battle`] so the effect can
     /// also damage or buff.
     pub fn use_item_in_field(
@@ -413,7 +418,7 @@ impl Party {
 
     /// The **field-usable healing moves** `member` knows: skill ids whose effect
     /// restores HP outside of battle (a `Heal`-kind skill). Damage and buff skills
-    /// are left out — they need a fight to matter.
+    /// are left out, since they need a fight to matter.
     pub fn field_heal_skills(&self, reg: &Registry, member: usize) -> Vec<String> {
         let Some(m) = self.members.get(member) else {
             return Vec::new();
@@ -429,7 +434,7 @@ impl Party {
     /// spend the caster's MP and restore the target's HP (scaled off the caster's
     /// effective magic, like in battle). A [reviving](crate::data::SkillDef::revives)
     /// heal can bring a **downed** target back; an ordinary one only tops up the
-    /// living. Refuses — spending nothing — if the skill isn't a heal, the caster
+    /// living. Refuses, spending nothing, if the skill isn't a heal, the caster
     /// can't afford it, or the target would gain nothing (already full, or downed
     /// with a non-reviving heal).
     pub fn use_heal_skill_in_field(

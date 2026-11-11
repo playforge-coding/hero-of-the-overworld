@@ -1,13 +1,14 @@
-// ------ CLONE enemies: shadow-mirrors of the party ---------------------
-// A dark double of each hero — identical stats, sprite, gear, and full
+// CLONE enemies: shadow-mirrors of the party.
+// A dark double of each hero, with identical stats, sprite, gear, and full
 // skill set, to the number, but sworn to the other side. Each borrows its
 // hero's own battle sheet under a shadowy violet tint, so a mirror reads
-// apart from the real hero across the field. Straight stat-clones — plain
-// Random-AI foes, no special engine behaviour. Unused in any level for now:
-// they meet the party only in the `mirror_match` boss encounter — one clone
+// apart from the real hero across the field. Straight stat-clones: plain
+// Random-AI foes, no special engine behavior. Unused in any level for now,
+// they meet the party only in the `mirror_match` boss encounter, one clone
 // per *active* party member (each carries a `mirrors` target, so a hero left
-// in reserve brings no double). (Their stats/gear must be kept in step with the party defs above
-// — see the `clones_mirror_the_party` test in tests/data.rs.)
+// in reserve brings no double). Their stats and gear must be kept in step with
+// the hero files in characters/; the `clones_mirror_the_party` test in
+// tests/data.rs checks this.
 EnemyDef(
     id: "clone_roland",
     name: "DARK ROLAND",

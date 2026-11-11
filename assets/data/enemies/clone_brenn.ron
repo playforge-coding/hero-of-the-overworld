@@ -1,7 +1,7 @@
 EnemyDef(
     id: "clone_brenn",
     name: "DARK BRENN",
-    // BRENN's stats and gear, to the number — the heavy of the mirror match.
+    // BRENN's stats and gear, to the number. The heavy of the mirror match.
     stats: Stats(max_hp: 138, max_mp: 18, attack: 26, defense: 16, magic: 4, speed: 9),
     sprite: BattlerSprite(
         texture: "axeman",

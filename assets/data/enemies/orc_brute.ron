@@ -1,5 +1,5 @@
 // ORC BRUTE: the prisoners the underworld twisted into hulking beasts.
-// A slow, heavy wall of muscle — high HP and a punishing BRUTE SLAM — that
+// A slow, heavy wall of muscle (high HP and a punishing BRUTE SLAM) that
 // lumbers after you on the map (easy to sidestep, like a gargoyle). Some
 // were freed only under heavy guard; here in the depths there is no guard.
 EnemyDef(
@@ -25,7 +25,7 @@ EnemyDef(
     ai: Random,
     xp: 48,
     gold: 40,
-    // Hulking and ponderous — far slower than the player.
+    // Hulking and ponderous, far slower than the player.
     overworld_speed: Some(22.0),
     drops: [
         ItemDrop(item: "might_tonic", chance: 0.18),

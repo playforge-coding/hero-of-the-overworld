@@ -2,7 +2,8 @@
 // `defeat_cutscene`). The fight is unwinnable by design; this is the payoff. The
 // king crushes the party with a gesture and hurls them back to the surface,
 // leagues from anywhere they knew, and CHAPTER 2 begins. Afterwards the world map
-// shows chapter 2 (no regions yet) — see `game.rs` `finish_battle` / `unlocked`.
+// shows chapter 2, opening on the CASTAWAY SHORE (see `finish_battle` and
+// `unlocked` in `game.rs`).
 CutsceneDef(
     id: "demon_king_rise",
     steps: [
@@ -11,19 +12,19 @@ CutsceneDef(
         Say(speaker: Some("DEMON KING"), portrait: Some("demon_king"),
             text: "YOU CROSSED A WORLD AND A HELL TO KNEEL HERE. HOW LITTLE YOU UNDERSTAND WHAT YOU FACE."),
         Say(speaker: Some("ROLAND"), portrait: Some("knight"),
-            text: "STAND - ALL OF YOU - STAND! WE ARE NOT DONE - "),
+            text: "STAND, ALL OF YOU, STAND! WE ARE NOT DONE..."),
         Say(speaker: Some("DEMON KING"), portrait: Some("demon_king"),
             text: "YOU ARE. BUT I HAVE NO USE FOR YOUR CORPSES TODAY. BEGONE."),
         Say(speaker: None, portrait: None,
-            text: "A SINGLE GESTURE. THE THRONE HALL ERUPTS - AND THE PARTY IS HURLED UP THROUGH STONE AND SKY."),
+            text: "A SINGLE GESTURE. THE THRONE HALL ERUPTS, AND THE PARTY IS HURLED UP THROUGH STONE AND SKY."),
         Say(speaker: Some("ROLAND"), portrait: Some("knight"),
-            text: "...WHERE... WHERE ARE WE? THIS AIR - IT'S THE SURFACE. BUT NOTHING HERE IS FAMILIAR."),
+            text: "...WHERE... WHERE ARE WE? THIS AIR... IT'S THE SURFACE. BUT NOTHING HERE IS FAMILIAR."),
         Say(speaker: Some("GARETH"), portrait: Some("scout"),
-            text: "HE FLUNG US HALFWAY ACROSS THE WORLD. THE ROADS WE KNEW ARE LEAGUES BEHIND US NOW - GONE."),
+            text: "HE FLUNG US HALFWAY ACROSS THE WORLD. THE ROADS WE KNEW ARE LEAGUES BEHIND US NOW. GONE."),
         Say(speaker: Some("ELARA"), portrait: Some("mage"),
-            text: "THEN HE LET US LIVE FOR A REASON. THE QUESTION IS WHY - AND WHAT HE MEANS TO DO WHILE WE ARE FAR AWAY."),
+            text: "THEN HE LET US LIVE FOR A REASON. THE QUESTION IS WHY, AND WHAT HE MEANS TO DO WHILE WE ARE FAR AWAY."),
         Say(speaker: Some("ROLAND"), portrait: Some("knight"),
-            text: "WE FIND OUT. WE FIND A ROAD BACK. THIS IS NOT THE END - IT IS ONLY THE TURNING."),
+            text: "WE FIND OUT. WE FIND A ROAD BACK. THIS IS NOT THE END. IT IS ONLY THE TURNING."),
         Say(speaker: None, portrait: None,
             text: "CHAPTER TWO BEGINS."),
     ],

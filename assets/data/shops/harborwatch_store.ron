@@ -1,4 +1,4 @@
-// The HARBORWATCH quartermaster's counter — the town's stores, restocked for a
+// The HARBORWATCH quartermaster's counter: the town's stores, restocked for a
 // chapter-2 party. Sells sturdier gear (including BRENN's BATTLE AXE) and the
 // deeper healing the shore's fights demand. `stock` resolves an id as equipment
 // first, then as an item, so the counter carries both.

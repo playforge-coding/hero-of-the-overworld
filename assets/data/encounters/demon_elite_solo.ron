@@ -1,3 +1,3 @@
-// Future foes, not yet placed in a level — reachable now via the dev fight
-// menu. The MINOTAUR is `boss`-flagged so it plays the boss theme.
+// A lone DEMON ELITE. Not placed in any level yet (the DEMON FACILITY fields
+// elites in pairs and trios instead); reachable via the dev fight menu.
 EncounterDef(id: "demon_elite_solo", enemies: ["demon_elite"])

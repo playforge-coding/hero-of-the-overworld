@@ -1,4 +1,3 @@
-// ------ UNDERWORLD: the goblin and orc families ---------------------
 // The club goblins' crude but heavy swing. Free, so they lean on it.
 SkillDef(
     id: "club_smash", name: "CLUB SMASH",

@@ -9,10 +9,13 @@ Thank you to their authors and maintainers.
 
 | Crate | Role |
 | ----- | ---- |
-| [macroquad](https://crates.io/crates/macroquad) | Window, GL rendering, input, text, and audio — native (OpenGL) and web (WebGL) |
+| [macroquad](https://crates.io/crates/macroquad) | Window, GL rendering, input, text, and audio, both native (OpenGL) and web (WebGL) |
 | [glam](https://crates.io/crates/glam) | Vector / matrix math |
 | [ron](https://crates.io/crates/ron) + [serde](https://crates.io/crates/serde) | Parsing the per-entity RON content files |
-| [include_dir](https://crates.io/crates/include_dir) | Baking the whole `assets/data` content tree into the binary at compile time |
+| [rust-embed](https://crates.io/crates/rust-embed) | Baking the whole `assets/data` content tree into the binary at compile time |
+| [gilrs](https://crates.io/crates/gilrs) | Gamepad input on desktop |
+| [dirs](https://crates.io/crates/dirs) | Finding the OS data directory for save files |
+| [sapp-jsutils](https://crates.io/crates/sapp-jsutils) | Passing save data between the web build and the browser |
 | [log](https://crates.io/crates/log) + [env_logger](https://crates.io/crates/env_logger) | Logging |
 | [image](https://crates.io/crates/image) | Loading screenshots in the end-to-end test suite |
 | [rustautogui](https://crates.io/crates/rustautogui) | Driving the real window in the end-to-end test suite |
@@ -27,12 +30,12 @@ Thank you to their authors and maintainers.
 
 The sprites are [MiniWorld Sprites](https://opengameart.org/content/miniworld-sprites)
 by [Shade](https://opengameart.org/users/shade-1) on OpenGameArt.org. They are
-released under **CC0** (public domain), but Shade has said he'd appreciate credit —
-so, thank you, Shade!
+released under **CC0** (public domain), but Shade has said he'd appreciate credit,
+so thank you, Shade!
 
-Character art is stored as grids of 16×16 frames; the game slices out the walk
+Character art is stored as grids of 16x16 frames; the game slices out the walk
 rows (for moving on the overworld) and idle/attack rows (for battle) per entity,
-and the overworld tiles — grass, water, trees, and rocks — share the same 16×16
+and the overworld tiles (grass, water, trees, and rocks) share the same 16x16
 footprint.
 
 ### Dialogue portraits
@@ -49,7 +52,7 @@ Nila122, Pierre Vigier (pvigier), Sander Frenken (castelonia),
 Stephen Challener (Redshrike), TheraHedwig, and Tuomo Untinen (reemax).
 
 Released under a mix of **OGA-BY 3.0**, **CC-BY-SA 3.0**, and **GPL 3.0** (per
-piece — see the `.txt` note beside each portrait for its exact sources and
+piece; see the `.txt` note beside each portrait for its exact sources and
 licenses). Unlike the MiniWorld sprites above, this art is **not** CC0: reusing
 it elsewhere requires carrying forward this same attribution.
 

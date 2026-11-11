@@ -1,5 +1,5 @@
-// ------ CASTAWAY SHORE (chapter 2) denizens ------------------------------
-// BEACH CRAB: the shore's answer to the mountain crab — a hardier, salt-crusted
+// A CASTAWAY SHORE (chapter 2) denizen.
+// BEACH CRAB: the shore's answer to the mountain crab, a hardier, salt-crusted
 // shell-back that skitters the tideline. Slow and weak on offense but well
 // armored, so it soaks hits like its mountain cousin, only tougher. beach_crab.png
 // is a tiny 3x1 sheet (one front-facing scuttle row), so the "attack" clip just
@@ -28,7 +28,7 @@ EnemyDef(
     ai: Basic,
     xp: 14,
     gold: 10,
-    // Slow scuttle — easy to sidestep on the sand.
+    // Slow scuttle, easy to sidestep on the sand.
     overworld_speed: Some(26.0),
     drops: [ItemDrop(item: "potion", chance: 0.22)],
 )

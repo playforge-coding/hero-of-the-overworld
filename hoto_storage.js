@@ -5,9 +5,9 @@
 // miniquad plugin exposing three functions the Rust `save::storage` module
 // imports, each taking a slot index:
 //
-//   hoto_storage_save(slot, obj)  — store the byte buffer `obj` as slot's save.
-//   hoto_storage_load(slot)       — return that slot's saved bytes (or nil).
-//   hoto_storage_clear(slot)      — delete that slot's save.
+//   hoto_storage_save(slot, obj): store the byte buffer `obj` as slot's save.
+//   hoto_storage_load(slot): return that slot's saved bytes (or nil).
+//   hoto_storage_clear(slot): delete that slot's save.
 //
 // IndexedDB is asynchronous, but the Rust side loads synchronously at startup,
 // so on init we eagerly read every slot into `cache`; `hoto_storage_load` then

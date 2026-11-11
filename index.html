@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <!-- Lock zoom and honour the notch: the game fills the display and the
+    <!-- Lock zoom and honor the notch: the game fills the display and the
          canvas draws under rounded corners / camera cut-outs. -->
     <meta
       name="viewport"
@@ -80,11 +80,11 @@
       // device often fires no `resize`, or fires it before the layout has settled,
       // so the drawing buffer keeps its old (portrait) size. The game then renders
       // letterboxed for the wrong orientation and hit-tests the on-screen touch
-      // controls against stale dimensions — so in landscape the canvas looks too
+      // controls against stale dimensions, so in landscape the canvas looks too
       // narrow and taps don't register.
       //
       // Re-dispatching a `resize` event re-triggers miniquad's own handler, which
-      // reads the *current* CSS box (`clientWidth`/`clientHeight`) — so we just
+      // reads the *current* CSS box (`clientWidth`/`clientHeight`), so we just
       // need to nudge it whenever the box actually changes.
       (function () {
         const nudge = () => window.dispatchEvent(new Event("resize"));
@@ -98,8 +98,8 @@
           setTimeout(nudge, 600);
         };
         window.addEventListener("orientationchange", nudgeSettled);
-        // A ResizeObserver on the canvas catches every layout-box change — the
-        // address bar sliding away, split-screen, foldables — including the ones
+        // A ResizeObserver on the canvas catches every layout-box change (the
+        // address bar sliding away, split-screen, foldables), including the ones
         // that never emit a `window` resize. It observes the CSS box, not the
         // drawing buffer miniquad mutates, so this can't loop.
         const canvas = document.querySelector("#glcanvas");

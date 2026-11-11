@@ -4,11 +4,11 @@ comments: true
 
 # Dragon
 
-The **boss of the Demon Fortress** — a hulking, fire-breathing wyrm coiled in the
+The **boss of the Demon Fortress**, a hulking, fire-breathing wyrm coiled in the
 fortress depths. It is the sternest fight in the game so far: a huge pool of HP,
 a party-wide fire breath, and a bone-crushing tail. It prowls the deepest screen
 of the fortress and, like every roaming foe, starts a [battle](../battles.md) on
-contact — but this one swaps the usual battle track for a dedicated **boss theme**.
+contact, but this one swaps the usual battle track for a dedicated **boss theme**.
 
 | Stat | Value |
 |---|---|
@@ -19,7 +19,7 @@ contact — but this one swaps the usual battle track for a dedicated **boss the
 | **Magic** | 24 |
 | **Speed** | 11 |
 | **AI** | Random (mixes its skills with plain attacks) |
-| **Rewards** | 150 XP · 120 gold on defeat |
+| **Rewards** | 150 XP, 120 gold on defeat |
 | **Drops** | [HI-POTION](../items.md) (guaranteed) |
 | **Found in** | Demon Fortress (a single boss, deep in the last screen) |
 
@@ -32,7 +32,7 @@ healing MP and be ready to spread damage: the fight rewards patience over a rush
 | Skill | Kind | MP | Target | Notes |
 | ----- | ---- | -- | ------ | ----- |
 | FLAME BREATH | Magical | 10 | All enemies | 135% power to the whole party; leaves everyone **[BURNING](../battles.md#status-effects)** for 3 rounds |
-| TAIL SWIPE | Physical | 0 | One enemy | Free 160%-power hit — the heaviest single blow in the game |
+| TAIL SWIPE | Physical | 0 | One enemy | Free 160%-power hit, the heaviest single blow in the game |
 
 **FLAME BREATH** is the fight's defining threat: it hits your whole party *and*
 stacks **BURN** on everyone, ticking 8 damage a round each, so a slow fight bleeds
@@ -48,12 +48,12 @@ reserve. Keep everyone topped up with **MEND**, and clear burns before they pile
 The `dragon_boss` encounter is flagged **`boss`** in its
 [`assets/data/encounters/dragon_boss.ron`](../modding.md), which is what makes its battle play the
 boss theme instead of the normal one. On the overworld the dragon roams at a
-steady pace — you *can* slip past it, but the fortress is only cleared once every
+steady pace. You *can* slip past it, but the fortress is only cleared once every
 foe, the dragon included, is beaten.
 
 ## Appearance
 
-The dragon uses the `dragon` sprite sheet (a 4×6 grid of 32×32 frames — larger
-than the other foes): front-facing poses in rows 0–1, drawn big in battle as its
-idle and attack, and a side-on serpent in rows 2–3. Its overworld walk reads rows
-0–3 as the down/up/right/left facings.
+The dragon uses the `dragon` sprite sheet (a 4x6 grid of 32x32 frames, larger
+than the other foes): front-facing poses in rows 0-1, drawn big in battle as its
+idle and attack, and a side-on serpent in rows 2-3. Its overworld walk reads rows
+0-3 as the down/up/right/left facings.

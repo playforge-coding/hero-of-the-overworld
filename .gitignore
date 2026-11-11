@@ -12,5 +12,5 @@ debug/
 /docs/fonts/
 /docs/stylesheets/fonts.css
 
-# mq 
+# miniquad's JS loader, downloaded for local web builds (see index.html).
 mq_js_bundle.js

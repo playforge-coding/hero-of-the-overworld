@@ -4,25 +4,25 @@
 //! and a width ([`virtual_w`]) that tracks the window's aspect ratio, so wide
 //! screens see more of the world instead of black pillarbox bars. A `Camera2D`
 //! maps that virtual space into a letterboxed viewport in the real window, so
-//! game logic never thinks about real pixels or DPI. Sprites are drawn through it
-//! camera — a single nearest-neighbour resample from source art to final size —
-//! which keeps pixel art crisp and undistorted (an intermediate low-res render
-//! target would resample twice and warp scaled sprites).
+//! game logic never thinks about real pixels or DPI. Sprites are drawn through
+//! that camera in a single nearest-neighbor resample from source art to final
+//! size, which keeps pixel art crisp and undistorted (an intermediate low-res
+//! render target would resample twice and warp scaled sprites).
 //!
-//! Text uses macroquad's built-in TrueType rasteriser (a `Font`), drawn on top
-//! at the final on-screen size so glyphs stay sharp. Draw calls are queued
-//! during a frame and replayed in order by [`render`](Renderer::render), so
-//! painter-order layering and mid-frame
-//! [`set_clear_color`](Renderer::set_clear_color) work as before.
+//! Text uses macroquad's built-in TrueType rasterizer (a `Font`), drawn at the
+//! final on-screen size so glyphs stay sharp. Draw calls are queued during a
+//! frame and replayed strictly in order by [`render`](Renderer::render), text
+//! included, so painter-order layering (a popup covering the list behind it)
+//! and mid-frame [`set_clear_color`](Renderer::set_clear_color) work as before.
 
 use macroquad::prelude::{
-    clear_background, draw_circle, draw_circle_lines, draw_rectangle, draw_text_ex,
-    draw_texture_ex, load_ttf_font_from_bytes, measure_text, screen_dpi_scale, screen_height,
-    screen_width, set_camera, set_default_camera, vec2, Camera2D, Color as MqColor,
-    DrawTextureParams, FilterMode, Font, Rect as MqRect, TextParams, Texture2D, BLACK,
+    BLACK, Camera2D, Color as MqColor, DrawTextureParams, FilterMode, Font, Rect as MqRect,
+    TextParams, Texture2D, clear_background, draw_circle, draw_circle_lines, draw_rectangle,
+    draw_text_ex, draw_texture_ex, draw_triangle, load_ttf_font_from_bytes, measure_text,
+    screen_dpi_scale, screen_height, screen_width, set_camera, set_default_camera, vec2,
 };
 
-/// Virtual canvas height in pixels. Fixed — the game is designed around a
+/// Virtual canvas height in pixels. Fixed, since the game is designed around a
 /// 180px-tall play field.
 pub const VIRTUAL_H: f32 = 180.0;
 
@@ -30,14 +30,14 @@ pub const VIRTUAL_H: f32 = 180.0;
 /// shrinks below this, so on tall/portrait windows the scene letterboxes with
 /// top/bottom bars rather than zooming in.
 pub const VIRTUAL_W_MIN: f32 = 320.0;
-/// Widest virtual canvas width (~2.67:1). Covers every phone up to ~21:9 with no
+/// Widest virtual canvas width (about 2.67:1). Covers every phone up to about 21:9 with no
 /// bars; guards ultra-wide desktops from revealing an absurd slice of the world.
 pub const VIRTUAL_W_MAX: f32 = 480.0;
 
 /// Current virtual canvas width, in game-coordinate pixels. Unlike the fixed
 /// [`VIRTUAL_H`], the width tracks the window's aspect ratio so wide screens
 /// (a phone held in landscape) reveal *more of the world* instead of black
-/// pillarbox bars — keeping pixels square and crisp, never stretched. Clamped to
+/// pillarbox bars, keeping pixels square and crisp, never stretched. Clamped to
 /// [`VIRTUAL_W_MIN`]..=[`VIRTUAL_W_MAX`]; outside that range the scene
 /// letterboxes as before. Recomputed from the live window each call, so it
 /// tracks rotation and resizes for free.
@@ -136,6 +136,12 @@ enum OverlayCmd {
         t: f32,
         color: MqColor,
     },
+    Triangle {
+        a: (f32, f32),
+        b: (f32, f32),
+        c: (f32, f32),
+        color: MqColor,
+    },
     Text {
         text: String,
         cx: f32,
@@ -170,7 +176,7 @@ impl Renderer {
         }
     }
 
-    /// Current window size in logical pixels — the coordinate space the overlay
+    /// Current window size in logical pixels: the coordinate space the overlay
     /// draw calls (and the touch controls) work in.
     pub fn screen_size(&self) -> (f32, f32) {
         (screen_width(), screen_height())
@@ -336,6 +342,22 @@ impl Renderer {
         });
     }
 
+    /// Queue a filled triangle with corners `a`, `b`, `c` in raw window pixels.
+    pub fn draw_overlay_triangle(
+        &mut self,
+        a: (f32, f32),
+        b: (f32, f32),
+        c: (f32, f32),
+        color: Color,
+    ) {
+        self.overlay.push(OverlayCmd::Triangle {
+            a,
+            b,
+            c,
+            color: mq(color),
+        });
+    }
+
     /// Queue text centered on `(cx, cy)` in raw window pixels at `px` pixels tall.
     pub fn draw_overlay_text_centered(
         &mut self,
@@ -357,7 +379,7 @@ impl Renderer {
     // ---- Presentation ---------------------------------------------------------
 
     /// Letterboxed viewport (x, y, w, h) that preserves the virtual aspect
-    /// ratio, centered in the window. In **logical** pixels — the space
+    /// ratio, centered in the window. In **logical** pixels, the space
     /// `screen_width()`, the default camera, and the text/overlay draws all work
     /// in. `Camera2D::viewport` needs *physical* framebuffer pixels, so multiply
     /// by [`screen_dpi_scale`] before handing this rect to a camera (see
@@ -375,18 +397,18 @@ impl Renderer {
         ((sw - vw) / 2.0, (sh - vh) / 2.0, vw, vh)
     }
 
-    /// Replay every queued draw. Shapes and sprites go through a camera that maps
-    /// the virtual canvas into the letterboxed viewport (drawn directly to the
-    /// window, one resample); text is drawn afterwards at the final on-screen
-    /// size so it stays sharp. Clears the queue; the caller presents via
-    /// `next_frame().await`.
+    /// Replay every queued draw in order. Shapes and sprites go through a camera
+    /// that maps the virtual canvas into the letterboxed viewport (drawn directly
+    /// to the window, one resample); text is drawn at the final on-screen size so
+    /// it stays sharp, at its place in the queue so later shapes can cover it.
+    /// Clears the queue; the caller presents via `next_frame().await`.
     pub fn render(&mut self) {
         // Whole-window black first, for the letterbox bars.
         set_default_camera();
         clear_background(BLACK);
 
         let (vx, vy, vw, vh) = self.viewport();
-        // Camera: virtual (0,0)-(VW,VH) -> the viewport rect, top-left origin,
+        // Camera: maps virtual (0,0) through (VW,VH) onto the viewport rect, top-left origin,
         // y-down (matching game coordinates). `Camera2D::viewport` is fed
         // straight to `glViewport`, which works in physical framebuffer pixels,
         // so scale the logical rect by the DPI (a no-op at dpr 1, but the whole
@@ -409,7 +431,22 @@ impl Renderer {
         // Scene background fills only the viewport (the camera clips to it).
         draw_rectangle(0.0, 0.0, vwv, VIRTUAL_H, self.clear_color);
 
+        // Replay strictly in queue order so a panel drawn after some text covers
+        // it (a popup over a list, a fade over the HUD). Shapes and sprites go
+        // through the scene camera and text through the default camera, so the
+        // camera only switches where a run of text starts or ends.
+        let s = vw / vwv; // uniform scale from virtual to screen pixels
+        let mut drawing_text = false;
         for cmd in &self.queue {
+            let is_text = matches!(cmd, Cmd::Text { .. });
+            if is_text != drawing_text {
+                if is_text {
+                    set_default_camera();
+                } else {
+                    set_camera(&cam);
+                }
+                drawing_text = is_text;
+            }
             match cmd {
                 Cmd::Rect { x, y, w, h, color } => {
                     draw_rectangle(*x, *y, *w, *h, *color);
@@ -437,40 +474,34 @@ impl Renderer {
                         },
                     );
                 }
-                Cmd::Text { .. } => {} // drawn on top at screen resolution below
-            }
-        }
-
-        // Text on top, rasterised at the real on-screen size (crisp).
-        set_default_camera();
-        let s = vw / virtual_w(); // virtual -> screen scale (uniform)
-        for cmd in &self.queue {
-            if let Cmd::Text {
-                text,
-                x,
-                y,
-                size,
-                color,
-            } = cmd
-            {
-                let fs = ((*size as f32) * s).round().max(1.0) as u16;
-                let dims = measure_text(text, Some(&self.font), fs, 1.0);
-                draw_text_ex(
+                // Rasterized at the real on-screen size, so glyphs stay crisp.
+                Cmd::Text {
                     text,
-                    vx + x * s,
-                    vy + y * s + dims.offset_y,
-                    TextParams {
-                        font: Some(&self.font),
-                        font_size: fs,
-                        color: *color,
-                        ..Default::default()
-                    },
-                );
+                    x,
+                    y,
+                    size,
+                    color,
+                } => {
+                    let fs = ((*size as f32) * s).round().max(1.0) as u16;
+                    let dims = measure_text(text, Some(&self.font), fs, 1.0);
+                    draw_text_ex(
+                        text,
+                        vx + x * s,
+                        vy + y * s + dims.offset_y,
+                        TextParams {
+                            font: Some(&self.font),
+                            font_size: fs,
+                            color: *color,
+                            ..Default::default()
+                        },
+                    );
+                }
             }
         }
 
         // On-screen overlay (touch controls) last, in raw window pixels so it
         // sits in the letterbox margins, unclipped by the virtual viewport.
+        set_default_camera();
         for cmd in &self.overlay {
             match cmd {
                 OverlayCmd::Rect { x, y, w, h, color } => {
@@ -481,6 +512,9 @@ impl Renderer {
                 }
                 OverlayCmd::CircleOutline { x, y, r, t, color } => {
                     draw_circle_lines(*x, *y, *r, *t, *color);
+                }
+                OverlayCmd::Triangle { a, b, c, color } => {
+                    draw_triangle(vec2(a.0, a.1), vec2(b.0, b.1), vec2(c.0, c.1), *color);
                 }
                 OverlayCmd::Text {
                     text,

@@ -1,8 +1,9 @@
-// PIRATE GRUNT: the cutlass-swinging muscle of the shore's marauders. No tricks
-// — just a hard, reliable melee bruiser who wades in and hacks. Tougher and
+// PIRATE GRUNT: the cutlass-swinging muscle of the shore's marauders. No tricks,
+// just a hard, reliable melee bruiser who wades in and hacks. Tougher and
 // harder-hitting than the goblins of the depths, it anchors the pirate crews.
-// pirate_grunt.png shares the hermit's sheet layout — a 5x8 grid of 16x16 frames:
-// walk rows 0-3 (down/up/right/left), attack rows 4-7. Its battle idle reads the
+// pirate_grunt.png uses the hermit's row layout in a 5x8 grid of 16x16 frames
+// (the hermit's own sheet is one column wider, 6x8): walk rows 0-3
+// (down/up/right/left), attack rows 4-7. Its battle idle reads the
 // front-facing walk row and its swing the front-facing attack row.
 EnemyDef(
     id: "pirate_grunt",

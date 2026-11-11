@@ -1,7 +1,8 @@
-# Pin the toolchain so local builds and CI use the exact same rustc. This keeps
-# the wasm link deterministic and stops Swatinem/rust-cache from mixing object
-# files across silent `@stable` upgrades (which surfaced as spurious
-# "undefined symbol: console_log/glBindTexture/..." link errors on the web build).
+# Pin the toolchain so local builds and CI use the exact same rustc, and so
+# Swatinem/rust-cache never mixes object files from different compilers. Bump it
+# deliberately, together with the `dtolnay/rust-toolchain@<version>` lines in
+# .github/workflows/. Newer rustc stopped passing `--allow-undefined` to the
+# wasm linker; .cargo/config.toml restores it for the web build.
 [toolchain]
-channel = "1.95.0"
+channel = "1.99.1"
 targets = ["wasm32-unknown-unknown"]

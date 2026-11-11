@@ -1,5 +1,5 @@
 // GARETH's capstone (his last learned move, replacing the shared MEND): a
-// single, flawless killing stroke — the deadliest hit in the party.
+// single, flawless killing stroke, the deadliest hit in the party.
 SkillDef(
     id: "final_cut", name: "FINAL CUT",
     description: "A flawless killing stroke that finds the fatal gap.",

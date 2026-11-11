@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout (with LFS assets)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # The embedded textures and music are stored in Git LFS; without them
           # `include_bytes!` would compile LFS pointer files instead of the
@@ -37,19 +37,20 @@ jobs:
           lfs: true
 
       - name: Install Rust toolchain
-        # Pinned to match rust-toolchain.toml so native + web builds stay in sync.
-        uses: dtolnay/rust-toolchain@1.95.0
+        # Pinned to match rust-toolchain.toml so native and web builds stay in sync.
+        uses: dtolnay/rust-toolchain@1.99.1
         with:
           targets: ${{ matrix.target }}
 
       - name: Cache cargo build
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@v2.9.3
         with:
           key: ${{ matrix.target }}
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
-        # macroquad/miniquad links X11 + OpenGL, and its audio backend uses ALSA.
+        # macroquad/miniquad links X11 and OpenGL, its audio backend uses ALSA,
+        # and gilrs reads gamepads through libudev.
         run: |
           sudo apt-get update
           sudo apt-get install -y libx11-dev libxi-dev libgl1-mesa-dev libasound2-dev libudev-dev
@@ -74,6 +75,6 @@ jobs:
           echo "ASSET=$archive" >> $env:GITHUB_ENV
 
       - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ env.ASSET }}

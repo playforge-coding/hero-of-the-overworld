@@ -1,4 +1,4 @@
-// The DEMON KING: the throne-room "boss" at the end of the DEMON FACILITY — and
+// The DEMON KING: the throne-room "boss" at the end of the DEMON FACILITY, and
 // the first fight in the game you are *meant to lose*. He is flagged `invincible`
 // (damage can never bring him below 1 HP, so he cannot be killed) and hits with
 // OBLIVION, a free, unblockable sweep that one-shots the whole party, plus a
@@ -7,7 +7,7 @@
 // into a story beat: the party is hurled to the surface and CHAPTER 2 begins.
 //
 // demon_king.png is drawn on the demon family's 6x8 layout (idle row 0, attack
-// row 4, walk rows 0-3), like the demon and demon elite — just larger in battle.
+// row 4, walk rows 0-3), like the demon and demon elite, just larger in battle.
 EnemyDef(
     id: "demon_king",
     name: "DEMON KING",

@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 use crate::audio::{Audio, Track};
 use crate::battle::{Battle, BattleOutcome};
 use crate::cutscene::{Cutscene, CutsceneOutcome};
-use crate::data::{CutsceneStep, Registry, BATTLE_MUSIC_OGG, BOSS_MUSIC_OGG, TITLE_MUSIC_OGG};
+use crate::data::{BATTLE_MUSIC_OGG, BOSS_MUSIC_OGG, CutsceneStep, Registry, TITLE_MUSIC_OGG};
 #[cfg(debug_assertions)]
 use crate::devtools::{DevTools, DevToolsEvent};
 use crate::input::{Button, Controllers, Input, InputAssignment, TouchScheme};
@@ -19,7 +19,7 @@ use crate::input_config::{InputConfig, InputConfigEvent};
 use crate::inventory::{Inventory, InventoryEvent};
 use crate::overworld::{Event, LevelProgress, Overworld, Trigger};
 use crate::party::{ItemStack, Party, PartyMember};
-use crate::renderer::{color, virtual_w, Renderer, VIRTUAL_H};
+use crate::renderer::{Renderer, VIRTUAL_H, color, virtual_w};
 use crate::save::{self, SaveData, SavedLevel, SavedLocation, SavedMember};
 use crate::shop::{Shop, ShopEvent};
 use crate::util::{Rng, TextureCache};
@@ -176,7 +176,7 @@ impl Game {
     /// or level ids are skipped so an old save still loads against edited content.
     fn apply_save(&mut self, data: SaveData, renderer: &mut Renderer) {
         // Full reset first, so loading a slot never inherits stray state from a
-        // previously loaded one (a lingering level, a queued cutscene, …).
+        // previously loaded one (a lingering level, a queued cutscene, and so on).
         self.level = None;
         self.current_level = 0;
         self.map_cursor = 0;
@@ -205,7 +205,7 @@ impl Game {
             m.stats.speed = sm.speed;
             m.weapon = sm.weapon.clone();
             m.armor = sm.armor.clone();
-            // Skills aren't saved — they're rebuilt from the def. `from_def` taught
+            // Skills aren't saved; they're rebuilt from the def. `from_def` taught
             // the level-1 kit; now that the saved level is set, teach everything the
             // learnset unlocks up to it so a reloaded hero keeps the moves they'd
             // earned.
@@ -411,12 +411,13 @@ impl Game {
     }
 
     /// **DEV-ONLY.** The XP the party would earn by clearing every enemy in level
-    /// `i` — the sum of each spawn's encounter, each enemy's XP **scaled to the
+    /// `i`: the sum over each spawn's encounter of each enemy's XP, **scaled to the
     /// party's current level** exactly as real battle spoils are (see
     /// [`crate::data::enemy_scale`]). The map's dev level-skip grants this so a
     /// skipped level still advances the party roughly as far as actually playing
-    /// it would, keeping later-level testing realistic. (A single-scale snapshot,
-    /// so it doesn't model levelling *mid-clear* — close enough for a dev tool.)
+    /// it would, keeping later-level testing realistic. (It is a single-scale
+    /// snapshot, so it doesn't model leveling *mid-clear*, which is close enough
+    /// for a dev tool.)
     #[cfg(debug_assertions)]
     fn level_clear_xp(&self, i: usize) -> i32 {
         let Some(level) = self.reg.data.levels.get(i) else {
@@ -450,21 +451,22 @@ impl Game {
         Some(Cutscene::new(renderer, &mut self.cache, &self.reg, steps))
     }
 
-    /// Which on-screen touch scheme fits the current scene: an analog joystick
-    /// while walking the overworld, up/down only in the vertical battle menu, and
-    /// a plain d-pad everywhere else (title, map, shop, dialogue). Read by the
-    /// main loop before polling input.
-    /// The live input-source → player mapping, read by the main loop each frame
-    /// when it polls the controllers.
+    /// The live mapping from input source to player, read by the main loop each
+    /// frame when it polls the controllers.
     pub fn input_assignment(&self) -> &InputAssignment {
         &self.input_assignment
     }
 
+    /// Which on-screen touch scheme fits the current scene: an analog joystick
+    /// while walking the overworld, up/down only in the vertical battle menu, and
+    /// a plain d-pad everywhere else (title, map, shop, dialogue). Read by the
+    /// main loop before polling input.
     pub fn touch_scheme(&self) -> TouchScheme {
         match self.scene {
             Scene::Level => TouchScheme::Joystick,
             Scene::Battle(_) => TouchScheme::UpDown,
-            // The inventory is a menu screen → d-pad (the catch-all below).
+            // The inventory is a menu screen, so it gets the d-pad (the catch-all
+            // below).
             _ => TouchScheme::Dpad,
         }
     }
@@ -507,8 +509,8 @@ impl Game {
                     Some(CutsceneOutcome::Finished) => {
                         // A cutscene can recruit a new member, so persist afterwards.
                         self.save();
-                        // A clear cutscene is the tail of a clear sequence — carry on
-                        // into the next level if one is queued.
+                        // A clear cutscene is the tail of a clear sequence, so carry
+                        // on into the next level if one is queued.
                         self.after_clear_sequence(renderer)
                     }
                     None => Scene::Cutscene(cs),
@@ -615,7 +617,7 @@ impl Game {
     /// Whether the battle/boss tracks still need decoding *and* the player has
     /// reached gameplay where they'll be wanted. The app loop polls this and calls
     /// [`load_level_music`](Self::load_level_music) so the decode happens on the
-    /// way into a level — not at startup, where it would stall the title menus.
+    /// way into a level, not at startup, where it would stall the title menus.
     pub fn needs_level_music(&self) -> bool {
         !self.level_music_loaded && matches!(self.scene, Scene::Level | Scene::Battle(_))
     }
@@ -647,8 +649,20 @@ impl Game {
     /// Read a digest of every save slot for the save-select menu.
     fn read_slot_summaries(&self) -> Vec<Option<SlotSummary>> {
         (0..save::SLOTS)
-            .map(|slot| save::load(slot).map(|data| self.summarize(&data)))
+            .map(|slot| self.load_save(slot).map(|data| self.summarize(&data)))
             .collect()
+    }
+
+    /// Decode the save in `slot` and update any level or cutscene ids it stored
+    /// under a name the content has since dropped (each def's `former_ids`), so
+    /// an older save keeps its progress in renamed content.
+    fn load_save(&self, slot: usize) -> Option<SaveData> {
+        let mut data = save::load(slot)?;
+        data.migrate_ids(
+            |id| self.reg.renamed_level(id),
+            |id| self.reg.renamed_cutscene(id),
+        );
+        Some(data)
     }
 
     /// Distil a decoded save into the one-liner the save-select menu shows.
@@ -664,7 +678,7 @@ impl Game {
                     .unwrap_or_else(|| m.def_id.clone());
                 (name, m.level)
             })
-            .unwrap_or_else(|| ("—".to_string(), 0));
+            .unwrap_or_else(|| ("NO ONE".to_string(), 0));
         let place = match &data.location {
             Some(loc) => self
                 .reg
@@ -746,9 +760,9 @@ impl Game {
     }
 
     /// Load the playthrough in `slot`, making it the active (autosave) slot, and
-    /// return the scene to resume in — the saved level, or the world map.
+    /// return the scene to resume in: the saved level, or the world map.
     fn load_slot(&mut self, slot: usize, renderer: &mut Renderer) -> Scene {
-        match save::load(slot) {
+        match self.load_save(slot) {
             Some(data) => {
                 self.apply_save(data, renderer);
                 self.active_slot = slot;
@@ -802,7 +816,7 @@ impl Game {
         // underworld) without playing through. To keep the skipped-ahead party
         // realistic for testing, also grant the XP that clearing the level's
         // enemies would have earned (scaled to the party's level, like real
-        // spoils) — so a developer arrives at the next region roughly the level
+        // spoils), so a developer arrives at the next region roughly the level
         // they'd actually be. Only awarded the first time the level flips to
         // cleared, so mashing Tab doesn't stack XP. The entire block is compiled
         // out of release builds via `debug_assertions`, so a shipped game keeps
@@ -822,8 +836,8 @@ impl Game {
             return Scene::Map;
         }
         // DEV-ONLY level reset: wipe the highlighted level back to its untouched
-        // state — un-cleared, every enemy respawned, its intro/clear cutscenes
-        // forgotten — so a developer can walk back in and replay it fresh after
+        // state (un-cleared, every enemy respawned, its intro/clear cutscenes
+        // forgotten) so a developer can walk back in and replay it fresh after
         // tuning it. The inverse of the skip above; likewise compiled out of
         // release builds. See [`input::dev_reset_pressed`].
         #[cfg(debug_assertions)]
@@ -882,16 +896,16 @@ impl Game {
             &progress,
         ));
         // Play the level's intro cutscene the first time it's entered.
-        if let Some(id) = self.reg.data.levels[idx].intro_cutscene.clone() {
-            if let Some(cs) = self.build_cutscene(&id, renderer) {
-                return Scene::Cutscene(cs);
-            }
+        if let Some(id) = self.reg.data.levels[idx].intro_cutscene.clone()
+            && let Some(cs) = self.build_cutscene(&id, renderer)
+        {
+            return Scene::Cutscene(cs);
         }
         Scene::Level
     }
 
-    /// The scene to show once a clear sequence (victory report → any clear
-    /// cutscene) has fully played out. When a level was just cleared this
+    /// The scene to show once a clear sequence (the victory report, then any
+    /// clear cutscene) has fully played out. When a level was just cleared this
     /// **auto-advances** straight into the next region (persisting the jump);
     /// otherwise it's an ordinary return to the level (or the map if none is live).
     fn after_clear_sequence(&mut self, renderer: &mut Renderer) -> Scene {
@@ -917,7 +931,7 @@ impl Game {
                 self.cleared[self.current_level] |= level.all_cleared();
                 // Fold in beaten-demon progress while the level is still live,
                 // then drop it *before* saving so the save records "on the map"
-                // (no location) — resuming won't teleport back into the level.
+                // (no location), so resuming won't teleport back into the level.
                 self.capture_level_progress();
                 self.level = None;
                 self.save();
@@ -977,7 +991,7 @@ impl Game {
                 portrait,
             }) => {
                 // A one-time scripted talk (which may recruit the NPC) plays first;
-                // once it has been seen — or if the NPC has none — fall back to its
+                // once it has been seen (or if the NPC has none), fall back to its
                 // repeatable lines as a throwaway dialogue. Either way it's shown
                 // through the cutscene player, which returns to the level after.
                 let scripted = cutscene
@@ -1025,7 +1039,7 @@ impl Game {
     }
 
     /// Whether level `i` can be entered yet. A level must belong to the party's
-    /// current [chapter](Self::chapter); within a chapter, progression is linear —
+    /// current [chapter](Self::chapter); within a chapter, progression is linear:
     /// the first level of the chapter is always open, and each later one unlocks
     /// only once the previous level *of that same chapter* is fully cleared. Levels
     /// of a past or future chapter are always locked (the party has moved on from,
@@ -1050,7 +1064,7 @@ impl Game {
 
     /// Whether the party's current chapter has any levels at all. False once the
     /// party has advanced past the last authored chapter (the DEMON KING flings
-    /// them into a chapter 2 that has no regions **yet**) — the map then shows a
+    /// them into a chapter 2 that has no regions **yet**). The map then shows a
     /// "to be continued" state rather than a playable region.
     fn chapter_has_levels(&self) -> bool {
         self.reg
@@ -1121,8 +1135,8 @@ impl Game {
                 // Auto-advance: beating the last foe carries the party straight into
                 // the next region (once the report and any clear cutscene finish),
                 // rather than dropping them back on the map. Only within the same
-                // chapter — a chapter boundary is crossed by story (a boss), not by
-                // clearing — so the last region of a chapter simply ends the clear.
+                // chapter: a chapter boundary is crossed by story (a boss), not by
+                // clearing, so the last region of a chapter simply ends the clear.
                 let cur_chapter = self.reg.data.levels[self.current_level].chapter;
                 let next = self.current_level + 1;
                 if self
@@ -1194,8 +1208,8 @@ impl Game {
             }
             BattleOutcome::Defeat => {
                 // Does this encounter script a special defeat (the DEMON KING)? A
-                // wipe here can be a story beat — a cutscene and/or a jump to the
-                // next chapter — rather than the usual revive-at-camp. (A dev-menu
+                // wipe here can be a story beat (a cutscene and/or a jump to the
+                // next chapter) rather than the usual revive-at-camp. (A dev-menu
                 // fight has no trigger, so it always takes the ordinary path.)
                 let enc = trigger
                     .as_ref()
@@ -1217,7 +1231,7 @@ impl Game {
                     // Where the party washes up: the first region of the new chapter,
                     // if one is built. They walk straight into it once the launch
                     // cutscene ends; a chapter with no regions yet lands them on the
-                    // (region-less) map — a "to be continued" cliffhanger.
+                    // (region-less) map for a "to be continued" cliffhanger.
                     let landing = self
                         .reg
                         .data
@@ -1228,12 +1242,12 @@ impl Game {
                     // Play the launch cutscene first; after it, `after_clear_sequence`
                     // carries the party into the landing region (whose own intro then
                     // plays) via `pending_advance`.
-                    if let Some(id) = &defeat_cutscene {
-                        if let Some(cs) = self.build_cutscene(id, renderer) {
-                            self.pending_advance = landing;
-                            self.save();
-                            return Scene::Cutscene(cs);
-                        }
+                    if let Some(id) = &defeat_cutscene
+                        && let Some(cs) = self.build_cutscene(id, renderer)
+                    {
+                        self.pending_advance = landing;
+                        self.save();
+                        return Scene::Cutscene(cs);
                     }
                     // No launch cutscene: step straight into the landing region, or
                     // land on the map if the new chapter has none yet.
@@ -1285,7 +1299,7 @@ impl Game {
     }
 
     /// The title screen: the five heroes struck in a sword-raised pose over a dusk
-    /// backdrop — ROLAND large in front, his four companions in a back rank — under
+    /// backdrop (ROLAND large in front, his four companions in a back rank) under
     /// the game name, with the play prompt and controls hint.
     fn draw_title(reg: &Registry, cache: &mut TextureCache, time: f32, r: &mut Renderer) {
         let w = virtual_w();
@@ -1304,10 +1318,10 @@ impl Game {
         );
 
         // All five heroes are drawn from the same sword-raised battle frame (sheet
-        // row 5, column 1): the four companions form a back rank, ROLAND stands
-        // large in front. Order matters — the leader is drawn last, over the rank.
+        // row 4, column 0): the four companions form a back rank, ROLAND stands
+        // large in front. Order matters: the leader is drawn last, over the rank.
         let cx = w / 2.0;
-        // (character id, x-offset from centre, feet-Y, sprite height).
+        // (character id, x-offset from center, feet-Y, sprite height).
         let cast: [(&str, f32, f32, f32); 5] = [
             ("mage", -72.0, 128.0, 40.0),
             ("hermit", -36.0, 128.0, 40.0),
@@ -1321,8 +1335,8 @@ impl Game {
             };
             let s = &def.sprite;
             let tex = cache.get(r, &s.texture);
-            // The shared pose: row 4, column 0 of the entity's 16×16 battle sheet —
-            // weapon/arms raised (ROLAND's sword up, ELARA's hands high, …).
+            // The shared pose: row 4, column 0 of the entity's 16x16 battle sheet,
+            // with weapon or arms raised (ROLAND's sword up, ELARA's hands high).
             let src = [
                 0.0,
                 4.0 * s.frame_h as f32,
@@ -1500,7 +1514,7 @@ impl Game {
         r.draw_rect(0.0, 0.0, virtual_w(), VIRTUAL_H, color::rgb(20, 28, 36));
         r.draw_rect(0.0, 0.0, virtual_w(), 16.0, color::rgba(10, 14, 22, 220));
         r.draw_text(
-            &format!("WORLD MAP · CH {}", self.chapter),
+            &format!("WORLD MAP: CH {}", self.chapter),
             6.0,
             3.0,
             1.0,
@@ -1530,7 +1544,7 @@ impl Game {
         // XP; R resets it to replay.
         #[cfg(debug_assertions)]
         r.draw_text_centered(
-            "DEV: TAB SKIPS (+XP) · R RESETS · F1 MENU",
+            "DEV: TAB SKIPS (+XP), R RESETS, F1 MENU",
             virtual_w() / 2.0,
             3.0,
             1.0,
@@ -1539,7 +1553,7 @@ impl Game {
 
         let levels = &self.reg.data.levels;
 
-        // The map only shows the party's **current chapter** — earlier chapters are
+        // The map only shows the party's **current chapter**: earlier chapters are
         // leagues behind them, later ones not yet reached. Faint path connecting this
         // chapter's regions in order (a travel route); links across a chapter boundary
         // are skipped so each chapter reads as its own map.
@@ -1571,7 +1585,7 @@ impl Game {
                     color::rgb(255, 240, 150),
                 );
             }
-            // Green = cleared, red = available, grey = still locked.
+            // Green = cleared, red = available, gray = still locked.
             let fill = if done {
                 color::rgb(90, 200, 110)
             } else if unlocked {
@@ -1622,7 +1636,7 @@ impl Game {
         // the regions they knew are out of reach and the next arc isn't built yet.
         if !self.chapter_has_levels() {
             r.draw_text_centered(
-                &format!("CHAPTER {} - TO BE CONTINUED...", self.chapter),
+                &format!("CHAPTER {}: TO BE CONTINUED...", self.chapter),
                 virtual_w() / 2.0,
                 VIRTUAL_H - 10.0,
                 1.0,
@@ -1632,7 +1646,7 @@ impl Game {
         // A locked selection can't be entered; say why. Otherwise the controls.
         else if !self.unlocked(self.map_cursor) {
             r.draw_text_centered(
-                "LOCKED - CLEAR THE PREVIOUS LEVEL FIRST",
+                "LOCKED: CLEAR THE PREVIOUS LEVEL FIRST",
                 virtual_w() / 2.0,
                 VIRTUAL_H - 10.0,
                 1.0,

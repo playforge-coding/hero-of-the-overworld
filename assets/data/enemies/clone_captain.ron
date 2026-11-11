@@ -1,7 +1,7 @@
 EnemyDef(
     id: "clone_captain",
     name: "DARK CAPTAIN",
-    // The CAPTAIN's stats, to the number — a mirror of the recruited officer, not
+    // The CAPTAIN's stats, to the number: a mirror of the recruited officer, not
     // the weaker PIRATE CAPTAIN boss he was beaten as. The strongest clone by kit:
     // heavy volleys and ALL HANDS make him the mirror match's late-game menace.
     stats: Stats(max_hp: 104, max_mp: 20, attack: 24, defense: 15, magic: 6, speed: 14),

@@ -6,7 +6,7 @@ comments: true
 
 The **hulking heart of the orc family**. Where the [goblins](club_goblin.md) were
 prisoners the [underworld](../story.md) broke and loosed, the orcs are the same
-prisoners the change hit **hardest** — twisted whole into slabs of muscle. (In the
+prisoners the change hit **hardest**, twisted whole into slabs of muscle. (In the
 lore a handful were later released to the surface, but only under the army's **heavy
 watch**; down here in the Charred Depths there is no such guard.) An orc brute is a
 slow, punishing wall of HP that lumbers after you and hammers with a two-fisted
@@ -21,8 +21,8 @@ slow, punishing wall of HP that lumbers after you and hammers with a two-fisted
 | **Magic** | 0 |
 | **Speed** | 9 |
 | **AI** | Random (mixes BRUTE SLAM with plain swings) |
-| **Rewards** | 48 XP · 40 gold on defeat |
-| **Drops** | [MIGHT TONIC](../items.md) (18%) · [HI-POTION](../items.md) (12%) |
+| **Rewards** | 48 XP, 40 gold on defeat |
+| **Drops** | [MIGHT TONIC](../items.md) (18%), [HI-POTION](../items.md) (12%) |
 | **Found in** | Charred Depths (the deeper chambers) |
 
 An orc brute is the Charred Depths' anchor and the toughest regular foe in the game:
@@ -30,14 +30,14 @@ at 150 HP behind a defense of 19 it is a genuine wall, and its **BRUTE SLAM** hi
 harder than anything short of a boss. The deep chambers muster them **two and three
 abreast**, so a room of brutes is a war of attrition. But at speed 9 it still acts
 **late** in the round and **crawls** on the map (slower than the player, like a
-[gargoyle](gargoyle.md)) — so you can sidestep one you would rather not fight, and in
+[gargoyle](gargoyle.md)), so you can sidestep one you would rather not fight, and in
 battle you often get a full turn in before it swings.
 
 ## Skills
 
 | Skill | Kind | MP | Target | Notes |
 | ----- | ---- | -- | ------ | ----- |
-| BRUTE SLAM | Physical | 0 | One enemy | Free 170%-power slam — the depths' heaviest blow |
+| BRUTE SLAM | Physical | 0 | One enemy | Free 170%-power slam, the depths' heaviest blow |
 
 **BRUTE SLAM** costs no MP and lands hard, but it is an ordinary (non-piercing) blow,
 so you can **time a block** to blunt it. Because the brute is slow, brace for the slam
@@ -57,6 +57,6 @@ and pour damage in on the turns it hasn't acted yet.
 
 ## Appearance
 
-The orc brute uses the `orc_brute` sprite sheet (a 6×8 grid of 16×16 frames, the same
-size as the [demon](demon.md)'s): directional walk rows (0–3) as it lumbers across the
-map, and its big attack poses (rows 4–7) plus an idle in battle.
+The orc brute uses the `orc_brute` sprite sheet (a 6x8 grid of 16x16 frames, the same
+size as the [demon](demon.md)'s): directional walk rows (0-3) as it lumbers across the
+map, and its big attack poses (rows 4-7) plus an idle in battle.

@@ -1,15 +1,17 @@
-// TRAVELLER'S END — the longest trek in the game: a switchbacking climb
+// TRAVELER'S END is the longest trek in the game: a switchbacking climb
 // up a stony mountain range (12 screens), grass and pines giving way to
 // bare scree and boneyards. Crabs and slimes at the foot, skeletons and
 // gargoyles on the shelves, and the mounted DARK KNIGHTS (with stray
 // demons up from the fortress below) holding the storm-lashed summit.
 // Sits between STONE PASS and the DEMON FORTRESS in the climb.
 LevelDef(
-    id: "travellersend", name: "TRAVELLER'S END",
+    id: "travelersend", name: "TRAVELER'S END",
+    // Saves from before the American-spelling rename stored this id.
+    former_ids: ["travellersend"],
     node: (3, 2),
     start_screen: 0, start: (2, 5),
     ground: Some("stone"),
-    intro_cutscene: Some("travellersend_intro"),
+    intro_cutscene: Some("travelersend_intro"),
     clear_cutscene: Some("gareth_joins"),
     screens: [
         // The trailhead: grassy slopes at the foot of the range.
@@ -35,7 +37,7 @@ LevelDef(
                 SpawnDef(col: 10, row: 5, encounter: "skeleton_duo"),
                 SpawnDef(col: 14, row: 5, encounter: "crab_pair"),
             ],
-            // Two chests side by side on the shelf — one a genuine cache,
+            // Two chests side by side on the shelf: one a genuine cache,
             // the other a mimic. Reaching for the wrong one starts a fight.
             chests: [
                 ChestSpawn(col: 14, row: 4, gold: 60, item: Some("hi_potion")),
@@ -76,7 +78,7 @@ LevelDef(
                 SpawnDef(col: 5, row: 6, encounter: "skeleton_trio"),
             ],
         ),
-        // The knights' watch - an open bowl ringed with rock.
+        // The knights' watch, an open bowl ringed with rock.
         ScreenDef(
             north: Some(8), west: Some(6),
             spawns: [
@@ -108,7 +110,7 @@ LevelDef(
                 SpawnDef(col: 7, row: 6, encounter: "demon_duo"),
             ],
         ),
-        // TRAVELLER'S END: the far summit, and its grim last guard.
+        // TRAVELER'S END: the far summit, and its grim last guard.
         ScreenDef(
             west: Some(10),
             spawns: [

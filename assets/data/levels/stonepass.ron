@@ -1,4 +1,4 @@
-// STONE PASS — a straight rocky descent (screens 0-2), then a boulder
+// STONE PASS: a straight rocky descent (screens 0-2), then a boulder
 // MAZE at the end (screens 3-4) you must wind through to the depths.
 LevelDef(
     id: "stonepass", name: "STONE PASS",
@@ -29,7 +29,7 @@ LevelDef(
             ],
         ),
         ScreenDef(
-            // THE MAZE — a boulder warren; snake south to the exit.
+            // THE MAZE: a boulder warren. Snake south to the exit.
             north: Some(2), south: Some(4),
             spawns: [
                 SpawnDef(col: 3, row: 3, encounter: "gargoyle_solo"),
@@ -37,7 +37,7 @@ LevelDef(
             ],
         ),
         ScreenDef(
-            // The maze's inner dead end — the last gargoyles hold it.
+            // The maze's inner dead end, where the last gargoyles hold out.
             north: Some(3),
             spawns: [
                 SpawnDef(col: 16, row: 3, encounter: "gargoyle_solo"),

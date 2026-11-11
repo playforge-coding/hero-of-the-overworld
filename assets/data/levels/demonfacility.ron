@@ -1,13 +1,13 @@
-// DEMON FACILITY — the climax of CHAPTER 1, past the CHARRED DEPTHS. Where the
+// DEMON FACILITY: the climax of CHAPTER 1, past the CHARRED DEPTHS. Where the
 // underworld's raw stone gives way to something BUILT: an iron forge-hall where
-// the horde plates its DEMON ELITES for war. A long, winding descent in the mould
-// of the CHARRED DEPTHS — elites two and three abreast, a barracks cache guarded
-// by a mimic, a throne-hall guard — ending at the throne of the DEMON KING.
+// the horde plates its DEMON ELITES for war. A long, winding descent in the mold
+// of the CHARRED DEPTHS (elites two and three abreast, a barracks cache guarded
+// by a mimic, a throne-hall guard), ending at the throne of the DEMON KING.
 //
 // That final fight cannot be won: the king is invincible and wipes the party (see
-// `enemies/demon_king.ron` and `encounters/demon_king.ron`). Losing IS the story —
+// `enemies/demon_king.ron` and `encounters/demon_king.ron`). Losing IS the story:
 // the encounter's `defeat_advances_chapter` hurls the party to the surface and
-// opens CHAPTER 2 — so this level has no `clear_cutscene`; it is never cleared.
+// opens CHAPTER 2, so this level has no `clear_cutscene`; it is never cleared.
 LevelDef(
     id: "demonfacility", name: "DEMON FACILITY",
     node: (5, 0),
@@ -16,7 +16,7 @@ LevelDef(
     wall: Some("dark_wall"),
     intro_cutscene: Some("demonfacility_intro"),
     screens: [
-        // 0 — The gatehall: the iron doors give onto the first patrol.
+        // Screen 0, the gatehall: the iron doors give onto the first patrol.
         ScreenDef(
             east: Some(1),
             spawns: [
@@ -24,7 +24,7 @@ LevelDef(
                 SpawnDef(col: 14, row: 3, encounter: "elite_demons"),
             ],
         ),
-        // 1 — The crossing: north into the barracks, or east and deeper in.
+        // Screen 1, the crossing: north into the barracks, or east and deeper in.
         ScreenDef(
             north: Some(2), east: Some(3), west: Some(0),
             spawns: [
@@ -32,8 +32,8 @@ LevelDef(
                 SpawnDef(col: 14, row: 8, encounter: "elite_pair"),
             ],
         ),
-        // 2 — The barracks: a dead-end muster hall thick with elites, with a
-        // war-chest against the north wall — and a mimic that took its neighbour's
+        // Screen 2, the barracks: a dead-end muster hall thick with elites, with a
+        // war-chest against the north wall and a mimic that took its neighbor's
         // shape and waited.
         ScreenDef(
             south: Some(1),
@@ -48,7 +48,7 @@ LevelDef(
                 MimicSpawn(col: 16, row: 1, encounter: "mimic_solo"),
             ],
         ),
-        // 3 — The forge galleries, elites at the anvils.
+        // Screen 3, the forge galleries: elites at the anvils.
         ScreenDef(
             east: Some(4), west: Some(1),
             spawns: [
@@ -56,7 +56,7 @@ LevelDef(
                 SpawnDef(col: 12, row: 5, encounter: "elite_demons"),
             ],
         ),
-        // 4 — The muster: the galleries open north toward the deep halls.
+        // Screen 4, the muster: the galleries open north toward the deep halls.
         ScreenDef(
             north: Some(5), west: Some(3),
             spawns: [
@@ -64,7 +64,7 @@ LevelDef(
                 SpawnDef(col: 13, row: 8, encounter: "elite_trio"),
             ],
         ),
-        // 5 — The armory walk: heavy patrols muster three abreast.
+        // Screen 5, the armory walk: heavy patrols muster three abreast.
         ScreenDef(
             east: Some(6), south: Some(4),
             spawns: [
@@ -72,7 +72,7 @@ LevelDef(
                 SpawnDef(col: 5,  row: 8, encounter: "elite_pair"),
             ],
         ),
-        // 6 — The iron span: a long crossing under the forges' heat.
+        // Screen 6, the iron span: a long crossing under the forges' heat.
         ScreenDef(
             east: Some(7), west: Some(5),
             spawns: [
@@ -80,7 +80,7 @@ LevelDef(
                 SpawnDef(col: 13, row: 8, encounter: "elite_trio"),
             ],
         ),
-        // 7 — The inner ward: the way bends north to the throne road.
+        // Screen 7, the inner ward: the way bends north to the throne road.
         ScreenDef(
             north: Some(8), west: Some(6),
             spawns: [
@@ -88,7 +88,7 @@ LevelDef(
                 SpawnDef(col: 6,  row: 8, encounter: "elite_pair"),
             ],
         ),
-        // 8 — The throne road: the last approach, elites massed.
+        // Screen 8, the throne road: the last approach, elites massed.
         ScreenDef(
             east: Some(9), south: Some(7),
             spawns: [
@@ -96,7 +96,7 @@ LevelDef(
                 SpawnDef(col: 14, row: 3, encounter: "elite_guard"),
             ],
         ),
-        // 9 — The throne gate: the king's guard bars the last door.
+        // Screen 9, the throne gate: the king's guard bars the last door.
         ScreenDef(
             east: Some(10), west: Some(8),
             spawns: [
@@ -105,8 +105,8 @@ LevelDef(
                 SpawnDef(col: 5,  row: 3, encounter: "elite_trio"),
             ],
         ),
-        // 10 — The throne hall: the DEMON KING waits at its heart. Walk to him and
-        // the fight begins — a fight that ends CHAPTER 1 the only way it can.
+        // Screen 10, the throne hall: the DEMON KING waits at its heart. Walk to
+        // him and the fight begins, a fight that ends CHAPTER 1 the only way it can.
         ScreenDef(
             west: Some(9),
             spawns: [

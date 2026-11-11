@@ -1,12 +1,12 @@
-// ------ UNDERWORLD denizens: the GOBLIN and ORC families -------------
+// UNDERWORLD denizens: the GOBLIN and ORC families.
 // The war's prisoners, remade by the dark of the underworld. The GOBLINS
 // were indoctrinated into demon society and loosed to swarm the CHARRED
 // DEPTHS; the hulking ORCS are the same prisoners the change hit hardest.
 //
-// CLUB GOBLIN: the goblins' front line — small, quick, and numerous, they
+// CLUB GOBLIN: the goblins' front line. Small, quick, and numerous, they
 // rush in and hammer with a crude CLUB SMASH. Individually weak, but they
-// come in packs (and often with an archer covering them). All three new
-// sheets share the demon's layout: walk rows 0-3 (down/up/right/left),
+// come in packs (and often with an archer covering them). The club goblin,
+// archer goblin, and orc brute sheets all share the demon's layout: walk rows 0-3 (down/up/right/left),
 // attack rows 4-7 (down/up/right/left).
 EnemyDef(
     id: "club_goblin",

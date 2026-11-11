@@ -1,9 +1,9 @@
-// THE PIRATE CAPTAIN — a party member recruited on the CASTAWAY SHORE. Once a
+// THE PIRATE CAPTAIN is a party member recruited on the CASTAWAY SHORE. Once a
 // captain in the KINGDOM'S NAVY, he turned corsair alongside much of his crew
 // after the advisor's takeover, and has worked these far waters since. He knew
-// GARETH well in the old days and saw the princess — ELARA — often enough at court
+// GARETH well in the old days and saw the princess (ELARA) often enough at court
 // to know her face under her alter ego. Joins after the shore is cleared (via the
-// `captain_joins` cutscene, which is also where he recognises her); not in
+// `captain_joins` cutscene, which is also where he recognizes her); not in
 // `starting_party`.
 //
 // A ranged fighter like his gunners, but far stronger: he opens with the MUSKET
@@ -33,7 +33,7 @@ CharacterDef(
     )),
     skills: ["musket_shot"],
     // A seasoned officer's heavier volley comes with a few more levels together,
-    // and his ultimate — ALL HANDS, calling up the whole crew — is his final move.
+    // and his ultimate, ALL HANDS (calling up the whole crew), is his final move.
     learnset: [
         LearnedSkill(level: 5, skill: "broadside"),
         LearnedSkill(level: 9, skill: "all_hands"),

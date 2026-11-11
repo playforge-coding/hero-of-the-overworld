@@ -6,7 +6,7 @@ comments: true
 
 Hero of the Overworld is a compact turn-based JRPG. You guide a party from a
 **world map** into **levels**, explore their tile screens, fight the monsters that
-roam them, and grow stronger — until every level is cleared.
+roam them, and grow stronger until every level is cleared.
 
 ## The title screen
 
@@ -21,17 +21,17 @@ playthrough in before heading to the [world map](world.md#the-world-map).
 2. **Explore.** Walk the party leader through the level's connected
    [screens](world.md#screens), stepping between them through mid-edge openings.
 3. **Fight or dodge.** Enemies roam each screen and chase you when you get close.
-   Touch one and a **[battle](battles.md)** begins — but you move faster than they
-   do, so you can weave around them if you'd rather not fight.
+   Touch one and a **[battle](battles.md)** begins. You move faster than they
+   do, though, so you can weave around them if you'd rather not fight.
 4. **Win rewards.** Victory grants **XP** and **gold** to the party, and can push
    heroes up a level (raising their stats).
-5. **Clear the level.** Beat *every* demon across all of a level's screens to
+5. **Clear the level.** Beat *every* enemy across all of a level's screens to
    mark it **cleared** on the map. Some levels reward a clear with a
-   **[cutscene](battles.md#story-and-cutscenes)** — that's how new party members
+   **[cutscene](battles.md#story-and-cutscenes)**, which is how new party members
    join.
-6. **Move on.** Clearing a level **unlocks the next one** and — once the victory
-   report and any clear cutscene finish — **carries the party straight into it**, no
-   trip back to the map required (progression is linear — see
+6. **Move on.** Clearing a level **unlocks the next one**, and once the victory
+   report and any clear cutscene finish, it **carries the party straight into it**
+   with no trip back to the map required (progression is linear; see
    [Progression](world.md#progression-is-linear)). Clear them all; the last clear
    ends the run.
 
@@ -40,24 +40,25 @@ playthrough in before heading to the [world map](world.md#the-world-map).
 You start as a single hero, **ROLAND** the swordsman. Party members carry their
 **HP**, **MP**, **level**, and **XP** between battles, so damage taken in one
 fight persists into the next until you heal (with [Elara](entities/elara.md)'s MEND
-skill, a healing [item](items.md), or by being revived — see below).
+skill, a healing [item](items.md), or by being revived, as described below).
 
 A hero **knocked out** in battle isn't lost. They sit out the rest of that fight,
 but at the start of the **next** battle they rejoin the party back on their feet
-with **5 HP** — enough to fight on, though you'll want to heal them up quickly.
-You don't have to wait, though: [Elara](entities/elara.md)'s **MEND** can **revive
-a downed ally on the spot** — target the fallen hero mid-battle, or from the
+with **5 HP**. That's enough to fight on, though you'll want to heal them up
+quickly. You don't have to wait, though: [Elara](entities/elara.md)'s **MEND** can
+**revive a downed ally on the spot**. Target the fallen hero mid-battle, or from the
 [party menu](#inventory-and-equipment) between fights, and they're back up with the
 healed HP. (Healing [items](items.md) only top up the living; reviving is MEND's alone.)
 
 New heroes join through the story. After you clear the **Greenwood**, a cutscene
-introduces **ELARA**, a mage; clear **Traveller's End** and **GARETH**, a swift
-mountain hermit and the fastest hero in the game, joins next; and in Chapter 2 the
-**[Captain](entities/captain.md)** — a boss you *fight first* — yields and comes
-aboard. See **[Extending the Game](modding.md)** to add your own.
+introduces **ELARA**, a mage; clear **Traveler's End** and **GARETH**, a swift
+mountain hermit and the fastest hero in the game, joins next. In Chapter 2 the
+**[Captain](entities/captain.md)**, a boss you *fight first*, yields and comes
+aboard, and **BRENN** the axeman signs on in Harborwatch. See
+**[Extending the Game](modding.md)** to add your own.
 
-A hero who joins mid-game arrives **at the party's current level**, not level 1 —
-their base stats are grown up the same curve as [levelling up](#levelling-up), so
+A hero who joins mid-game arrives **at the party's current level**, not level 1.
+Their base stats are grown up the same curve as [leveling up](#leveling-up), so
 a newcomer fights on par with Roland instead of joining as dead weight.
 
 ### The battle line-up { #the-battle-line-up }
@@ -68,44 +69,43 @@ three**; the rest wait in **reserve**. A newly recruited hero joins on the bench
 you choose who actually takes the field.
 
 **Roland always leads.** As the party's leader he's the one who walks the overworld,
-so he's **locked into the front of the line-up** — he can't be benched or moved, and
+so he's **locked into the front of the line-up**: he can't be benched or moved, and
 no one can take his slot. Everyone *else* you arrange freely.
 
 You set the line-up from the **[party menu](#inventory-and-equipment)** (press
 **Menu** in a level). Roland is tagged **LEAD**; below him a line marks the cut, with
 everyone above it **active** and everyone below (dimmed) in **reserve**. To change it,
 pick a hero *other than Roland*, open their actions, and choose **MOVE UP** / **MOVE
-DOWN** to shuffle them through the order — pull a reserve up past the line to
+DOWN** to shuffle them through the order. Pull a reserve up past the line to
 **deploy** them, or push an active hero down to **bench** them. Reserves keep their
 HP/MP and still **earn XP** alongside the fighters, so benching a hero never leaves
 them behind.
 
-## Levelling up
+## Leveling up
 
 Winning a battle awards XP to every living hero. Enough XP raises a hero's
 **level**, which bumps their max HP and MP, attack, defense, and magic, and
-tops them back up to full. Speed is deliberately left alone — enemies don't gain
+tops them back up to full. Speed is deliberately left alone: enemies don't gain
 speed with level either, so raising it would skew turn order. Fallen heroes earn
-no XP from that fight, so
-keeping everyone alive pays off.
+no XP from that fight, so keeping everyone alive pays off.
 
-Levelling up can also **unlock new [skills](battles.md#skills)**: heroes learn
+Leveling up can also **unlock new [skills](battles.md#skills)**: heroes learn
 some of their moves only on reaching a certain level (ROLAND earns his sweeping
 WHIRLWIND at level 3, ELARA her FROST at level 4). A newly learned move is called
-out on the victory report (**… LEARNED …**) and is usable from the next fight on.
+out on the victory report (**... LEARNED ...**) and is usable from the next fight on.
 A hero [recruited](#your-party) mid-game joins at the party's level already knowing
 everything that level grants.
 
 ### Enemies scale with you
 
 So the world doesn't fall behind your growth, **roaming enemies scale to your
-party's level** when a battle begins — their HP, attack, defense and magic (and
+party's level** when a battle begins. Their HP, attack, defense and magic (and
 their XP/gold rewards) grow with you, so a foe that was a threat early on stays a
 fair fight later instead of becoming a one-hit pushover. Two things are held
 fixed by design:
 
-- **Speed never scales**, so the turn order you learned to exploit still holds —
-  lumbering [gargoyles](entities/gargoyle.md) act last, mounted
+- **Speed never scales**, so the turn order you learned to exploit still holds:
+  lumbering [gargoyles](entities/gargoyle.md) act last, and mounted
   [dark knights](entities/dark_knight.md) act first.
 - At **party level 1** the scaling is the identity: the opening region fights
   every foe at exactly its authored strength.
@@ -120,7 +120,7 @@ There's no game over. If every hero is knocked out in a battle, the party is
 again. Losing a fight costs you the attempt, not your progress.
 
 The one exception is a **scripted** defeat. A few boss fights are meant to be
-**lost** — the **[Demon King](entities/demon_king.md)** at the end of the Demon
+**lost**. The **[Demon King](entities/demon_king.md)** at the end of the Demon
 Facility is invincible and wipes the party on purpose. Losing there doesn't revive
 you where you fell; it plays a story cutscene and carries you into the next
 **[chapter](#chapters)**.
@@ -128,36 +128,39 @@ you where you fell; it plays a story cutscene and carries you into the next
 ## Chapters
 
 The story is told in **chapters**, and the world map only ever offers the
-**current chapter's** regions (its header reads `CH 1`, `CH 2`, …). The six
+**current chapter's** regions (its header reads `CH 1`, `CH 2`, and so on). The six
 **Chapter 1** levels run in order (see
 [Progression](world.md#progression-is-linear)) down to the Demon Facility.
 
 Facing the **[Demon King](entities/demon_king.md)** there ends Chapter 1 the only
 way it can: he cannot be beaten, and losing to him **flings the party back up to the
 surface**, far from everywhere they'd unlocked. The world map ticks over to
-**Chapter 2** — the Chapter 1 regions fall out of reach (they're leagues away now)
+**Chapter 2**. The Chapter 1 regions fall out of reach (they're leagues away now),
 and the party washes up on the **[Castaway Shore](world.md#progression-is-linear)**,
 Chapter 2's opening region, which they walk straight into off the launch cutscene.
-Clearing that reaches the **edge of the built world** — the report ends on
-**"TO BE CONTINUED..."** — since the coast beyond it isn't made **yet**. Your cleared
-progress is [saved](#saving) per chapter, so the tale simply pauses there for now.
+Clearing it carries them on to the garrison town of **Harborwatch**, which is the
+**edge of the built world** for now: reaching it ends on **"TO BE CONTINUED..."**,
+since the story beyond it isn't made **yet**. Your cleared progress is
+[saved](#saving) per chapter, so the tale simply pauses there for now.
 
 ## The party menu { #inventory-and-equipment }
 
 Press **Menu** (<kbd>Shift</kbd>/<kbd>C</kbd>, or Start on a gamepad) while walking
-a level to open the **party menu** — the out-of-battle hub for gear *and* healing,
-so you can patch the party up between fights, no shop or camp needed. Pick a **hero**
-(Up/Down), then **Confirm** to open their action menu:
+a level to open the **party menu**. It's the out-of-battle hub for gear *and*
+healing, so you can patch the party up between fights with no shop or camp needed.
+Pick a **hero** (Up/Down), then **Confirm** to open their action menu. The list
+shows three heroes at a time; with a bigger party it scrolls as you move, and a bar
+along its right edge shows where you are.
 
 ### Equip
 
 Manage the hero's gear against the party's shared **bag** of unequipped items:
 
-- Choose the **slot** — weapon or armor (Left/Right) — before opening the menu.
+- Choose the **slot** (weapon or armor, with Left/Right) before opening the menu.
 - **EQUIP** opens the bag's items that fit that slot; Confirm one to **equip** it,
   or choose **(UNEQUIP)** to stow whatever's there.
 - Equipping **swaps**: whatever the hero was wearing goes back to the bag, so gear
-  is never lost or duplicated — just moved around the party.
+  is never lost or duplicated, just moved around the party.
 
 Where does bag gear come from? Buying at a **[shop](shops.md)** equips the new item
 and drops the one it replaces into the bag (rather than discarding it), so your old
@@ -168,12 +171,12 @@ kit is always there to hand down to another hero.
 Heal up on the map, without waiting for the next battle:
 
 - **USE ITEM** lists your restorative **[items](items.md)** (potions, ethers) with
-  counts. Pick one, then pick **which ally** it's used on — it restores their HP/MP
+  counts. Pick one, then pick **which ally** it's used on. It restores their HP/MP
   and spends one from the shared stash. Only restorative items show here; attack and
   buff items are battle-only.
 - **USE MOVE** lists the healing **[skills](battles.md#skills)** the selected hero
   knows (like **MEND**). Pick one and a **target ally**; it restores HP and spends
-  the caster's **MP**, exactly as in battle. Moves you can't afford are greyed out.
+  the caster's **MP**, exactly as in battle. Moves you can't afford are grayed out.
 
 ### Move up / move down
 
@@ -190,24 +193,24 @@ The bag, the item stash, and everyone's HP/MP all ride along in your [save](#sav
 
 Your goal is simply to **clear every level**. The world map shows a running
 **CLEARED x/y** tally, and each level marker turns from red to green with a star
-once you've wiped out its demons. (The last region of Chapter 1, the Demon Facility,
-is the exception: its [Demon King](entities/demon_king.md) can't be beaten, so it's
-never marked cleared — reaching and losing to him ends the chapter instead. See
-[Chapters](#chapters).)
+once you've wiped out its enemies. (The last region of Chapter 1, the Demon
+Facility, is the exception: its [Demon King](entities/demon_king.md) can't be
+beaten, so it's never marked cleared. Reaching and losing to him ends the chapter
+instead. See [Chapters](#chapters).)
 
 ## Saving
 
-Your progress is **saved automatically** into the **save slot** you're playing —
-there's nothing to manage. The game writes a save after each battle, whenever you
-leave a level, and after a story cutscene, capturing:
+Your progress is **saved automatically** into the **save slot** you're playing,
+so there's nothing to manage. The game writes a save after each battle, whenever
+you leave a level, and after a story cutscene, capturing:
 
-- your **party** — members, levels, XP, live HP/MP, equipped gear, the shared
+- your **party**: members, levels, XP, live HP/MP, equipped gear, the shared
   [item bag](#inventory-and-equipment), your [items](items.md) stash, and gold;
 - which **levels are cleared** (and therefore which are unlocked), and which
   **[chapter](#chapters)** you've reached;
-- your **in-level progress** — the specific demons you've already beaten, so
+- your **in-level progress**: the specific enemies you've already beaten, so
   quitting halfway through a level doesn't undo the fights you've won;
-- your **exact position** — the level, screen, and spot you were standing on, so
+- your **exact position**: the level, screen, and spot you were standing on, so
   a save taken mid-level puts you right back there rather than on the world map.
   (Leaving a level to the map clears this, so you resume on the map instead.)
 
@@ -216,7 +219,7 @@ leave a level, and after a story cutscene, capturing:
 The game keeps **three independent save slots**, so several playthroughs can run
 side by side. Pressing Enter on the title opens the **save-select** menu:
 
-- **arrows** move between the slots — each shows its lead hero and level, party
+- **arrows** move between the slots. Each shows its lead hero and level, party
   size, chapter, gold, and where the save was taken (a level name, or *WORLD MAP*);
 - **Enter** on a filled slot **continues** it, dropping you straight back into the
   level and spot where you saved (or the world map, if that's where you left off);

@@ -1,9 +1,9 @@
-// The PIRATE CAPTAIN — the boss of the CASTAWAY SHORE, waiting at the back of his
+// The PIRATE CAPTAIN, the boss of the CASTAWAY SHORE, waiting at the back of his
 // camp. A former navy officer turned corsair after the takeover, he fights with a
 // MUSKET (a heavier reach than his gunners' pistols) and a cutlass, and hits far
 // harder than the crew he commands. Flagged `boss` for the boss theme; beat him and
-// the level's `clear_cutscene` (`captain_joins`) recruits him — see
-// `characters/captain.ron` and `cutscenes/captain_joins.ron`.
+// the level's `clear_cutscene` (`captain_joins`) recruits him (see
+// `characters/captain.ron` and `cutscenes/captain_joins.ron`).
 //
 // captain.png is an 8x8 sheet on the playable layout (walk rows 0-3, attack rows
 // 4-7); the battle sprite reads the right-facing walk/attack rows so the boss looks

@@ -1,6 +1,6 @@
 // Stone sentinels of STONE PASS. They hit like a landslide (via the
-// STONE FISTS weapon) but are ponderously slow — last to act in battle
-// and easy to outrun on the map — and their crude swings miss often
+// STONE FISTS weapon) but are ponderously slow (last to act in battle
+// and easy to outrun on the map), and their crude swings miss often
 // (the weapon carries a big accuracy penalty). gargoyle.png shares the
 // demon's 6x8 layout: rows 0-3 walk, rows 4-7 attack.
 EnemyDef(

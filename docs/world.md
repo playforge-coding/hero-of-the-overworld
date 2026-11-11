@@ -5,7 +5,7 @@ comments: true
 # The Overworld
 
 The world is hand-authored, not generated: everything you walk through is laid
-out as tile maps in the game's data file. It's arranged in two tiers — a
+out as tile maps in the game's data files. It's arranged in two tiers: a
 **world map** of levels, and the **screens** inside each level.
 
 ## The world map
@@ -15,10 +15,10 @@ by a faint dotted travel route. Each marker sits at a grid **node** and shows th
 level's name beneath it.
 
 - **Move** hops the cursor to the nearest marker in that direction.
-- **Confirm** enters the highlighted level — if it's unlocked.
+- **Confirm** enters the highlighted level, as long as it's unlocked.
 - A marker is **red** while the level still holds foes and turns **green with a
   star** once you've cleared it. A **CLEARED x/y** tally sits in the corner.
-- A **grey marker with an X** is still **locked**.
+- A **gray marker with an X** is still **locked**.
 
 ### Progression is linear
 
@@ -30,8 +30,8 @@ rarely need the map to move forward: clearing a level **carries you straight int
 the next one** (see [Clearing a level](#roaming-enemies) below).
 
 The bundled world spans two **[chapters](gameplay.md#chapters)**. **Chapter 1** is
-six levels across two realms — the surface, and the **underworld** beneath it,
-reached once the Demon Fortress falls — ending at the iron **Demon Facility** deep
+six levels across two realms (the surface, and the **underworld** beneath it,
+reached once the Demon Fortress falls), ending at the iron **Demon Facility** deep
 below, the seat of the horde's power. **Chapter 2** opens on a far **Castaway Shore**,
 where the Demon King flings the party once Chapter 1 ends, and continues to the
 garrison town of **Harborwatch**. The map shows one chapter
@@ -39,58 +39,58 @@ at a time; these are Chapter 1's regions, in order:
 
 | Level | Screens | Enemies | Notes |
 | ----- | ------- | ------- | ----- |
-| **GREENWOOD** | 5 | [Slime](entities/slime.md) swarms + a lone [demon](entities/demon.md) guardian | The opening level: a straightforward forest walk with some winding parts, flowing east then bending north into the deep wood. Clearing it triggers the cutscene where ELARA joins. |
-| **STONE PASS** | 5 | [Gargoyle](entities/gargoyle.md) patrols + a slime pack | A straight rocky descent (screens stacked north–south) that ends in a **boulder maze** you must snake through. Unlocks after Greenwood. |
-| **TRAVELLER'S END** | 12 | [Crabs](entities/mountain_crab.md), [skeletons](entities/skeleton.md), [gargoyles](entities/gargoyle.md), mounted [dark knights](entities/dark_knight.md) + stray [demons](entities/demon.md) | The **longest trek** in the game: a switchbacking climb up a stony mountain range, grass and pines giving way to bare scree and boneyards. Foes escalate the higher you go — crabs and slimes at the foot, skeletons and gargoyles on the shelves, dark knights and demons holding the storm-lashed summit. Unlocks after Stone Pass. |
-| **DEMON FORTRESS** | 6 | [Demon](entities/demon.md) packs (duos and trios) + a [dragon](entities/dragon.md) boss | A **very mazelike** warren of dark-brick corridors: a gatehouse into a crossing that branches to a dead-end cell block or deeper east through twisting galleries to the dragon's lair. Felling the dragon opens the advisor's **portal** and carries the party down into the underworld. Unlocks after Traveller's End. |
-| **CHARRED DEPTHS** | 11 | [Club](entities/club_goblin.md) & [archer goblins](entities/archer_goblin.md), [orc brutes](entities/orc_brute.md) + [demons](entities/demon.md) | The **first level of the underworld** and the **toughest descent** in the game — a long warren of scorched flagstone that winds ever deeper, its foes escalating like the climb of Traveller's End. Goblin packs (clubbers screening their archers) hold the upper halls, orc brutes wall the middle chambers two and three abreast, and demon-led warbands hold the depths — down to the deep hall's guardian, a demon flanked by two remade orc thralls. Unlocks after the Demon Fortress — a **[portal cutscene](story.md)** takes you there, and it stands open on the map from then on. |
-| **DEMON FACILITY** | 11 | [Demon elites](entities/demon_elite.md) (singly and in packs) + a [Demon King](entities/demon_king.md) boss | The **climax of Chapter 1**: past the Charred Depths the raw stone turns to **iron**, an underground forge-hall where the horde plates its demons for war. A long, winding descent in the mould of the Charred Depths — war-plated elites two and three abreast, a barracks cache guarded by a mimic, a throne-hall guard — ending at the throne of the invincible **[Demon King](entities/demon_king.md)**. That fight **cannot be won**: losing it hurls the party back to the surface and opens **[Chapter 2](gameplay.md#chapters)**. Unlocks after the Charred Depths. |
+| **GREENWOOD** | 5 | [Slime](entities/slime.md) swarms and a lone [demon](entities/demon.md) guardian | The opening level: a straightforward forest walk with some winding parts, flowing east then bending north into the deep wood. Clearing it triggers the cutscene where ELARA joins. |
+| **STONE PASS** | 5 | [Gargoyle](entities/gargoyle.md) patrols and a slime pack | A straight rocky descent (screens stacked north to south) that ends in a **boulder maze** you must snake through. Unlocks after Greenwood. |
+| **TRAVELER'S END** | 12 | [Crabs](entities/mountain_crab.md), [skeletons](entities/skeleton.md), [gargoyles](entities/gargoyle.md), mounted [dark knights](entities/dark_knight.md), and stray [demons](entities/demon.md) | The **longest trek** in the game: a switchbacking climb up a stony mountain range, grass and pines giving way to bare scree and boneyards. Foes escalate the higher you go, with crabs and slimes at the foot, skeletons and gargoyles on the shelves, and dark knights and demons holding the storm-lashed summit. Unlocks after Stone Pass. |
+| **DEMON FORTRESS** | 6 | [Demon](entities/demon.md) packs (duos and trios) and a [dragon](entities/dragon.md) boss | A **very mazelike** warren of dark-brick corridors: a gatehouse into a crossing that branches to a dead-end cell block or deeper east through twisting galleries to the dragon's lair. Felling the dragon opens the advisor's **portal** and carries the party down into the underworld. Unlocks after Traveler's End. |
+| **CHARRED DEPTHS** | 11 | [Club](entities/club_goblin.md) and [archer goblins](entities/archer_goblin.md), [orc brutes](entities/orc_brute.md), and [demons](entities/demon.md) | The **first level of the underworld** and the **toughest descent** in the game: a long warren of scorched flagstone that winds ever deeper, its foes escalating like the climb of Traveler's End. Goblin packs (clubbers screening their archers) hold the upper halls, orc brutes wall the middle chambers two and three abreast, and demon-led warbands hold the depths, all the way down to the deep hall's guardian, a demon flanked by two remade orc thralls. Unlocks after the Demon Fortress. A **[portal cutscene](story.md)** takes you there, and it stands open on the map from then on. |
+| **DEMON FACILITY** | 11 | [Demon elites](entities/demon_elite.md) (singly and in packs) and a [Demon King](entities/demon_king.md) boss | The **climax of Chapter 1**: past the Charred Depths the raw stone turns to **iron**, an underground forge-hall where the horde plates its demons for war. It's a long, winding descent in the mold of the Charred Depths, with war-plated elites two and three abreast, a barracks cache guarded by a mimic, and a throne-hall guard, ending at the throne of the invincible **[Demon King](entities/demon_king.md)**. That fight **cannot be won**: losing it hurls the party back to the surface and opens **[Chapter 2](gameplay.md#chapters)**. Unlocks after the Charred Depths. |
 
-And **Chapter 2** so far runs two regions — the shore the party washes up on, and
-the town they sail to from it:
+And **Chapter 2** so far runs two regions: the shore the party washes up on, and
+the town they sail to from it.
 
 | Level | Screens | Enemies | Notes |
 | ----- | ------- | ------- | ----- |
-| **CASTAWAY SHORE** | 6 | [Beach crabs](entities/beach_crab.md), [pirate grunts](entities/pirate_grunt.md) & [gunners](entities/pirate_gunner.md) + a [Pirate Captain](entities/captain.md) boss | The **opening of Chapter 2**: a sun-blasted beach of pale sand and coconut palms where the Demon King's blow drops the party, an ocean away from home. Skittering beach crabs work the tideline; higher up, cutlass-swinging pirate grunts and flintlock gunners hold the coast from behind wooden **barricades** — up to their **[captain](entities/captain.md)**, a musket-wielding boss at the back of the last camp who **yields and joins the party** once beaten. The party lands here automatically when Chapter 1 ends. |
-| **HARBORWATCH** | 3 | *none — a peaceful town* | The party's first **safe ground** of Chapter 2: a friendly garrison town the captain sails them to, to **round up soldiers**. It's a **[hub, not a battlefield](#townsfolk-and-towns)** — no roaming foes, so there's no "cleared" banner, just a **DOCKS**, a **SQUARE** and the **OUTSKIRTS** to wander. Talk to the **townsfolk**, buy sturdier gear at the **[quartermaster](shops.md)**, and open a couple of chests. Its one piece of business is **BRENN**, a garrison axeman in the square who **joins the party** once you talk him round (Elara reveals herself as the true heir). Clearing the shore before it, entering reaches the edge of the built world — **"TO BE CONTINUED..."**. |
+| **CASTAWAY SHORE** | 6 | [Beach crabs](entities/beach_crab.md), [pirate grunts](entities/pirate_grunt.md) and [gunners](entities/pirate_gunner.md), and a [Pirate Captain](entities/captain.md) boss | The **opening of Chapter 2**: a sun-blasted beach of pale sand and coconut palms where the Demon King's blow drops the party, an ocean away from home. Skittering beach crabs work the tideline; higher up, cutlass-swinging pirate grunts and flintlock gunners hold the coast from behind wooden **barricades**, all the way up to their **[captain](entities/captain.md)**, a musket-wielding boss at the back of the last camp who **yields and joins the party** once beaten. The party lands here automatically when Chapter 1 ends. |
+| **HARBORWATCH** | 3 | *none, it's a peaceful town* | The party's first **safe ground** of Chapter 2: a friendly garrison town the captain sails them to, to **round up soldiers**. It's a **[hub, not a battlefield](#townsfolk-and-towns)**, with no roaming foes, so there's no "cleared" banner, just the **DOCKS**, the **SQUARE**, and the **OUTSKIRTS** to wander. Talk to the **townsfolk**, buy sturdier gear at the **[quartermaster](shops.md)**, and open a couple of chests. Its one piece of business is **BRENN**, a garrison axeman in the square who **joins the party** once you talk him round (Elara reveals herself as the true heir). Harborwatch is the edge of the built world for now: once you reach it, the story pauses on **"TO BE CONTINUED..."**. |
 
 ## Screens
 
 A level is a handful of **screens** (rooms) you walk between, Zelda-style. Each
-screen is a grid of 16×16 tiles. The party leader walks freely in pixels with
+screen is a grid of 16x16 tiles. The party leader walks freely in pixels with
 per-axis collision, sliding along walls rather than sticking, and the **camera
 follows**, clamped so it never shows past the edge of a small screen.
 
-Walk into an **opening in an edge** — anywhere the border tiles stop — and, if
+Walk into an **opening in an edge** (anywhere the border tiles stop) and, if
 that side links to another screen, you flip to it and step out of the opening on
 the opposite edge **nearest to where you left**, so a maze can wind its doorways
-wherever the layout wants rather than always at the mid-point. A brief grace
+wherever the layout wants rather than always at the midpoint. A brief grace
 period after arriving stops a demon from instantly pouncing on you.
 
 ### Tiles
 
 | Tile | Char | Walkable? |
 | ---- | ---- | --------- |
-| Grass | `.` (or space) | ✅ walkable base ground |
-| Grass patch | `G` | ✅ walkable — draws grass over the base |
-| Tree | `T` | ⛔ solid — units path around it |
-| Rock | `R` | ⛔ solid |
-| Water | `~` | ⛔ solid |
-| Barricade | `#` | ⛔ solid |
+| Grass | `.` (or space) | Yes, the base ground |
+| Grass patch | `G` | Yes, it draws grass over the base |
+| Tree | `T` | No, it's solid and units path around it |
+| Rock | `R` | No |
+| Water | `~` | No |
+| Barricade | `#` | No |
 
 Each level sets its own **base ground** (grassy Greenwood, stony Stone Pass and
-Traveller's End, dark-tiled Demon Fortress, scorched **charred stone** in the
+Traveler's End, dark-tiled Demon Fortress, scorched **charred stone** in the
 underworld's Charred Depths, pale **sand** on the Castaway Shore), drawn under
 everything; trees, rocks, water and barricades are props on top of it that block
 movement. A level can even re-theme its **props** the same way: the Castaway Shore
 draws its `T` trees as **coconut palms** and its `#` walls as the pirates' wooden
 **barricades**, without any change to the tile legend above. A **grass patch**
-(`G`) is the exception that goes the other way — a *walkable* tuft of greenery
-drawn over the base, which is how Traveller's End dots its bare stone with patches
+(`G`) is the exception that goes the other way: a *walkable* tuft of greenery
+drawn over the base, which is how Traveler's End dots its bare stone with patches
 of grass without re-theming the whole floor.
 
-Beyond the per-tile legend, a screen can also stamp whole **houses** — cottages
-drawn from a shared 6×4 tileset — placed at a tile position rather than spelled out
+Beyond the per-tile legend, a screen can also stamp whole **houses** (cottages
+drawn from a shared 6x4 tileset) placed at a tile position rather than spelled out
 in the map. Their grassy upper rows blend into the ground, and only the **stone wall
 along the base** blocks movement, so you walk *in front of* a house's door (they're
 scenery, not entered). Harborwatch's streets are lined with them.
@@ -98,31 +98,31 @@ scenery, not entered). Harborwatch's streets are lined with them.
 ## Roaming enemies
 
 Each screen can hold **roaming enemies**, placed at spawn points and tied to an
-[encounter](battles.md). Each level fields its own kind — [slime](entities/slime.md)
+[encounter](battles.md). Each level fields its own kind: [slime](entities/slime.md)
 swarms in the Greenwood, [gargoyle](entities/gargoyle.md) sentinels on the Stone
-Pass, [demon](entities/demon.md) packs — and a lurking [dragon](entities/dragon.md)
-boss — in the Demon Fortress, and the [goblin](entities/club_goblin.md) and
+Pass, [demon](entities/demon.md) packs (and a lurking [dragon](entities/dragon.md)
+boss) in the Demon Fortress, and the [goblin](entities/club_goblin.md) and
 [orc](entities/orc_brute.md) families down in the underworld's Charred Depths (see the
 [Bestiary](entities/index.md)). They wander
-near home until you come within their **aggro radius**, then **chase** you —
+near home until you come within their **aggro radius**, then **chase** you,
 routing *around* trees, rocks and barricades rather than snagging on them, so
 there's no hiding behind a boulder in the Stone Pass maze. Touch one and its
-encounter starts a **[battle](battles.md)** — the dragon's fight even swaps in
+encounter starts a **[battle](battles.md)**. The dragon's fight even swaps in
 its own boss theme.
 
 - You're **faster than they are** (gargoyles and crabs especially are a crawl), so
-  you can outrun or juke them — clearing a level doesn't *require* fighting every one
+  you can outrun or juke them. Clearing a level doesn't *require* fighting every one
   along the way, but a level is only marked cleared once they're all defeated. The
-  mounted **[dark knights](entities/dark_knight.md)** of Traveller's End are the
+  mounted **[dark knights](entities/dark_knight.md)** of Traveler's End are the
   exception that nearly keeps pace, so there's little room to dawdle around them.
-- **Win** a battle and that enemy is gone from the map for good — and that progress
+- **Win** a battle and that enemy is gone from the map for good. That progress
   is [saved](gameplay.md#saving), so it stays beaten even if you leave and return.
 - **Lose** and the enemies in that screen retreat to their starting spots, giving
   you room to regroup instead of being fought again on the spot.
 
 Clear every enemy in every screen and the level is done: the victory report leads
 with **"{LEVEL} CLEARED!  ONWARD TO {NEXT}"** and, after any [clear
-cutscene](story.md), the party is **carried straight into the next region** — no trip
+cutscene](story.md), the party is **carried straight into the next region**, with no trip
 back to the map to pick it. Auto-advance stops at a **[chapter](gameplay.md#chapters)**
 boundary (chapters turn over by story, not by clearing), and clearing the **last built
 region** ends on **"TO BE CONTINUED..."**, leaving you free to return to the map with
@@ -132,55 +132,56 @@ and you can always **Cancel**/**Menu** out of a level to the map by hand.
 ## Townsfolk and towns
 
 Not every screen is a fight. A level with **no roaming enemies** is a peaceful
-**town** — the overworld reads it as a hub, so there's no "cleared" banner and
+**town**. The overworld reads it as a hub, so there's no "cleared" banner and
 nothing to defeat, just streets to explore and people to meet. **Harborwatch**, the
 garrison town of Chapter 2, is the first of them.
 
-Towns are dotted with **townsfolk** — villagers standing about with a little
+Towns are dotted with **townsfolk**: villagers standing about with a little
 **emote bubble** bobbing over their head (a speech mark, a *?*, a *!*, a heart) to
-mark them as talk-to-able. Walk up and press **Confirm** on the **PRESS Z** prompt to
-hear what they have to say: rumours, colour, and the occasional lead. Most are pure
-flavour and can be talked to again and again.
+mark them as someone you can talk to. Walk up and press **Confirm** on the **PRESS Z**
+prompt to hear what they have to say: rumors, color, and the occasional lead. Most are
+pure flavor and can be talked to again and again.
 
 A few, though, are **business**. Some townsfolk carry a one-time scripted
-conversation — and one of those is a **recruit**: talk **BRENN**, the garrison axeman
+conversation, and one of those is a **recruit**: talk **BRENN**, the garrison axeman
 in the Harborwatch square, into the party (once **Elara** proves she's the true heir)
 and he **joins** as a heavy front-line fighter. Once he's in the ranks he's no longer
-standing in the square — recruited townsfolk move into the party for good.
+standing in the square, since recruited townsfolk move into the party for good.
 
 ## Shops
 
 A screen can also hold a **[shop](shops.md)**: a keeper standing under a **SHOP**
 banner. Walk up and press **Confirm** to step into a wood-floored store where you
 spend the gold you've won on new [weapons and armor](equipment.md). You leave the
-way the keeper faces — walk back out the doorway to return to the map. The
+way the keeper faces: walk back out the doorway to return to the map. The
 Greenwood's opening screen has an **OUTFITTER** right by your start, so you can
 kit out before your first fight.
 
 ## Chests and mimics
 
-Scattered across the screens are **treasure chests**. Walk up to one and — like a
-shop — press **Confirm** on the **PRESS Z** prompt to open it and pocket what's
+Scattered across the screens are **treasure chests**. Walk up to one and, just like a
+shop, press **Confirm** on the **PRESS Z** prompt to open it and pocket what's
 inside: a purse of **gold**, a consumable [item](items.md), a piece of
 [equipment](equipment.md), or some combination. An opened chest is spent (it fades
-grey) and, like a beaten enemy, that's [saved](gameplay.md#saving) — it stays
+gray) and, like a beaten enemy, that's [saved](gameplay.md#saving). It stays
 looted even if you leave and come back, so there's no farming the same box twice.
 The Greenwood alone hides a starter purse, an **ether**, and a **[SCOUT'S
 EDGE](equipment.md)** waiting past its lone demon.
 
-But in the **deep** regions — Traveller's End, the Demon Fortress, the Charred
-Depths, and the Demon Facility — not every chest is treasure. A **[mimic](entities/mimic.md)** sits perfectly
-still wearing a chest's exact shape — drawn from the **very same sprite**, so from a
+But in the **deep** regions (Traveler's End, the Demon Fortress, the Charred
+Depths, and the Demon Facility) not every chest is treasure. A **[mimic](entities/mimic.md)** sits perfectly
+still wearing a chest's exact shape. It's drawn from the **very same sprite**, so from a
 distance there is *no way to tell it from the real thing*. Those regions deliberately
 sit real chests and mimics side by side, so you can never be sure which cache is safe.
 Stray too close and the disguise drops: it reveals a mouthful of teeth and **gives
 chase**. A woken mimic is quicker than an ordinary roaming foe, though still a hair
-slower than you, so a prompt retreat can shake it — but let it catch you and it starts
-a **[battle](battles.md)**.
+slower than you, so a prompt retreat can shake it. Let it catch you, though, and it
+starts a **[battle](battles.md)**.
 
-And a mimic is no pushover in that fight: it is tanky, hurls **FIREBALL**, and — its
-signature — **[copies the party's last move](entities/mimic.md#mimicry)**, taking on
-that hero's very shape to turn a weakened version of their own skill back on them.
+And a mimic is no pushover in that fight: it is tanky, hurls **FIREBALL**, and its
+signature trick is that it **[copies the party's last move](entities/mimic.md#mimicry)**,
+taking on that hero's very shape to turn a weakened version of their own skill back on
+them.
 Beat one, though, and it's gone for good and generously paid. Since a dormant mimic
 is indistinguishable until it springs, the only safe habit is to approach any deep
 chest ready to run.

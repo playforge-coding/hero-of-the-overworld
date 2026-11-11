@@ -6,24 +6,26 @@ comments: true
 
 There are three ways to play Hero of the Overworld:
 
-- **[Play in your browser](https://playforge-coding.github.io/hero-of-the-overworld/play/)** —
+- **[Play in your browser](https://playforge-coding.github.io/hero-of-the-overworld/play/)**:
   nothing to install; the game runs on GitHub Pages.
-- **Download a prebuilt binary** — grab a self-contained executable for Windows,
+- **Download a prebuilt binary**: grab a self-contained executable for Windows,
   macOS, or Linux from the [Releases](https://github.com/playforge-coding/hero-of-the-overworld/releases)
   page, then run it. Each archive holds a single binary (`hero`) with the
   textures and music baked in.
-- **Build from source** — as a native binary or a WebAssembly bundle you serve
+- **Build from source**: as a native binary or a WebAssembly bundle you serve
   yourself, using the steps below.
 
 ## Prerequisites
 
 *(Only needed to build from source.)*
 
-- A recent **Rust toolchain** (install via [rustup](https://rustup.rs)).
+- **[rustup](https://rustup.rs)**. The repo's `rust-toolchain.toml` pins the exact
+  Rust version (currently 1.99.1), and rustup installs it automatically the first
+  time you build.
 - A GPU with OpenGL (native) or WebGL (browser). Most machines from the last
-  decade qualify. On Linux you also need the usual X11 / OpenGL / ALSA dev
-  packages macroquad links against, e.g. `libx11-dev libxi-dev libgl1-mesa-dev
-  libasound2-dev`.
+  decade qualify. On Linux you also need the usual X11 / OpenGL / ALSA / udev dev
+  packages that macroquad and the gamepad support link against, e.g. `libx11-dev
+  libxi-dev libgl1-mesa-dev libasound2-dev libudev-dev`.
 
 Clone the repository first:
 
@@ -51,7 +53,8 @@ subsequent runs are fast. A window opens on the [title screen](gameplay.md#the-t
 ## Web
 
 macroquad compiles the game to a single `.wasm` that its JavaScript glue loads
-into a canvas — no wasm-bindgen or bundler. Add the wasm target once:
+into a canvas, with no wasm-bindgen or bundler involved. Add the wasm target once
+(rustup usually does this for you, since `rust-toolchain.toml` lists it):
 
 ```sh
 rustup target add wasm32-unknown-unknown
@@ -63,16 +66,20 @@ Build the wasm binary (the `hero` bin becomes `hero.wasm`):
 cargo build --release --target wasm32-unknown-unknown --bin hero
 ```
 
-Assemble a folder to serve — the repo's [`index.html`](https://github.com/playforge-coding/hero-of-the-overworld/blob/master/index.html)
-loads `./hero.wasm`, `./mq_js_bundle.js`, and the save-file glue
-`./sapp_jsutils.js` + `./hoto_storage.js` (which persist your progress to the
-browser's IndexedDB):
+The JavaScript functions the game calls are supplied by the page at load time, so
+the repo's `.cargo/config.toml` tells the wasm linker to allow those undefined
+imports. Nothing extra is needed on the command line.
+
+Assemble a folder to serve. The repo's [`index.html`](https://github.com/playforge-coding/hero-of-the-overworld/blob/master/index.html)
+loads `./hero.wasm`, `./mq_js_bundle.js`, the save-file glue `./sapp_jsutils.js`
+and `./hoto_storage.js` (which persist your progress to the browser's IndexedDB),
+and `./hoto_gamepads.js` (browser gamepad support):
 
 ```sh
 mkdir -p web && cp index.html web/
 cp target/wasm32-unknown-unknown/release/hero.wasm web/
-# Save-file glue (checked into the repo root):
-cp sapp_jsutils.js hoto_storage.js web/
+# Save-file and gamepad glue (checked into the repo root):
+cp sapp_jsutils.js hoto_storage.js hoto_gamepads.js web/
 # macroquad's JS loader (fetch once):
 curl -L https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js -o web/mq_js_bundle.js
 ```
@@ -83,9 +90,9 @@ Then serve `web/` with any static server (browsers won't run wasm off `file://`)
 python3 -m http.server -d web 8080   # then open http://127.0.0.1:8080
 ```
 
-The published site does exactly this in CI — see the [Docs workflow](https://github.com/playforge-coding/hero-of-the-overworld/blob/master/.github/workflows/docs.yml).
+The published site does exactly this in CI; see the [Docs workflow](https://github.com/playforge-coding/hero-of-the-overworld/blob/master/.github/workflows/docs.yml).
 
 ## Next steps
 
-- **[Controls](controls.md)** — how to move, confirm, and command your party.
-- **[Gameplay](gameplay.md)** — the moment-to-moment loop from title to victory.
+- **[Controls](controls.md)**: how to move, confirm, and command your party.
+- **[Gameplay](gameplay.md)**: the moment-to-moment loop from title to victory.

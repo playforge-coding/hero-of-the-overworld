@@ -1,8 +1,8 @@
-// HARBORWATCH — a friendly garrison town, and the party's first safe ground of
+// HARBORWATCH is a friendly garrison town, and the party's first safe ground of
 // CHAPTER 2. Having won the CASTAWAY SHORE and the PIRATE CAPTAIN's loyalty, they
 // sail here to rally soldiers for the road home (see `harborwatch_intro`). It is a
 // peaceful HUB, not a battlefield: no roaming enemies, so the overworld reads it
-// as a town — no "cleared" banner, just streets to walk, townsfolk to talk to
+// as a town. There's no "cleared" banner, just streets to walk, townsfolk to talk to
 // (walk up + Confirm), a quartermaster's shop, and a couple of chests. Its one
 // piece of business is BRENN the axeman in the square, who joins the party once
 // talked round (his `NpcSpawn` runs `axeman_joins`, which recruits `axeman`).
@@ -18,7 +18,7 @@ LevelDef(
     ground: Some("grass"),
     intro_cutscene: Some("harborwatch_intro"),
     screens: [
-        // 0 — THE DOCKS: where the captain's ship puts in. The harbor laps the
+        // Screen 0, THE DOCKS: where the captain's ship puts in. The harbor laps the
         // south edge; the road north climbs into the town square. A wary fisher
         // works the jetty.
         ScreenDef(
@@ -26,11 +26,11 @@ LevelDef(
             npcs: [
                 NpcSpawn(col: 4, row: 5, npc: "farmer", facing: Down, emote: "talk",
                     portrait: Some("farmer"),
-                    lines: ["FRESH OFF THE CAPTAIN'S SHIP? HALF THE BOATS WON'T PUT OUT SINCE THE BLACK TIDE ROSE. SOMETHING'S WRONG PAST THE REEF - AND IT'S CRAWLING CLOSER."]),
+                    lines: ["FRESH OFF THE CAPTAIN'S SHIP? HALF THE BOATS WON'T PUT OUT SINCE THE BLACK TIDE ROSE. SOMETHING'S WRONG PAST THE REEF, AND IT'S CRAWLING CLOSER."]),
             ],
         ),
-        // 1 — THE TOWN SQUARE: two cottages, the quartermaster's counter, townsfolk
-        // trading rumours, and BRENN the axeman by the well, waiting to be talked
+        // Screen 1, THE TOWN SQUARE: two cottages, the quartermaster's counter,
+        // townsfolk trading rumors, and BRENN the axeman by the well, waiting to be talked
         // into the ranks. The road runs south to the docks and north to the
         // outskirts.
         ScreenDef(
@@ -45,7 +45,7 @@ LevelDef(
             npcs: [
                 NpcSpawn(col: 8, row: 8, npc: "farmer", facing: Up, emote: "question",
                     portrait: Some("farmer"),
-                    lines: ["STRANGERS OFF A PIRATE DECK - AND THE CAPTAIN VOUCHING FOR YOU? THESE ARE STRANGE DAYS. STILL... HE NEVER LIED TO THIS TOWN."]),
+                    lines: ["STRANGERS OFF A PIRATE DECK, AND THE CAPTAIN VOUCHING FOR YOU? THESE ARE STRANGE DAYS. STILL... HE NEVER LIED TO THIS TOWN."]),
                 NpcSpawn(col: 16, row: 7, npc: "farmer", facing: Down, emote: "love",
                     portrait: Some("farmer"),
                     lines: ["THE HARVEST HELD THIS YEAR, THANK THE TIDES. IF THE ROADS WERE SAFE ENOUGH TO SELL IT, WE'D WANT FOR NOTHING."]),
@@ -56,7 +56,7 @@ LevelDef(
                 ChestSpawn(col: 18, row: 3, gold: 150, item: Some("hi_potion")),
             ],
         ),
-        // 2 — THE OUTSKIRTS: the top of town, under the old watchtower road. A last
+        // Screen 2, THE OUTSKIRTS: the top of town, under the old watchtower road. A last
         // cottage, a lookout fretting over the guard, and a chest by the treeline.
         ScreenDef(
             south: Some(1),

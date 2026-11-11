@@ -4,14 +4,14 @@
 // with gilrs and the web build reads the browser Gamepad API here. This registers
 // a miniquad plugin exposing one function the Rust input module imports:
 //
-//   hoto_gamepads_poll() -> Uint8Array of (count * 7) bytes. For each connected
-//   gamepad, seven 0/1 flags in the order the Rust side expects:
+//   hoto_gamepads_poll() returns a Uint8Array of (count * 7) bytes. For each
+//   connected gamepad, seven 0/1 flags in the order the Rust side expects:
 //     Up, Down, Left, Right, Confirm (A/south), Cancel (B/east), Menu (Start/Select)
 //   i.e. the standard-mapping buttons and left stick already folded into our
 //   logical buttons, so Rust just reads flags and derives press edges by frame.
 //
 // The browser only reveals a gamepad after the user presses a button on it (a
-// gesture requirement), so pads pop in on first input — nothing to do here.
+// gesture requirement), so pads pop in on first input with nothing to do here.
 //
 // Depends on sapp_jsutils.js (for `js_object`) and mq_js_bundle.js (for
 // `miniquad_add_plugin`); load both before this file.

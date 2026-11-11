@@ -1,7 +1,5 @@
-// ------ Future foes: defined and reachable via the dev fight menu, but
-// not yet placed in any level's spawns. ------
-// The DEMON ELITE: a demon in war-plate — orc-like brawn bolted onto the
-// demon's fire. Same abilities as a demon (FIREBALL + CLAW) but far tougher
+// The DEMON ELITE: a demon in war-plate, orc-like brawn bolted onto the
+// demon's fire. The rank and file of the DEMON FACILITY. Same abilities as a demon (FIREBALL + CLAW) but far tougher
 // and harder-hitting. demon_elite.png is the demon's own 6x8 sheet redrawn
 // in armor, so the frame layout is copied from the demon verbatim.
 EnemyDef(
