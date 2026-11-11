@@ -2,6 +2,17 @@
 
 A JRPG written in Rust.
 
+## Searching the Codebase
+
+Use fast, modern tools instead of the slow defaults:
+
+- [`rg`](https://github.com/BurntSushi/ripgrep) (ripgrep) for text search, not `grep`. It respects `.gitignore` for you. **NOTE**: Prefer to use [`ast-grep`](https://ast-grep.github.io) when applicable as it uses the structure of the code instead.
+- [`fd`](https://github.com/sharkdp/fd) for finding files by name, not `find`.
+- [`ast-grep`](https://ast-grep.github.io) for structural searches and rewrites, like finding every call to a function. It supports Rust, Pytho, JS, and more, but not RON, so use `rg` for that. Call it as `ast-grep`. The `sg` alias is deprecated, so don't use it.
+- `jq` for reading and querying JSON.
+
+If your harness has dedicated search or file tools that already wrap these, those are fine too.
+
 ## DOCS (IMPORTANT)
 
 IMPORTANT!!! Always update the docs and build them with Zensical!
